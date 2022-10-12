@@ -1,0 +1,55 @@
+# PSoC Creator 4.3
+# Updated by  : GregL
+# Dated   : 12/03/2020
+# Details   : Place this ignore file together with cywrk or alter directories to match the required structure
+
+# PSoC Creator Folders to ignore (PSoC4/5)
+*Archive/
+*Backup/
+*codegentemp/
+*CortexM0/
+*CortexM3/
+*Export/
+*Generated_Source/
+
+# PSoC Creator Folders to ignore (PSoC6)
+*armgcc/
+*CortexM0p/
+*CortexM4/
+*iar/
+*mdk/
+
+# PSoC Creator Non-Bootloadable project files to ignore (PSoC4/5)
+*_timing.html
+# Bootloadable project files to ignore
+**.cydsn/*timing.html
+*.svd
+*.rpt
+*.cyfit
+*.cycdx
+*.log
+*.tmp
+*.txt
+
+# PSoC Creator Non-Bootloadable project files to ignore (PSoC6)
+*.icf
+*.ld
+*.scat
+
+# Option for .ctl files used in some PSoC Creator examples
+#*.ctl
+
+# Option for .pdf files supplied by some PSoC Creator examples or those specifically created from Creator
+#*.pdf
+#*_datasheet.pdf
+
+# Optional PSoC Creator Files to ignore (Export to IDE feature)
+*.mk
+makefile
+
+# PSoC Creator User Files to ignore
+*.cyprj.*
+*.cywrk.*
+
+# For external editors such as NotePad+++
+*.bak
