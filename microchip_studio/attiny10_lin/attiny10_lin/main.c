@@ -108,6 +108,7 @@ static uint8_t lin_read_byte() {
 	// stop bit (break if not there)
 	_delay_loop_1(LIN_RX_DELAY);
 	lin_data.breaked = !lin_od_read();
+	_delay_loop_1(LIN_RX_HALF_DELAY);
 	while (!lin_od_read());
 	return b;
 }
