@@ -1,0 +1,214 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>7.0</ProjectVersion>
+    <ToolchainName>com.microchip.xc8</ToolchainName>
+    <ProjectGuid>2285C48D-296E-43FD-A7B6-69885F64CFFD</ProjectGuid>
+    <avrdevice>ATmega328PB</avrdevice>
+    <avrdeviceseries>none</avrdeviceseries>
+    <OutputType>Executable</OutputType>
+    <Language>C</Language>
+    <OutputFileName>$(MSBuildProjectName)</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
+    <AssemblyName>psu_monitor</AssemblyName>
+    <Name>psu_monitor</Name>
+    <RootNamespace>psu_monitor</RootNamespace>
+    <ToolchainFlavour>XC8_2.36</ToolchainFlavour>
+    <KeepTimersRunning>true</KeepTimersRunning>
+    <OverrideVtor>false</OverrideVtor>
+    <CacheFlash>true</CacheFlash>
+    <ProgFlashFromRam>true</ProgFlashFromRam>
+    <RamSnippetAddress>0x20000000</RamSnippetAddress>
+    <UncachedRange />
+    <preserveEEPROM>true</preserveEEPROM>
+    <OverrideVtorValue>exception_table</OverrideVtorValue>
+    <BootSegment>2</BootSegment>
+    <ResetRule>0</ResetRule>
+    <eraseonlaunchrule>1</eraseonlaunchrule>
+    <EraseKey />
+    <AsfFrameworkConfig>
+      <framework-data xmlns="">
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.52.0" />
+        </dependencies>
+      </framework-data>
+    </AsfFrameworkConfig>
+    <avrtool>com.atmel.avrdbg.tool.snap</avrtool>
+    <avrtoolserialnumber>BUR184672218</avrtoolserialnumber>
+    <avrdeviceexpectedsignature>0x1E9516</avrdeviceexpectedsignature>
+    <com_atmel_avrdbg_tool_snap>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>125000</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>debugWIRE</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.snap</ToolType>
+      <ToolNumber>BUR184672218</ToolNumber>
+      <ToolName>MPLAB® Snap</ToolName>
+    </com_atmel_avrdbg_tool_snap>
+    <avrtoolinterface>debugWIRE</avrtoolinterface>
+    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <ToolchainSettings>
+      <com.microchip.xc8>
+        <com.microchip.xc8.common.optimization.RelaxBranches>True</com.microchip.xc8.common.optimization.RelaxBranches>
+        <com.microchip.xc8.compiler.general.ChangeDefaultCharTypeUnsigned>True</com.microchip.xc8.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <com.microchip.xc8.compiler.general.ChangeDefaultBitFieldUnsigned>True</com.microchip.xc8.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <com.microchip.xc8.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>(%24DeviceMacro)</Value>
+            <Value>NDEBUG</Value>
+          </ListValues>
+        </com.microchip.xc8.compiler.symbols.DefSymbols>
+        <com.microchip.xc8.compiler.optimization.level>Optimize for size (-Os)</com.microchip.xc8.compiler.optimization.level>
+        <com.microchip.xc8.compiler.optimization.PackStructureMembers>True</com.microchip.xc8.compiler.optimization.PackStructureMembers>
+        <com.microchip.xc8.compiler.optimization.AllocateBytesNeededForEnum>True</com.microchip.xc8.compiler.optimization.AllocateBytesNeededForEnum>
+        <com.microchip.xc8.compiler.warnings.AllWarnings>True</com.microchip.xc8.compiler.warnings.AllWarnings>
+        <com.microchip.xc8.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </com.microchip.xc8.linker.libraries.Libraries>
+      </com.microchip.xc8>
+    </ToolchainSettings>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ToolchainSettings>
+      <com.microchip.xc8>
+        <com.microchip.xc8.compiler.general.ChangeDefaultCharTypeUnsigned>True</com.microchip.xc8.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <com.microchip.xc8.compiler.general.ChangeDefaultBitFieldUnsigned>True</com.microchip.xc8.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <com.microchip.xc8.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>(%24DeviceMacro)</Value>
+            <Value>DEBUG</Value>
+          </ListValues>
+        </com.microchip.xc8.compiler.symbols.DefSymbols>
+        <com.microchip.xc8.compiler.optimization.level>Optimize debugging experience (-Og)</com.microchip.xc8.compiler.optimization.level>
+        <com.microchip.xc8.compiler.optimization.PackStructureMembers>True</com.microchip.xc8.compiler.optimization.PackStructureMembers>
+        <com.microchip.xc8.compiler.optimization.AllocateBytesNeededForEnum>True</com.microchip.xc8.compiler.optimization.AllocateBytesNeededForEnum>
+        <com.microchip.xc8.compiler.optimization.DebugLevel>Default (-g2)</com.microchip.xc8.compiler.optimization.DebugLevel>
+        <com.microchip.xc8.compiler.warnings.AllWarnings>True</com.microchip.xc8.compiler.warnings.AllWarnings>
+        <com.microchip.xc8.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </com.microchip.xc8.linker.libraries.Libraries>
+        <com.microchip.xc8.assembler.debugging.DebugLevel>Default (-Wa,-g)</com.microchip.xc8.assembler.debugging.DebugLevel>
+      </com.microchip.xc8>
+    </ToolchainSettings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="app.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="app.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="main.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\config\clock_config.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\device_config.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\examples\twi1_master_example.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\examples\twi1_master_example.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\cpuint.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\pin_manager.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\port.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\protected_io.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\rstctrl.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\twi1_master.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\include\usart1.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\mcc.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\mcc.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\src\cpuint.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\src\pin_manager.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\src\protected_io.S">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\src\twi1_master.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\src\usart1.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\assembler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\assembler\gas.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\assembler\iar.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\atomic.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\compiler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\interrupt_avr8.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\utils.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\utils\utils_assert.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ssd1306.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ssd1306.h">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="mcc_generated_files\" />
+    <Folder Include="mcc_generated_files\config\" />
+    <Folder Include="mcc_generated_files\examples\" />
+    <Folder Include="mcc_generated_files\include\" />
+    <Folder Include="mcc_generated_files\src\" />
+    <Folder Include="mcc_generated_files\utils\" />
+    <Folder Include="mcc_generated_files\utils\assembler\" />
+  </ItemGroup>
+  <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
+</Project>
