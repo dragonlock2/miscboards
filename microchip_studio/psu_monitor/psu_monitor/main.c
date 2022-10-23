@@ -33,7 +33,9 @@ int main(void)
 
     /* Replace with your application code */
 	app_init();
-	app_loop();
+    while (true) {
+	    app_loop();
+    }    
 }
 /**
     End of File

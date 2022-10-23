@@ -36,7 +36,7 @@ typedef struct {
 static ssd1306_data_S ssd1306_data;
 
 /* private helpers */
-void ssd1306_write_command(uint8_t comm) {
+static void ssd1306_write_command(uint8_t comm) {
     uint8_t buf[2] = {0x00, comm};
     while (!OLED_Open(SSD1306_ADDR));
     OLED_SetBuffer(buf, sizeof buf);
@@ -46,7 +46,7 @@ void ssd1306_write_command(uint8_t comm) {
 
 /* public functions */
 void ssd1306_init() {
-    TWBR1 = 2; // MCC doesn't do this... (800kHz)
+    TWBR1 = 0; // MCC doesn't do this... (500kHz)
 
     ssd1306_write_command(0xAE); // display off
     ssd1306_write_command(0x00); // set lower column start address
