@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="14.0">
+  <PropertyGroup>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>7.0</ProjectVersion>
+    <ToolchainName>com.Atmel.AVRGCC8.C</ToolchainName>
+    <ProjectGuid>dce6c7e3-ee26-4d79-826b-08594b9ad897</ProjectGuid>
+    <avrdevice>ATtiny1616</avrdevice>
+    <avrdeviceseries>none</avrdeviceseries>
+    <OutputType>Executable</OutputType>
+    <Language>C</Language>
+    <OutputFileName>$(MSBuildProjectName)</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
+    <AssemblyName>nrf24_remote</AssemblyName>
+    <Name>nrf24_remote</Name>
+    <RootNamespace>nrf24_remote</RootNamespace>
+    <ToolchainFlavour>Native</ToolchainFlavour>
+    <KeepTimersRunning>true</KeepTimersRunning>
+    <OverrideVtor>false</OverrideVtor>
+    <CacheFlash>true</CacheFlash>
+    <ProgFlashFromRam>true</ProgFlashFromRam>
+    <RamSnippetAddress>0x20000000</RamSnippetAddress>
+    <UncachedRange />
+    <preserveEEPROM>true</preserveEEPROM>
+    <OverrideVtorValue>exception_table</OverrideVtorValue>
+    <BootSegment>2</BootSegment>
+    <ResetRule>0</ResetRule>
+    <eraseonlaunchrule>0</eraseonlaunchrule>
+    <EraseKey />
+    <AsfFrameworkConfig>
+      <framework-data xmlns="">
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.52.0" />
+        </dependencies>
+      </framework-data>
+    </AsfFrameworkConfig>
+    <avrtool>com.atmel.avrdbg.tool.snap</avrtool>
+    <avrtoolserialnumber>BUR184672218</avrtoolserialnumber>
+    <avrdeviceexpectedsignature>0x1E9421</avrdeviceexpectedsignature>
+    <avrtoolinterface>UPDI</avrtoolinterface>
+    <com_atmel_avrdbg_tool_snap>
+      <ToolOptions>
+        <InterfaceProperties>
+          <UpdiClock>750000</UpdiClock>
+        </InterfaceProperties>
+        <InterfaceName>UPDI</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.snap</ToolType>
+      <ToolNumber>BUR184672218</ToolNumber>
+      <ToolName>MPLAB® Snap</ToolName>
+    </com_atmel_avrdbg_tool_snap>
+    <avrtoolinterfaceclock>750000</avrtoolinterfaceclock>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <ToolchainSettings>
+      <AvrGcc>
+        <avrgcc.common.Device>-mmcu=attiny1616 -B "%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\gcc\dev\attiny1616"</avrgcc.common.Device>
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcc.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>NDEBUG</Value>
+          </ListValues>
+        </avrgcc.compiler.symbols.DefSymbols>
+        <avrgcc.compiler.directories.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\include\</Value>
+          </ListValues>
+        </avrgcc.compiler.directories.IncludePaths>
+        <avrgcc.compiler.optimization.level>Optimize for size (-Os)</avrgcc.compiler.optimization.level>
+        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+        <avrgcc.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </avrgcc.linker.libraries.Libraries>
+        <avrgcc.assembler.general.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\include\</Value>
+          </ListValues>
+        </avrgcc.assembler.general.IncludePaths>
+      </AvrGcc>
+    </ToolchainSettings>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ToolchainSettings>
+      <AvrGcc>
+        <avrgcc.common.Device>-mmcu=attiny1616 -B "%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\gcc\dev\attiny1616"</avrgcc.common.Device>
+        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+        <avrgcc.compiler.symbols.DefSymbols>
+          <ListValues>
+            <Value>DEBUG</Value>
+          </ListValues>
+        </avrgcc.compiler.symbols.DefSymbols>
+        <avrgcc.compiler.directories.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\include\</Value>
+          </ListValues>
+        </avrgcc.compiler.directories.IncludePaths>
+        <avrgcc.compiler.optimization.level>Optimize debugging experience (-Og)</avrgcc.compiler.optimization.level>
+        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+        <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
+        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+        <avrgcc.linker.libraries.Libraries>
+          <ListValues>
+            <Value>libm</Value>
+          </ListValues>
+        </avrgcc.linker.libraries.Libraries>
+        <avrgcc.assembler.general.IncludePaths>
+          <ListValues>
+            <Value>%24(PackRepoDir)\atmel\ATtiny_DFP\1.10.348\include\</Value>
+          </ListValues>
+        </avrgcc.assembler.general.IncludePaths>
+        <avrgcc.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcc.assembler.debugging.DebugLevel>
+      </AvrGcc>
+    </ToolchainSettings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="app.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="app.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="main.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\adc\adc0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\adc\adc1.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\adc\src\adc0.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\adc\src\adc1.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\i2c_host\i2c_host_event_types.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\i2c_host\i2c_host_interface.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\i2c_host\i2c_host_types.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\i2c_host\src\twi0.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\i2c_host\twi0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\ccp.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\clock.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\interrupt.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\pins.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\port.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\protected_io.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\clock.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\config_bits.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\interrupt.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\pins.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\protected_io.S">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\src\system.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\system.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\assembler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\assembler\gas.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\assembler\iar.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\atomic.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\compiler.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\interrupt_avr8.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\utils.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\system\utils\utils_assert.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\uart\src\usart0.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\uart\uart_drv_interface.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\uart\uart_types.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\uart\usart0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\vref\src\vref.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\vref\vref.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ws2812b.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="ws2812b.h">
+      <SubType>compile</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="mcc_generated_files\" />
+    <Folder Include="mcc_generated_files\adc\" />
+    <Folder Include="mcc_generated_files\adc\src\" />
+    <Folder Include="mcc_generated_files\i2c_host\" />
+    <Folder Include="mcc_generated_files\i2c_host\src\" />
+    <Folder Include="mcc_generated_files\system\" />
+    <Folder Include="mcc_generated_files\system\src\" />
+    <Folder Include="mcc_generated_files\system\utils\" />
+    <Folder Include="mcc_generated_files\system\utils\assembler\" />
+    <Folder Include="mcc_generated_files\uart\" />
+    <Folder Include="mcc_generated_files\uart\src\" />
+    <Folder Include="mcc_generated_files\vref\" />
+    <Folder Include="mcc_generated_files\vref\src\" />
+  </ItemGroup>
+  <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
+</Project>
