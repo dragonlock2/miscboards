@@ -34,9 +34,11 @@ static inline void ws2812b_write_byte(uint8_t b) {
 
 /* public functions */
 void ws2812b_write(uint8_t r, uint8_t g, uint8_t b) {
+    cli();
     led_SetLow();
     ws2812b_write_byte(g);
     ws2812b_write_byte(r);
     ws2812b_write_byte(b);
     _delay_us(50);
+    sei();
 }

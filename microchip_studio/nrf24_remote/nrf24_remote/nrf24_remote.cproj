@@ -142,6 +142,12 @@
     <Compile Include="app.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="lsm303ah.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="lsm303ah.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="main.c">
       <SubType>compile</SubType>
     </Compile>

@@ -3,6 +3,7 @@
 #include <util/delay.h>
 #include "mcc_generated_files/system/system.h"
 #include "ws2812b.h"
+#include "lsm303ah.h"
 #include "app.h"
 
 /* private defines */
@@ -16,30 +17,37 @@ static uint8_t app_read_mic() { // unsigned raw
     return ADC1_GetConversionResult();
 }
 
+static void app_sleep() {
+    // TODO prepare the things for sleeping (wakeup interrupts)
+}
+
+static void app_wakeup() {
+    // TODO re-init things as needed
+}
+
 /* public functions */
 void app_init() {
-    sei();
-    
     // MCC Melody don't generate the enum...
     ADC0_StartConversion(ADC_MUXPOS_AIN8_gc); // vbatt_sense
     ADC1_StartConversion(ADC_MUXPOS_AIN3_gc); // mic
     
     reg_en_SetHigh();
-    _delay_ms(100);
+    _delay_ms(100); // TODO what's the right amount
     
-    for (uint8_t i = 0; i < 128; i++) {
-        TWI0_Write(i, NULL, 0);
-        while (TWI0_IsBusy());
-        printf("%d %d\n", i, TWI0_ErrorGet());
-    }
+    ws2812b_write(5, 5, 5);
     
-    // TODO accel/mag w/ int
+    lsm303ah_init();
+    
     // TODO nrf24 w/ int
-    // TODO write the full app
+    // TODO write the full app (measure current!)
+        // 5s timeout to high power sleep
+        // 15s timeout to low power sleep
+        // doing audio in real time will be a challenge bc gotta read other things too, need to make everything run in the background
+        // need to re-init stuffs if wake from low power
+        // add keep-on mode using button presses
+        // add way to hit low power sleep using buttons alone
 }
 
 void app_loop() {
-    ws2812b_write(2, 2, 2);
-    printf("%d %d\n", app_read_vbatt(), app_read_mic());
     _delay_ms(10);
 }
