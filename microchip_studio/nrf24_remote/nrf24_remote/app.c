@@ -1,5 +1,6 @@
 #define F_CPU 20000000L
 
+#include <avr/sleep.h>
 #include <util/delay.h>
 #include "mcc_generated_files/system/system.h"
 #include "ws2812b.h"
@@ -51,26 +52,24 @@ static uint8_t app_read_mic() { // unsigned raw
     return ADC1_GetConversionResult();
 }
 
-static void app_sleep() {
-    // TODO prepare the things for sleeping (wakeup interrupts)
-    // TODO may need to set pins low
-    
-    // reg_en_SetLow();
-    app_data.sleep_ctr = 0;
-    printf("going to sleep!\n");
-}
-
 static void app_wakeup() {
-    // TODO re-init things as needed, disable wake interrupts?
-    
     reg_en_SetHigh();
-    _delay_ms(20); // TODO what's good?
+    _delay_ms(10);
     lsm303ah_init();
     rf24_init((uint8_t*) RF24_ADDR, RF24_CHANNEL);
     rf24_start_tx((uint8_t*) RF24_ADDR);
     
     ws2812b_write(69, 0, 0);
     app_data.tx_ok = false;
+}
+
+static void app_sleep() {
+    // TODO may need to set pins low to minimize current
+    
+    reg_en_SetLow();
+    app_data.sleep_ctr = 0;
+    sleep_cpu();
+    app_wakeup();
 }
 
 static void app_ticker() {
@@ -143,6 +142,10 @@ void app_loop() {
     
     pkt->audio[app_data.audio_ctr++] = app_read_mic();
     
+    // send packet
+    app_data.send_mag = !app_data.send_mag;
+    rf24_send((uint8_t*) pkt, sizeof(app_packet_S));
+    
     // check sleep counter
     app_data.sleep_ctr++;
     if (pkt->btn0 || pkt->btn1 || pkt->btn2 || INT1_GetValue()) {
@@ -165,10 +168,6 @@ void app_loop() {
     if (!app_data.keepon && app_data.sleep_ctr == SLEEP_TIMEOUT) {
         app_sleep();
     }
-    
-    // send packet
-    app_data.send_mag = !app_data.send_mag;
-    rf24_send((uint8_t*) pkt, sizeof(app_packet_S));
     
     ticker = false;
 }
