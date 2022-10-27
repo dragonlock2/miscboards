@@ -178,6 +178,15 @@
     <Compile Include="mcc_generated_files\i2c_host\twi0.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="mcc_generated_files\spi\spi0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\spi\spi_interface.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\spi\src\spi0.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="mcc_generated_files\system\ccp.h">
       <SubType>compile</SubType>
     </Compile>
@@ -241,6 +250,15 @@
     <Compile Include="mcc_generated_files\system\utils\utils_assert.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="mcc_generated_files\timer\src\tca0.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\timer\tca0.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcc_generated_files\timer\timer_interface.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="mcc_generated_files\uart\src\usart0.c">
       <SubType>compile</SubType>
     </Compile>
@@ -259,6 +277,12 @@
     <Compile Include="mcc_generated_files\vref\vref.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="rf24.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="rf24.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="ws2812b.c">
       <SubType>compile</SubType>
     </Compile>
@@ -272,10 +296,14 @@
     <Folder Include="mcc_generated_files\adc\src\" />
     <Folder Include="mcc_generated_files\i2c_host\" />
     <Folder Include="mcc_generated_files\i2c_host\src\" />
+    <Folder Include="mcc_generated_files\spi\" />
+    <Folder Include="mcc_generated_files\spi\src\" />
     <Folder Include="mcc_generated_files\system\" />
     <Folder Include="mcc_generated_files\system\src\" />
     <Folder Include="mcc_generated_files\system\utils\" />
     <Folder Include="mcc_generated_files\system\utils\assembler\" />
+    <Folder Include="mcc_generated_files\timer\" />
+    <Folder Include="mcc_generated_files\timer\src\" />
     <Folder Include="mcc_generated_files\uart\" />
     <Folder Include="mcc_generated_files\uart\src\" />
     <Folder Include="mcc_generated_files\vref\" />
