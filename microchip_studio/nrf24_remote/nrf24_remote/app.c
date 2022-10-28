@@ -53,22 +53,26 @@ static uint8_t app_read_mic() { // unsigned raw
 }
 
 static void app_wakeup() {
+    btn0_DisableInterruptOnChange();
+    btn1_DisableInterruptOnChange();
+    btn2_DisableInterruptOnChange();
     reg_en_SetHigh();
     _delay_ms(10);
     lsm303ah_init();
     rf24_init((uint8_t*) RF24_ADDR, RF24_CHANNEL);
     rf24_start_tx((uint8_t*) RF24_ADDR);
-    
     ws2812b_write(69, 0, 0);
     app_data.tx_ok = false;
 }
 
 static void app_sleep() {
-    // TODO may need to set pins low to minimize current
-    
+    btn0_EnableInterruptForLowLevelSensing();
+    btn1_EnableInterruptForLowLevelSensing();
+    btn2_EnableInterruptForLowLevelSensing();
+    CE_SetLow();
     reg_en_SetLow();
     app_data.sleep_ctr = 0;
-    sleep_cpu();
+    sleep_mode();
     app_wakeup();
 }
 
@@ -88,13 +92,10 @@ void app_init() {
     ADC0_StartConversion(ADC_MUXPOS_AIN8_gc); // vbatt_sense
     ADC1_StartConversion(ADC_MUXPOS_AIN3_gc); // mic
 
-    reg_en_SetLow();
-    _delay_ms(10);
-    app_wakeup();
-    
     app_data.pkt[0].rsvd = 0;
     app_data.pkt[1].rsvd = 0;
     TCA0_OverflowCallbackRegister(app_ticker);
+    app_wakeup();
 }
 
 void app_loop() {
