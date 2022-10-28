@@ -58,7 +58,7 @@ static void app_wakeup() {
     btn1_DisableInterruptOnChange();
     btn2_DisableInterruptOnChange();
     reg_en_SetHigh();
-    _delay_ms(10);
+    _delay_ms(250);
     lsm303ah_init();
     rf24_init((uint8_t*) RF24_ADDR, RF24_CHANNEL);
     rf24_start_tx((uint8_t*) RF24_ADDR);
@@ -142,8 +142,6 @@ void app_loop() {
         pkt->y = accel_mag.ay;
         pkt->z = accel_mag.az;
     }
-    
-    pkt->audio[app_data.audio_ctr++] = app_read_mic();
     
     // send packet
     app_data.send_mag = !app_data.send_mag;
