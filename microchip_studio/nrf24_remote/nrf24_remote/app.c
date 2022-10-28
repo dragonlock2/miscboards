@@ -53,6 +53,7 @@ static uint8_t app_read_mic() { // unsigned raw
 }
 
 static void app_wakeup() {
+    vbatt_sense_ResetPullUp();
     btn0_DisableInterruptOnChange();
     btn1_DisableInterruptOnChange();
     btn2_DisableInterruptOnChange();
@@ -66,6 +67,7 @@ static void app_wakeup() {
 }
 
 static void app_sleep() {
+    vbatt_sense_SetPullUp(); // pin floating away from rails causes excess current draw
     btn0_EnableInterruptForLowLevelSensing();
     btn1_EnableInterruptForLowLevelSensing();
     btn2_EnableInterruptForLowLevelSensing();
