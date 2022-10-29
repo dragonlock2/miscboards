@@ -12,7 +12,7 @@ print("starting capture!")
 s.flush()
 start = time.time()
 audio = b''
-while time.time() - start < 5.0:
+while time.time() - start < 10.0:
     audio += s.read(4096)
 
 print("playing back!")

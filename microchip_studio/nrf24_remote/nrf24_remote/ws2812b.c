@@ -10,13 +10,13 @@ static inline void ws2812b_write_one() {
     led_SetHigh();
     _delay_loop_1(5);
     led_SetLow();
-    _delay_loop_1(2);
+    _delay_loop_1(1);
 }
 
 static inline void ws2812b_write_zero() {
     // tuned for 20MHz
     led_SetHigh();
-    _delay_loop_1(2);
+    _delay_loop_1(1);
     led_SetLow();
     _delay_loop_1(5);
 }
