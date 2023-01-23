@@ -50,11 +50,15 @@ add_link_options(
     -Os
     -g
     -flto
-)
+
+    # comment out if not using printf
+    -Wl,-u,vfprintf
+    -lprintf_min
+    )
 
 file(GLOB SRC_FILES "src/*.c")
 add_executable(${PROJECT_NAME}.elf ${SRC_FILES})
-add_custom_target(hex ALL avr-objcopy -j .text -j .data -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)
+add_custom_target(hex ALL avr-objcopy -j .text -j .data -j .rodata -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)
 set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_NAME}.hex")
 
 add_custom_target(flash avrdude -c ${PROG} -p ${MCU} -U flash:w:${PROJECT_NAME}.hex DEPENDS hex)
