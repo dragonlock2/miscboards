@@ -52,8 +52,8 @@ add_link_options(
     -flto
 
     # comment out if not using printf
-    -Wl,-u,vfprintf
-    -lprintf_min
+    # -Wl,-u,vfprintf
+    # -lprintf_min
     )
 
 file(GLOB SRC_FILES "src/*.c")

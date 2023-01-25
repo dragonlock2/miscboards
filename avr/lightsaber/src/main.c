@@ -2,6 +2,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include "dbg.h"
+#include "leds.h"
 
 void clk_init() {
     CCP = CCP_IOREG_gc;
@@ -12,14 +13,15 @@ int main(void) {
     // init
     clk_init();
     dbg_init();
-
-    int8_t i = 0;
-    PORTC.DIRSET = PIN0_bm;
+    leds_init();
 
     // loop
+    uint8_t c = 0;
     while (1) {
-        printf("hello world! %d\r\n", i++);
-        PORTC.OUTTGL = PIN0_bm;
-        _delay_ms(100);
+        leds_write(true, c, 0, 0);
+        leds_write(true, 0, c, 0);
+        leds_write(true, 0, 0, c);
+        c++;
+        _delay_ms(2);
     }
 }
