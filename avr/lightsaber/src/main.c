@@ -19,7 +19,7 @@ static main_data_S main_data;
 
 /* private helpers */
 static void run50Hz() {
-    // TODO anim
+    anim_step();
 }
 
 static void clk_init() {
@@ -50,11 +50,10 @@ ISR(TCA0_OVF_vect) {
 
 /* public functions */
 int main(void) {
-    // init
+    // HW init
     cli();
     clk_init();
     dbg_init();
-    leds_init();
     anim_init();
     sei();
     printf("booted!\r\n");
