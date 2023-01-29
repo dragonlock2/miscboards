@@ -15,6 +15,7 @@ set(F_CPU 20000000L)
 
 include_directories(
     dfp/include
+    src/
 )
 
 add_definitions(
@@ -27,7 +28,7 @@ add_compile_options(
     -std=gnu18
     -Wall
     -Werror
-    -Os
+    -O2
     -g
     -funsigned-char
     -funsigned-bitfields

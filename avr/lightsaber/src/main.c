@@ -4,6 +4,7 @@
 #include <util/delay.h>
 #include "dbg.h"
 #include "leds.h"
+#include "btn.h"
 #include "anim.h"
 
 /* private defines */
@@ -14,12 +15,28 @@
 typedef struct {
     uint16_t tick_ctr;
     volatile bool tick;
+
+    // TODO cleanup
+    bool on;
 } main_data_S;
 static main_data_S main_data;
 
 /* private helpers */
 static void run50Hz() {
-    anim_step();
+    btn_run50Hz();
+    anim_step(); // can call more times to speed up
+
+    // TODO cleanup
+    if (btn_rising()) {
+        main_data.on = !main_data.on;
+        if (main_data.on) {
+            anim_set(true,  ANIM_TYPE_EXTEND,  0, 0, 255, 2);
+            anim_set(false, ANIM_TYPE_EXTEND,  0, 0, 255, 2);
+        } else {
+            anim_set(true,  ANIM_TYPE_RETRACT, 0, 0, 255, 2);
+            anim_set(false, ANIM_TYPE_RETRACT, 0, 0, 255, 2);
+        }
+    }
 }
 
 static void clk_init() {
@@ -54,12 +71,14 @@ int main(void) {
     cli();
     clk_init();
     dbg_init();
+    btn_init();
     anim_init();
     sei();
     printf("booted!\r\n");
 
     // loop
     while (1) {
+        // TODO measure performance
         while (!main_data.tick);
         run50Hz();
         main_data.tick = false;
