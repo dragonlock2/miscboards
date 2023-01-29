@@ -15,6 +15,15 @@ void extend_reset(extend_data_S *data, uint8_t r, uint8_t g, uint8_t b, uint8_t 
     data->super_idx  = 0;
     data->super_len  = upscale * len + 2 * overlap;
     memset(data->buckets, 0, sizeof data->buckets);
+
+    if (data->window_len > EXTEND_LUT_LEN) {
+        data->window_len = EXTEND_LUT_LEN;
+    }
+    for (uint16_t i = 0; i <= data->window_len; i++) {
+        data->lut_r[i] = (uint16_t) r * i / data->window_len;
+        data->lut_g[i] = (uint16_t) g * i / data->window_len;
+        data->lut_b[i] = (uint16_t) b * i / data->window_len;
+    }
 }
 
 void extend_step(extend_data_S *data) {
@@ -32,9 +41,9 @@ void extend_step(extend_data_S *data) {
 }
 
 void extend_get(extend_data_S *data, uint8_t idx, uint8_t *r, uint8_t *g, uint8_t *b) {
-    *r = (uint16_t) data->r * data->buckets[idx] / data->window_len;
-    *g = (uint16_t) data->g * data->buckets[idx] / data->window_len;
-    *b = (uint16_t) data->b * data->buckets[idx] / data->window_len;
+    *r = data->lut_r[data->buckets[idx]];
+    *g = data->lut_g[data->buckets[idx]];
+    *b = data->lut_b[data->buckets[idx]];
 }
 
 void retract_get(extend_data_S *data, uint8_t idx, uint8_t *r, uint8_t *g, uint8_t *b) {

@@ -78,7 +78,6 @@ int main(void) {
 
     // loop
     while (1) {
-        // TODO measure performance
         while (!main_data.tick);
         run50Hz();
         main_data.tick = false;
