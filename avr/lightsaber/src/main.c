@@ -6,10 +6,7 @@
 #include "leds.h"
 #include "btn.h"
 #include "anim.h"
-
-/* private defines */
-#define PWM_FREQ  (25000) // Hz
-#define LOOP_FREQ (50) // Hz
+#include "audio.h"
 
 /* private data */
 typedef struct {
@@ -43,23 +40,11 @@ static void clk_init() {
     // divider = 1 => 20MHz
     CCP = CCP_IOREG_gc;
     CLKCTRL.MCLKCTRLB = 0x00;
-
-    // setup TCA0
-    TCA0.SINGLE.CTRLA   = TCA_SINGLE_CLKSEL_DIV2_gc | 0x01; // ENABLE=1
-    TCA0.SINGLE.CTRLB   = TCA_SINGLE_WGMODE_SINGLESLOPE_gc;
-    TCA0.SINGLE.INTCTRL = 0x01; // OVF=1
-    TCA0.SINGLE.PER     = F_CPU / 2 / PWM_FREQ - 1;
-
-    main_data.tick_ctr = 0;
-    main_data.tick = false;
 }
 
-ISR(TCA0_OVF_vect) {
-    // 25kHz ISR
-    TCA0.SINGLE.INTFLAGS = 0x01; // clear OVF
-
+static void runPWMFreq() {
     main_data.tick_ctr++;
-    if (main_data.tick_ctr == (PWM_FREQ / LOOP_FREQ)) {
+    if (main_data.tick_ctr == (PWM_FREQ / 50)) {
         main_data.tick_ctr = 0;
         main_data.tick = true;
     }
@@ -73,6 +58,7 @@ int main(void) {
     dbg_init();
     btn_init();
     anim_init();
+    audio_init(runPWMFreq);
     sei();
     printf("booted!\r\n");
 
