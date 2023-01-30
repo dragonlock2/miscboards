@@ -4,14 +4,15 @@
 #include <stdint.h>
 #include <anim.h>
 
-#define EXTEND_LUT_LEN (32) // >= upscale * (1 + 2 * overlap)
+#define EXTEND_OVERLAP (4)  // how many LEDs on each side to average with
+#define EXTEND_LUT_LEN (28) // >= upscale * (1 + 2 * overlap) + 1
 
 typedef struct {
     uint8_t  r, g, b;
     uint16_t len;
     uint16_t upscale, window_len;
     uint16_t super_idx, super_len;
-    uint8_t  buckets[ANIM_MAX_STRIP_LEN];
+    uint8_t  buckets[ANIM_STRIP_LEN];
     uint8_t  lut_r[EXTEND_LUT_LEN];
     uint8_t  lut_g[EXTEND_LUT_LEN];
     uint8_t  lut_b[EXTEND_LUT_LEN];

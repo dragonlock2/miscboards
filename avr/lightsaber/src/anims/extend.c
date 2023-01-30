@@ -1,8 +1,6 @@
 #include <string.h>
 #include "extend.h"
 
-#define EXTEND_OVERLAP (4) // how many LEDs on each side to average with
-
 void extend_reset(extend_data_S *data, uint8_t r, uint8_t g, uint8_t b, uint8_t len, uint8_t upscale) {
     data->r = r;
     data->g = g;

@@ -5,23 +5,21 @@
 #include "leds.h"
 
 /* private defines */
-#define TOP_MASK (PIN1_bm)
-#define BOT_MASK (PIN2_bm)
+#define LED_MASK (PIN1_bm | PIN2_bm)
 
 /* private helpers */
-static inline void leds_write_bit(bool top, bool b) {
-    const uint8_t mask = top ? TOP_MASK : BOT_MASK;
+static inline void leds_write_bit(bool b) {
     cli(); // high pulse needs precise timing
-    PORTC.OUTSET = mask;
+    PORTC.OUTSET = LED_MASK;
     _delay_loop_1(b ? 4 : 1);
-    PORTC.OUTCLR = mask;
+    PORTC.OUTCLR = LED_MASK;
     sei(); // low pulse just needs to be <50us (interruptible)
     if (!b) { asm volatile ("nop"); } // adjust delay for loop overhead
 }
 
-static inline void leds_write_byte(bool top, uint8_t b) {
+static inline void leds_write_byte(uint8_t b) {
     for (int i = 0; i < 8; i++) {
-        leds_write_bit(top, b & 0x80);
+        leds_write_bit(b & 0x80);
         b <<= 1;
     }
 }
@@ -29,12 +27,12 @@ static inline void leds_write_byte(bool top, uint8_t b) {
 /* public functions */
 void leds_init() {
     /* top (PC1), bot (PC2) */
-    PORTC.DIRSET = TOP_MASK | BOT_MASK;
-    PORTC.OUTCLR = TOP_MASK | BOT_MASK;
+    PORTC.DIRSET = LED_MASK;
+    PORTC.OUTCLR = LED_MASK;
 }
 
-void leds_write(bool top, uint8_t r, uint8_t g, uint8_t b) {
-    leds_write_byte(top, g);
-    leds_write_byte(top, r);
-    leds_write_byte(top, b);
+void leds_write(uint8_t r, uint8_t g, uint8_t b) {
+    leds_write_byte(g);
+    leds_write_byte(r);
+    leds_write_byte(b);
 }

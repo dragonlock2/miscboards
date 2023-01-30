@@ -27,11 +27,9 @@ static void run50Hz() {
     if (btn_rising()) {
         main_data.on = !main_data.on;
         if (main_data.on) {
-            anim_set(true,  ANIM_TYPE_EXTEND,  0, 0, 255, 2);
-            anim_set(false, ANIM_TYPE_EXTEND,  0, 0, 255, 2);
+            anim_set(ANIM_TYPE_EXTEND,  0, 32, 48, 3);
         } else {
-            anim_set(true,  ANIM_TYPE_RETRACT, 0, 0, 255, 2);
-            anim_set(false, ANIM_TYPE_RETRACT, 0, 0, 255, 2);
+            anim_set(ANIM_TYPE_RETRACT, 0, 32, 48, 3);
         }
     }
 }
