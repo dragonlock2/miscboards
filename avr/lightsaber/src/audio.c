@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "flash.h"
 #include "audio.h"
 
 /* private data */
@@ -23,6 +24,8 @@ ISR(TCA0_OVF_vect) {
 
 /* public functions */
 void audio_init(audio_ticker_F ticker) {
+    flash_init();
+
     // setup TCA0
     TCA0.SINGLE.CTRLA   = TCA_SINGLE_CLKSEL_DIV2_gc | 0x01; // ENABLE=1
     TCA0.SINGLE.CTRLB   = TCA_SINGLE_WGMODE_SINGLESLOPE_gc | 0x40; // CMP2EN=1
