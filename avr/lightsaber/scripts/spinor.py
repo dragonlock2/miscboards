@@ -1,6 +1,11 @@
 import jabi
+import sys
 import time
-import random
+import wave
+import samplerate
+import numpy as np
+import sounddevice as sd
+from pathlib import Path
 
 class SPINOR:
     def __init__(self, dev, id, cs):
@@ -41,9 +46,6 @@ class SPINOR:
             buf = self.dev.spi_read(ph['len'], self.id)
             self.dev.gpio_write(self.cs, 1)
             if ph['id_lsb'] == 0x00:
-                self.wren = bool(buf[0] & 0x08)
-                self.wren_code = 0x06 if buf[0] & 0x10 else 0x50
-
                 if (addr_bytes := (buf[2] >> 1) & 0b11) in [0b00, 0b01]:
                     self.addr_len = 3 # TODO support 4-byte address enable command
                 elif addr_bytes == 0b10:
@@ -132,18 +134,81 @@ class SPINOR:
     def __len__(self):
         return self.flash_size
 
-class LightFS: # filesystem for lightsabers!
-    def __init__(self, flash, freq=25000, read=False):
+"""
+LightFS is a lightweight "filesystem" for lightsabers. Since it's for personal use, it's
+designed to be just functional enough. It all starts with the header at address 0x00000000.
+All fields are stored big endian.
+
+struct header {
+    uint32_t sample_frequency;
+    uint32_t font_addr[8]; // unused entries set to 0
+    uint8_t  rsvd[28];
+};
+
+Each font_addr is an address pointing to the following struct.
+
+struct font {
+    uint32_t boot;
+    uint32_t hum;
+    uint32_t off;
+    uint32_t on;
+    uint32_t swing[10]; // unused entries set to 0
+    uint32_t clash[10]; // unused entries set to 0
+    uint8_t  rsvd[32];
+};
+
+Each entry in the font struct is an address pointing to the following struct.
+
+struct file {
+    uint32_t len;
+    uint8_t  data[len]; // 8-bit audio
+};
+"""
+class LightFS:
+    def __init__(self, flash, fs=25000, read=False):
         self.flash = flash
-        self.freq  = freq
+        self.fs    = fs
+
+        if read:
+            pass # TODO
+
+    # high-level functions
+    def write(self, src):
+        # compiler
+        fonts = []
+        for p in src.iterdir():
+            if p.is_dir():
+                fonts.append({
+                    'boot' : self.resample(p / 'boot.wav'),
+                    'hum'  : self.resample(p / 'hum.wav'),
+                    'off'  : self.resample(p / 'off.wav'),
+                    'on'   : self.resample(p / 'on.wav'),
+                    'swing': [self.resample(f) for f in p.glob('swing*.wav')],
+                    'clash': [self.resample(f) for f in p.glob('clash*.wav')],
+                })
+        # TODO linker
+
+    # low-level helpers
+    def resample(self, file):
+        file = file.open('rb')
+        w = wave.open(file)
+        sw = w.getsampwidth()
+        rd = w.readframes(w.getnframes())
+        rd = np.array([int.from_bytes(rd[i:i+sw], 'little', signed=sw>1) for i in range(0,len(rd),sw)])
+        rd = samplerate.resample(rd[::w.getnchannels()], self.fs / w.getframerate(), 'sinc_best')
+        if sw > 1: # signed, convert to 8-bit unsigned
+            rd = rd / (2 ** (8*sw-1)) * 256
+            rd += 128
+        file.close()
+        return rd.round().clip(0, 255).astype(np.uint8)
 
 if __name__ == '__main__':
     # for k66f_breakout
     flash = SPINOR(jabi.USBInterface.list_devices()[0], 0, 8)
 
-    addr = 0x000000
-    data = list(random.randbytes(256))
-    flash.erase(addr, len(data))
-    flash.write(addr, data)
-    assert(flash.read(0, len(data)) == data)
+    # write fonts
+    light = LightFS(flash)
+    light.write(sys.argv[1] if len(sys.argv) == 2 else Path(__file__).parents[1] / 'fonts/')
 
+    # read fonts
+    light = LightFS(flash, read=True)
