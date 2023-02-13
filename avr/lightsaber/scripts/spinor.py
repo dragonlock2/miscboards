@@ -141,8 +141,7 @@ All fields are stored big endian.
 
 struct header {
     uint32_t sample_frequency;
-    uint32_t font_addr[8]; // unused entries set to 0
-    uint8_t  rsvd[28];
+    uint32_t font_addr[8]; // unused entries set to 0xFF
 };
 
 Each font_addr is an address pointing to the following struct.
@@ -152,9 +151,8 @@ struct font {
     uint32_t hum;
     uint32_t off;
     uint32_t on;
-    uint32_t swing[10]; // unused entries set to 0
-    uint32_t clash[10]; // unused entries set to 0
-    uint8_t  rsvd[32];
+    uint32_t swing[10]; // unused entries set to 0xFF
+    uint32_t clash[10]; // unused entries set to 0xFF
 };
 
 Each entry in the font struct is an address pointing to the following struct.
@@ -179,17 +177,47 @@ class LightFS:
         for p in src.iterdir():
             if p.is_dir():
                 fonts.append({
-                    'boot' : self.resample(p / 'boot.wav'),
-                    'hum'  : self.resample(p / 'hum.wav'),
-                    'off'  : self.resample(p / 'off.wav'),
-                    'on'   : self.resample(p / 'on.wav'),
-                    'swing': [self.resample(f) for f in p.glob('swing*.wav')],
-                    'clash': [self.resample(f) for f in p.glob('clash*.wav')],
+                    'boot' : self._resample(p / 'boot.wav'),
+                    'hum'  : self._resample(p / 'hum.wav'),
+                    'off'  : self._resample(p / 'off.wav'),
+                    'on'   : self._resample(p / 'on.wav'),
+                    'swing': [self._resample(f) for f in p.glob('swing*.wav')],
+                    'clash': [self._resample(f) for f in p.glob('clash*.wav')],
                 })
-        # TODO linker
+
+        # linker
+        self.mem = []
+        hdr_addr = self._alloc(36)
+        self._set(hdr_addr, self.fs.to_bytes(4, 'big'))
+        for i, f in enumerate(fonts):
+            f['swing'] = f['swing'][:10]
+            f['clash'] = f['clash'][:10]
+            font_addr = self._alloc(96)
+            self._set(hdr_addr+4+i*4, font_addr.to_bytes(4, 'big'))
+
+            for j, t in enumerate(['boot', 'hum', 'off', 'on']):
+                a = self._alloc(4+len(f[t]))
+                self._set(font_addr+j*4, a.to_bytes(4, 'big'))
+                self._set(a, len(f[t]).to_bytes(4, 'big'))
+                self._set(a+4, f[t])
+
+            for j, d in enumerate(f['swing']):
+                a = self._alloc(4+len(d))
+                self._set(font_addr+16+j*4, a.to_bytes(4, 'big'))
+                self._set(a, len(d).to_bytes(4, 'big'))
+                self._set(a+4, d)
+
+            for j, d in enumerate(f['clash']):
+                a = self._alloc(4+len(d))
+                self._set(font_addr+56+j*4, a.to_bytes(4, 'big'))
+                self._set(a, len(d).to_bytes(4, 'big'))
+                self._set(a+4, d)
+
+        # TODO write to flash, use tqdm
+        print(len(self.mem))
 
     # low-level helpers
-    def resample(self, file):
+    def _resample(self, file):
         file = file.open('rb')
         w = wave.open(file)
         sw = w.getsampwidth()
@@ -202,6 +230,14 @@ class LightFS:
         file.close()
         return rd.round().clip(0, 255).astype(np.uint8)
 
+    def _alloc(self, length):
+        addr = len(self.mem)
+        self.mem.extend([0xFF]*length)
+        return addr
+
+    def _set(self, addr, data):
+        self.mem[addr:addr+len(data)] = data
+
 if __name__ == '__main__':
     # for k66f_breakout
     flash = SPINOR(jabi.USBInterface.list_devices()[0], 0, 8)
@@ -210,5 +246,5 @@ if __name__ == '__main__':
     light = LightFS(flash)
     light.write(sys.argv[1] if len(sys.argv) == 2 else Path(__file__).parents[1] / 'fonts/')
 
-    # read fonts
+    # read back fonts
     light = LightFS(flash, read=True)
