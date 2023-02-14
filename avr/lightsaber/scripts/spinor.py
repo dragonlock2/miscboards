@@ -141,7 +141,7 @@ designed to be just functional enough. It all starts with the header at address 
 All fields are stored big endian.
 
 struct header {
-    uint32_t sample_frequency;
+    uint32_t sample_frequency; // Hz
     uint32_t font_addr[8]; // unused entries set to 0xFF
 };
 
@@ -169,7 +169,24 @@ class LightFS:
         self.fs    = fs
 
         if read:
-            pass # TODO
+            hdr = self.flash.read(0, 36)
+            self.fs = self._get(hdr, 0, 4)
+            self.fonts = []
+            while (f := self._get(hdr, 4+len(self.fonts)*4, 4)) != 0xFFFFFFFF:
+                font = self.flash.read(f, 96)
+                d = {
+                    'boot': [self._get(font, 0,  4)],
+                    'hum' : [self._get(font, 4,  4)],
+                    'off' : [self._get(font, 8,  4)],
+                    'on'  : [self._get(font, 12, 4)],
+                    'swing' : [],
+                    'clash' : [],
+                }
+                while (a := self._get(font, 16+len(d['swing'])*4, 4)) != 0xFFFFFFFF:
+                    d['swing'].append(a)
+                while (a := self._get(font, 56+len(d['clash'])*4, 4)) != 0xFFFFFFFF:
+                    d['clash'].append(a)
+                self.fonts.append(d)
 
     # high-level functions
     def write(self, src):
@@ -237,6 +254,17 @@ class LightFS:
             if p != self.flash.read(i*VERIFY_LEN, min(VERIFY_LEN, len(p))):
                 raise Exception(f'mismatch at {i*VERIFY_LEN}!')
 
+    def play(self, t, font=0, idx=0):
+        length = self._get(self.flash.read(self.fonts[font][t][idx], 4), 0, 4)
+        data = np.array(self.flash.read(self.fonts[font][t][idx]+4, length))
+        sd.play((data - 128) / 128, self.fs, blocking=True)
+
+    def num_fonts(self):
+        return len(self.fonts)
+
+    def num(self, t, font=0):
+        return len(self.fonts[font][t])
+
     # low-level helpers
     def _resample(self, file):
         file = file.open('rb')
@@ -259,6 +287,9 @@ class LightFS:
     def _set(self, addr, data):
         self.mem[addr:addr+len(data)] = data
 
+    def _get(self, data, idx, length):
+        return int.from_bytes(bytes(data[idx:idx+length]), 'big')
+
 if __name__ == '__main__':
     # for k66f_breakout
     flash = SPINOR(jabi.USBInterface.list_devices()[0], 0, 8)
@@ -269,3 +300,12 @@ if __name__ == '__main__':
 
     # read back fonts
     light = LightFS(flash, read=True)
+    for i in range(light.num_fonts()):
+        light.play('boot', font=i)
+        light.play('hum', font=i)
+        light.play('on', font=i)
+        light.play('off', font=i)
+        for j in range(light.num('swing', font=i)):
+            light.play('swing', font=i, idx=j)
+        for j in range(light.num('clash', font=i)):
+            light.play('clash', font=i, idx=j)
