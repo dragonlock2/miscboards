@@ -6,6 +6,7 @@ import samplerate
 import numpy as np
 import sounddevice as sd
 from pathlib import Path
+from tqdm import tqdm
 
 class SPINOR:
     def __init__(self, dev, id, cs):
@@ -213,8 +214,28 @@ class LightFS:
                 self._set(a, len(d).to_bytes(4, 'big'))
                 self._set(a+4, d)
 
-        # TODO write to flash, use tqdm
-        print(len(self.mem))
+        if len(self.mem) > len(self.flash):
+            raise Exception(f'too much sound! {self.mem} > {self.flash}')
+
+        # erase
+        pb = tqdm(range(0,len(self.mem),self.flash.erase_size))
+        pb.set_description('erase')
+        for i in pb:
+            self.flash.erase(i, self.flash.erase_size)
+
+        # write
+        pb = tqdm([self.mem[i:i+self.flash.page_size] for i in range(0,len(self.mem),self.flash.page_size)])
+        pb.set_description('write')
+        for i, p in enumerate(pb):
+            self.flash.write(i*self.flash.page_size, p)
+
+        # verify
+        VERIFY_LEN = 1024
+        pb = tqdm([self.mem[i:i+VERIFY_LEN] for i in range(0,len(self.mem),VERIFY_LEN)])
+        pb.set_description('verify')
+        for i, p in enumerate(pb):
+            if p != self.flash.read(i*VERIFY_LEN, min(VERIFY_LEN, len(p))):
+                raise Exception(f'mismatch at {i*VERIFY_LEN}!')
 
     # low-level helpers
     def _resample(self, file):
