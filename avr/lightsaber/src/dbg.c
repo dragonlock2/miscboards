@@ -3,7 +3,7 @@
 #include <util/delay.h>
 #include "dbg.h"
 
-#define BAUD_RATE (115200L)
+#define BAUD_RATE (57600L)
 
 /* private helpers */
 static int uart_putc(char c, FILE *f) {
