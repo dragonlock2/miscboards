@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 3.20.0)
+
+set(MICROCHIP_MCU PIC12F1571)
+set(MICROCHIP_XC8_PATH /usr/local/Caskroom/mplab-xc8/2.41)
+set(CMAKE_C_COMPILER_WORKS 1)
+set(CMAKE_CXX_COMPILER_WORKS 1)
+set(CMAKE_TOOLCHAIN_FILE ../cmake-microchip/toolchain.cmake)
+
+project(solarFRAM)
+
+file(GLOB SRC_FILES "src/*.c")
+add_executable(${PROJECT_NAME} ${SRC_FILES})
+
+# TODO add flash command

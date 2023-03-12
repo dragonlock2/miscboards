@@ -1,3 +1,6 @@
 [submodule "pico/pico-sdk"]
-	path = pico/pico-sdk
+	path = pi_pico/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
+[submodule "pic/cmake-microchip"]
+	path = pic/cmake-microchip
+	url = https://github.com/Elemecca/cmake-microchip.git
