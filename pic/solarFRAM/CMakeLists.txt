@@ -11,4 +11,5 @@ project(solarFRAM)
 file(GLOB SRC_FILES "src/*.c")
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-# TODO add flash command
+set(IPECMD /Applications/microchip/mplabx/v6.05/mplab_platform/mplab_ipe/bin/ipecmd.sh)
+add_custom_target(flash ${IPECMD} -P12F1571 -TPSNAP -M -F${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.hex -OL DEPENDS ${PROJECT_NAME})
