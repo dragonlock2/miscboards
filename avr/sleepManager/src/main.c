@@ -1,31 +1,33 @@
 #include <stdbool.h>
 #include <avr/io.h>
-#include <util/delay.h>
+#include <avr/interrupt.h>
+#include "monitor.h"
+#include "power.h"
 
-/* timer */
 static volatile bool tick = false;
 
-static void tick_init() {
-    
+static inline void tick_init(void) {
+    TCCR0A = 0x02; // WGM0[1:0]=0b01 (CTC mode)
+    TCCR0B = 0x04; // WGM0[2]=0b0, CS0[2:0]=0b100 (/256 prescaler)
+    OCR0A  = 46;   // 1200000 / 256 / (46 + 1) = 99.73Hz
+    TIMSK0 = 0x04; // enable compare match A output
+}
+
+ISR(TIM0_COMPA_vect) {
+    tick = true;
 }
 
 int main(void) {
+    cli();
+    monitor_init();
+    power_init();
     tick_init();
-
-    DDRB |= (1 << 0) | (1 << 4);
-    PORTB |= 1 << 4;
+    sei();
 
     while (1) {
-        
-
-        PORTB |= 1 << 0;
-        _delay_ms(500);
-        PORTB &= ~(1 << 0);
-        _delay_ms(500);
-
-        // 10ms loop
-            // check ADC if < 3.5V and go into flashing state until 4V (unless turned off)
-            // if switch pressed => go sleep (pull ADC to GND, turn off pwr) => wakeup in same place
-            // if sleep request held high then low for 50-100ms => turn off too ^
+        while (!tick);
+        monitor_run10ms();
+        power_run10ms();
+        tick = false;
     }
 }

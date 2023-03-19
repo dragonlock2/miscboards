@@ -7,7 +7,7 @@ set(CMAKE_CXX_COMPILER avr-g++)
 set(CMAKE_ASM_COMPILER avr-gcc)
 
 # project-specific settings
-project(lightsaber)
+project(sleepManager)
 
 set(MCU   attiny13a)
 set(PROG  snap_isp)
