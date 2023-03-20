@@ -1,16 +1,30 @@
 #include <pico/stdlib.h>
 #include <pico/cyw43_arch.h>
+#include "kscan.h"
 
 int main() {
     cyw43_arch_init();
     stdio_init_all();
+    kscan_init();
 
-    int8_t c;
+    bool prev[KSCAN_ROWS][KSCAN_COLS] = {0};
     while (true) {
-        printf("hi %d\r\n", c++);
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-        sleep_ms(500);
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-        sleep_ms(500);
+        kscan_run1ms();
+
+        for (uint i = 0; i < KSCAN_ROWS; i++) {
+            for (uint j = 0; j < KSCAN_COLS; j++) {
+                bool c = kscan_read(i, j);
+                if (c && !prev[i][j]) {
+                    printf("%d, %d pressed\r\n", i, j);
+                } else if (!c && prev[i][j]) {
+                    printf("%d, %d released\r\n", i, j);
+                }
+                prev[i][j] = c;
+            }
+        }
+        sleep_ms(1);
     }
+
+    // TODO cpu0 - BLE, USB, kscan, encoder
+    // TODO cpu1 - LEDs @ 1kHz, SSD1306 @ 60FPS
 }
