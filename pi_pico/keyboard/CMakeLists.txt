@@ -9,6 +9,7 @@ pico_sdk_init()
 add_executable(keyboard
     src/main.c
     src/kscan.c
+    src/ws2812b.c
 )
 
 target_link_libraries(keyboard
