@@ -4,6 +4,7 @@
 #include "config.h"
 #include "kscan.h"
 #include "ws2812b.h"
+#include "ssd1306.h"
 
 // shared data
 kscan keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
@@ -41,7 +42,10 @@ static void cpu0_thread(void) {
 }
 
 static void cpu1_thread(void) {
+    ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR);
     ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
+
+    oled.draw_string("hello world! this is SSD1306");
 
     while (true) {
         while (!cpu1_tick);
@@ -52,6 +56,7 @@ static void cpu1_thread(void) {
             }
         }
         leds.display();
+        oled.display(); // TODO check FPS
 
         cpu1_tick = false;
     }
