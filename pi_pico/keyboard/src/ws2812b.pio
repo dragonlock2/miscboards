@@ -1,39 +1,37 @@
 .program ws2812b
-.side_set 1
+.side_set 1 ; leaves 4 bits for delay encoding
 
 .define public BITRATE 800000 ; Hz
+.define public RESET   50; us
 .define public T1 8 ; 0.40us
 .define public T2 8 ; 0.40us
 .define public T3 9 ; 0.45us
 
-.wrap_target
-bitloop:
-    out x, 1       side 0 [T3 - 1] ; Side-set still takes place when instruction stalls
-    jmp !x do_zero side 1 [T1 - 1] ; Branch on the bit we shifted out. Positive pulse
-do_one:
-    jmp  bitloop   side 1 [T2 - 1] ; Continue driving high, for a long pulse
+loop:
+    out x, 1        side 0 [T3-1]
+    jmp x--, do_one side 1 [T1-1]
 do_zero:
-    nop            side 0 [T2 - 1] ; Or drive low, for a short pulse
-.wrap
+    jmp loop        side 0 [T2-1]
+do_one:
+    jmp loop        side 1 [T2-1]
 
 % c-sdk {
 #include "hardware/clocks.h"
 
 static inline void ws2812b_program_init(PIO pio, uint sm, uint offset, uint pin) {
-
     pio_gpio_init(pio, pin);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
 
-    pio_sm_config c = ws2812b_program_get_default_config(offset);
-    sm_config_set_sideset_pins(&c, pin);
-    sm_config_set_out_shift(&c, false, true, 24);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    pio_sm_config cfg = ws2812b_program_get_default_config(offset);
+    sm_config_set_sideset_pins(&cfg, pin);
+    sm_config_set_out_shift(&cfg, false, true, 24);
+    sm_config_set_fifo_join(&cfg, PIO_FIFO_JOIN_TX);
 
     int cycles_per_bit = ws2812b_T1 + ws2812b_T2 + ws2812b_T3;
     float div = clock_get_hz(clk_sys) / (ws2812b_BITRATE * cycles_per_bit);
-    sm_config_set_clkdiv(&c, div);
+    sm_config_set_clkdiv(&cfg, div);
 
-    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_init(pio, sm, offset, &cfg);
     pio_sm_set_enabled(pio, sm, true);
 }
 %}

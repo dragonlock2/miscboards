@@ -1,25 +1,50 @@
+#include <hardware/irq.h>
 #include "config.h"
 #include "kscan.h"
-#include "pio_alloc.h"
 #include "ws2812b.pio.h"
 #include "ws2812b.h"
 
-#include <cstdio>
+static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
+
+int64_t reset_complete_cb(alarm_id_t id, void* dma_chan) {
+    sem_release(dma_lut[(uint) dma_chan]);
+    return 0;
+}
+
+static void __isr dma_complete_irq(void) {
+    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
+        if (dma_hw->ints0 & (1 << i)) {
+            dma_hw->ints0 = (1 << i);
+            if (add_alarm_in_us(ws2812b_RESET, reset_complete_cb, (void*) i, true) < 0) {
+                panic("couldn't add reset timer callback");
+            }
+        }
+    }
+}
 
 ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
 :
     rows(rows), cols(cols), led_pins(led_pins)
 {
-    PIO pio = NULL;
-    uint offset = 0;
+    const PIO PIOS[NUM_PIOS] = { pio0, pio1 };
+    const uint OFFSETS[NUM_PIOS] = {
+        pio_add_program(pio0, &ws2812b_program),
+        pio_add_program(pio1, &ws2812b_program),
+    };
     for (uint i = 0; i < NUM_ROWS; i++) {
-        pio_alloc(pios[i], sms[i]);
-        if (pios[i] != pio) {
-            pio = pios[i];
-            offset = pio_add_program(pio, &ws2812b_program); // TODO write own PIO
-        }
-        ws2812b_program_init(pios[i], sms[i], offset, LED_PINS[i]);
+        pios[i] = PIOS[i / NUM_PIO_STATE_MACHINES];
+        sms[i]  = pio_claim_unused_sm(pios[i], true);
+        ws2812b_program_init(pios[i], sms[i], OFFSETS[i / NUM_PIO_STATE_MACHINES], LED_PINS[i]);
+
+        dma_lut[i] = &done[i];
+        sem_init(&done[i], 1, 1);
+        dmas[i] = dma_claim_unused_channel(true);
+        dma_cfgs[i] = dma_channel_get_default_config(dmas[i]);
+        channel_config_set_dreq(&dma_cfgs[i], pio_get_dreq(pios[i], sms[i], true));
+        dma_channel_set_irq0_enabled(dmas[i], true);
     }
+    irq_add_shared_handler(DMA_IRQ_0, dma_complete_irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_set_enabled(DMA_IRQ_0, true);
 }
 
 ws2812b_color& ws2812b::operator() (uint row, uint col) {
@@ -31,11 +56,10 @@ ws2812b_color& ws2812b::operator() (uint row, uint col) {
 }
 
 void ws2812b::display(void) {
-    // TODO DMA instead
-    for (uint c = 0; c < NUM_COLS; c++) {
-        for (uint r = 0; r < NUM_ROWS; r++) {
-            uint32_t *color = reinterpret_cast<uint32_t*>(&pixels[r][c]);
-            pio_sm_put_blocking(pios[r], sms[r], *color);
+    for (uint i = 0; i < NUM_ROWS; i++) {
+        if (!sem_try_acquire(&done[i])) {
+            panic("previous call to display didn't finish");
         }
+        dma_channel_configure(dmas[i], &dma_cfgs[i], &pios[i]->txf[sms[i]], &pixels[i], NUM_COLS, true);
     }
 }
