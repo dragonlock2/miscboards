@@ -3,7 +3,7 @@
 
 #include <pico/stdlib.h>
 
-#define MAX_ROWS (16)
+#define MAX_ROWS (8) // limit of non-consecutive WS2812B pins w/ PIO
 #define MAX_COLS (16)
 
 // board-specific config

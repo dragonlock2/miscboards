@@ -7,7 +7,6 @@
 
 // shared data
 kscan keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
-ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
 
 // ticker
 static volatile bool cpu0_tick, cpu1_tick;
@@ -42,12 +41,14 @@ static void cpu0_thread(void) {
 }
 
 static void cpu1_thread(void) {
+    ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
+
     while (true) {
         while (!cpu1_tick);
-        // TODO cpu1 - LEDs @ 1kHz, SSD1306 @ 60FPS, sleep req
+        // TODO cpu1 - LEDs @ 1000FPS, SSD1306 @ 125FPS, sleep req
         for (uint i = 0; i < NUM_ROWS; i++) {
             for (uint j = 0; j < NUM_COLS; j++) {
-                leds(i, j) = keys(i, j) ? (ws2812b_color_t){0, 50, 0} : (ws2812b_color_t){50, 0, 0};
+                leds(i, j) = keys(i, j) ? ws2812b_color(0, 40, 0) : ws2812b_color(40, 0, 0);
             }
         }
         leds.display();

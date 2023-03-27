@@ -2,24 +2,31 @@
 #define WS2812B_H
 
 #include <pico/stdlib.h>
+#include <hardware/pio.h>
 
-struct ws2812b_color_t {
-    uint8_t g;
-    uint8_t r;
-    uint8_t b;
+struct __packed ws2812b_color {
+    uint32_t pad : 8;
+    uint32_t b   : 8;
+    uint32_t r   : 8;
+    uint32_t g   : 8; // matches WS2812B protocol
+
+    ws2812b_color(void) : b(0), r(0), g(0) {}
+    ws2812b_color(uint8_t r, uint8_t g, uint8_t b) : b(b), r(r), g(g) {}
 };
 
 class ws2812b {
 public:
     ws2812b(uint rows, uint cols, const uint* led_pins);
-    ws2812b_color_t& operator() (uint row, uint col);
+    ws2812b_color& operator() (uint row, uint col);
     void display(void);
 
 private:
     const uint rows;
     const uint cols;
     const uint* const led_pins;
-    ws2812b_color_t pixels[MAX_ROWS][MAX_COLS];
+    ws2812b_color pixels[MAX_ROWS][MAX_COLS]; // row-major order
+    PIO pios[MAX_ROWS];
+    uint sms[MAX_ROWS];
 };
 
 #endif // WS2812B_H
