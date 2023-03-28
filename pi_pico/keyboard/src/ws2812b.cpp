@@ -6,23 +6,7 @@
 
 #include <cstdio>
 
-static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
-
-int64_t reset_complete_cb(alarm_id_t id, void* dma_chan) {
-    sem_release(dma_lut[(uint) dma_chan]);
-    return 0;
-}
-
-static void __isr dma_complete_irq(void) {
-    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
-        if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
-            dma_hw->ints0 = (1 << i);
-            if (add_alarm_in_us(ws2812b_RESET, reset_complete_cb, (void*) i, true) < 0) {
-                panic("couldn't add reset timer callback");
-            }
-        }
-    }
-}
+struct semaphore* ws2812b::dma_lut[NUM_DMA_CHANNELS];
 
 ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
 :
@@ -45,7 +29,7 @@ ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
         channel_config_set_dreq(&dma_cfgs[i], pio_get_dreq(pios[i], sms[i], true));
         dma_channel_set_irq0_enabled(dmas[i], true);
     }
-    irq_add_shared_handler(DMA_IRQ_0, dma_complete_irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_add_shared_handler(DMA_IRQ_0, dma_complete, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
     irq_set_enabled(DMA_IRQ_0, true);
 }
 
@@ -63,5 +47,21 @@ void ws2812b::display(void) {
             panic("previous call to display didn't finish");
         }
         dma_channel_configure(dmas[i], &dma_cfgs[i], &pios[i]->txf[sms[i]], &pixels[i], cols, true);
+    }
+}
+
+int64_t ws2812b::reset_complete(alarm_id_t id, void* dma_chan) {
+    sem_release(dma_lut[(uint) dma_chan]);
+    return 0;
+}
+
+void __isr ws2812b::dma_complete(void) {
+    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
+        if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
+            dma_hw->ints0 = (1 << i);
+            if (add_alarm_in_us(ws2812b_RESET, reset_complete, (void*) i, true) < 0) {
+                panic("couldn't add reset timer callback");
+            }
+        }
     }
 }

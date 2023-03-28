@@ -23,16 +23,7 @@ static const uint32_t FONT[128] = { // 4x6 font (including spaces) stored in low
     0x00012312, 0x0001ea06, 0x0001679a, 0x000116c4, 0x000007c0, 0x000046d1, 0x00002184, 0x0001f7df,
 };
 
-static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
-
-static void __isr dma_complete_irq(void) {
-    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
-        if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
-            dma_hw->ints0 = (1 << i);
-            sem_release(dma_lut[i]);
-        }
-    }
-}
+struct semaphore* ssd1306::dma_lut[NUM_DMA_CHANNELS];
 
 ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr, uint freq)
 :
@@ -80,7 +71,7 @@ ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, u
     channel_config_set_transfer_data_size(&dma_cfg, DMA_SIZE_16);
     dma_channel_set_irq0_enabled(dma, true);
 
-    irq_add_shared_handler(DMA_IRQ_0, dma_complete_irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_add_shared_handler(DMA_IRQ_0, dma_complete, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
     irq_set_enabled(DMA_IRQ_0, true);
 
     memset(pixels, 0, sizeof pixels);
@@ -152,4 +143,13 @@ bool ssd1306::display(void) {
 void ssd1306::send_command(uint8_t cmd) {
     uint8_t buf[2] = { 0x80, cmd };
     i2c_write_blocking(i2c, addr, buf, 2, false);
+}
+
+void __isr ssd1306::dma_complete(void) {
+    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
+        if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
+            dma_hw->ints0 = (1 << i);
+            sem_release(dma_lut[i]);
+        }
+    }
 }

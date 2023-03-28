@@ -33,6 +33,9 @@ private:
     uint dma;
     dma_channel_config dma_cfg;
     struct semaphore done;
+
+    static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
+    static void __isr dma_complete(void);
 };
 
 #endif // SSD1306_H

@@ -33,6 +33,10 @@ private:
     uint dmas[MAX_ROWS];
     dma_channel_config dma_cfgs[MAX_ROWS];
     struct semaphore done[MAX_ROWS];
+
+    static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
+    static int64_t reset_complete(alarm_id_t id, void* dma_chan);
+    static void __isr dma_complete(void);
 };
 
 #endif // WS2812B_H
