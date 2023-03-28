@@ -23,6 +23,17 @@ static const uint32_t FONT[128] = { // 4x6 font (including spaces) stored in low
     0x00012312, 0x0001ea06, 0x0001679a, 0x000116c4, 0x000007c0, 0x000046d1, 0x00002184, 0x0001f7df,
 };
 
+static struct semaphore* dma_lut[NUM_DMA_CHANNELS];
+
+static void __isr dma_complete_irq(void) {
+    for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
+        if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
+            dma_hw->ints0 = (1 << i);
+            // TODO release semaphore?
+        }
+    }
+}
+
 ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr)
 :
      i2c(i2c), addr(addr), height(height), width(width), x(0), y(0), ping(false)
@@ -59,6 +70,15 @@ ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, u
     send_command(0x8D); // charge pump setting
     send_command(0x14); // - enable
     send_command(0xAF); // display on
+
+    sem_init(&done, 1, 1);
+    dma = dma_claim_unused_channel(true);
+    dma_cfg = dma_channel_get_default_config(dma);
+    dma_lut[dma] = &done;
+    // channel_config_set_dreq(&dma_cfg, NULL); // TODO get correct dreq and other settings
+    dma_channel_set_irq0_enabled(dma, true);
+    irq_add_shared_handler(DMA_IRQ_0, dma_complete_irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+    irq_set_enabled(DMA_IRQ_0, true);
 
     memset(buffer, 0, sizeof buffer);
 }
@@ -108,7 +128,8 @@ void ssd1306::clear(void) {
 
 bool ssd1306::display(void) {
     bool ret = false;
-    if (true) { // TODO DMA transfer, check semaphore
+    if (sem_try_acquire(&done)) {
+        // TODO DMA transfer
         buffer[ping][0] = 0x40;
         i2c_write_blocking(i2c, addr, buffer[ping], 1 + height * width / 8, false);
 

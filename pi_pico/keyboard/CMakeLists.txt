@@ -16,6 +16,10 @@ add_executable(${PROJECT_NAME}
 )
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/ws2812b.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
+add_compile_definitions(
+    PICO_MAX_SHARED_IRQ_HANDLERS=16
+)
+
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror)
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib

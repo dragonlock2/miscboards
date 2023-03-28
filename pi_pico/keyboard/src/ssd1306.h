@@ -1,8 +1,10 @@
 #ifndef SSD1306_H
 #define SSD1306_H
 
+#include <hardware/dma.h>
 #include <hardware/i2c.h>
 #include <pico/stdlib.h>
+#include <pico/sem.h>
 #include "config.h"
 
 class ssd1306 {
@@ -30,6 +32,9 @@ private:
     uint y;
     bool ping; // indicates buffer graphics get written to
     uint8_t buffer[2][1 + MAX_SSD1306_HEIGHT * MAX_SSD1306_WIDTH / 8]; // extra byte for register
+    uint dma;
+    dma_channel_config dma_cfg;
+    struct semaphore done;
 };
 
 #endif // SSD1306_H
