@@ -13,7 +13,7 @@ kscan keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
 static volatile bool cpu0_tick, cpu1_tick;
 static bool ticker(repeating_timer_t *rt) {
     if (cpu0_tick || cpu1_tick) {
-        // panic("overrun, something took too long"); // TODO enable once all done
+        // panic("overrun, something took too long"); // TODO enable once all done, careful of boot time
     }
     cpu0_tick = true;
     cpu1_tick = true;
@@ -45,7 +45,7 @@ static void cpu0_thread(void) {
 }
 
 static void cpu1_thread(void) {
-    ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR);
+    ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
     ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
 
     while (true) {
@@ -56,13 +56,17 @@ static void cpu1_thread(void) {
                 leds(i, j) = keys(i, j) ? ws2812b_color(0, 40, 0) : ws2812b_color(40, 0, 0);
             }
         }
-        static char c = 0;
-        oled.clear();
-        oled.set_cursor(0, 0);
-        oled.draw_char(c++);
+        static char c[2] = {'a', 0};
+        oled.draw_string(c);
+        c[0]++;
+        if (c[0] > 'z') {
+            oled.clear();
+            oled.set_cursor(0, 0);
+            c[0] = 'a';
+        }
 
         leds.display();
-        oled.display(); // TODO check FPS
+        oled.display();
 
         cpu1_tick = false;
     }

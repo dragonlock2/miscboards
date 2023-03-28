@@ -25,5 +25,6 @@ static const uint LED_PINS[NUM_ROWS] = { 1, 3, 5, 7, 9 };
 #define OLED_SDA    (20)
 #define OLED_SCL    (21)
 #define OLED_ADDR   (0x3C)
+#define OLED_FREQ   (3000000) // Hz
 
 #endif // CONFIG_H

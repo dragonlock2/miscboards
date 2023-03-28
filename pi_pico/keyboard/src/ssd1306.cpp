@@ -29,16 +29,16 @@ static void __isr dma_complete_irq(void) {
     for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
         if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
             dma_hw->ints0 = (1 << i);
-            // TODO release semaphore?
+            sem_release(dma_lut[i]);
         }
     }
 }
 
-ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr)
+ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr, uint freq)
 :
-     i2c(i2c), addr(addr), height(height), width(width), x(0), y(0), ping(false)
+     i2c(i2c), addr(addr), height(height), width(width), x(0), y(0)
 {
-    i2c_init(i2c0, 1000000);
+    i2c_init(i2c, freq);
     gpio_set_function(sda, GPIO_FUNC_I2C);
     gpio_set_function(scl, GPIO_FUNC_I2C);
 
@@ -71,16 +71,19 @@ ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, u
     send_command(0x14); // - enable
     send_command(0xAF); // display on
 
-    sem_init(&done, 1, 1);
     dma = dma_claim_unused_channel(true);
-    dma_cfg = dma_channel_get_default_config(dma);
+    sem_init(&done, 1, 1);
     dma_lut[dma] = &done;
-    // channel_config_set_dreq(&dma_cfg, NULL); // TODO get correct dreq and other settings
+
+    dma_cfg = dma_channel_get_default_config(dma);
+    channel_config_set_dreq(&dma_cfg, i2c_get_dreq(i2c, true));
+    channel_config_set_transfer_data_size(&dma_cfg, DMA_SIZE_16);
     dma_channel_set_irq0_enabled(dma, true);
+
     irq_add_shared_handler(DMA_IRQ_0, dma_complete_irq, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
     irq_set_enabled(DMA_IRQ_0, true);
 
-    memset(buffer, 0, sizeof buffer);
+    memset(pixels, 0, sizeof pixels);
 }
 
 void ssd1306::set_cursor(uint x, uint y) {
@@ -90,9 +93,9 @@ void ssd1306::set_cursor(uint x, uint y) {
 
 void ssd1306::draw_pixel(uint x, uint y, bool on) {
     if (on) {
-        buffer[ping][1 + x + y / 8 * width] |= 1 << (y % 8);
+        pixels[x + y / 8 * width] |= 1 << (y % 8);
     } else {
-        buffer[ping][1 + x + y / 8 * width] &= ~(1 << (y % 8));
+        pixels[x + y / 8 * width] &= ~(1 << (y % 8));
     }
 }
 
@@ -123,25 +126,30 @@ void ssd1306::draw_char(char c) {
 }
 
 void ssd1306::clear(void) {
-    memset(buffer[ping], 0, sizeof buffer[0]);
+    memset(pixels, 0, sizeof pixels);
 }
 
 bool ssd1306::display(void) {
     bool ret = false;
     if (sem_try_acquire(&done)) {
-        // TODO DMA transfer
-        buffer[ping][0] = 0x40;
-        i2c_write_blocking(i2c, addr, buffer[ping], 1 + height * width / 8, false);
+        i2c->hw->enable = 0;
+        i2c->hw->tar = addr;
+        i2c->hw->enable = 1;
 
-        // copy buffer over
-        memcpy(buffer[!ping], buffer[ping], sizeof buffer[0]);
-        ping = !ping;
+        uint len = height * width / 8;
+        dma_buf[0] = 0x40;
+        for (uint i = 0; i < len; i++) {
+            dma_buf[i + 1] = pixels[i];
+        }
+        dma_buf[len] |= I2C_IC_DATA_CMD_STOP_BITS;
+        dma_channel_configure(dma, &dma_cfg, &i2c->hw->data_cmd, dma_buf, len + 1, true);
+
         ret = true;
     }
     return ret;
 }
 
 void ssd1306::send_command(uint8_t cmd) {
-    uint8_t buf[2] = { 0x00, cmd };
+    uint8_t buf[2] = { 0x80, cmd };
     i2c_write_blocking(i2c, addr, buf, 2, false);
 }
