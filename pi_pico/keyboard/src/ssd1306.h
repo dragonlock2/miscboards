@@ -18,16 +18,14 @@ public:
     void clear(void);
     bool display(void); // true if prior frame done, starts next one
 
+    const uint height;
+    const uint width;
 private:
     void send_command(uint8_t cmd);
 
-    // config
-    i2c_inst_t *i2c;
-    uint8_t addr;
-    uint height;
-    uint width;
+    i2c_inst_t *const i2c;
+    const uint8_t addr;
 
-    // graphics
     uint x;
     uint y;
     uint8_t pixels[MAX_SSD1306_HEIGHT * MAX_SSD1306_WIDTH / 8];

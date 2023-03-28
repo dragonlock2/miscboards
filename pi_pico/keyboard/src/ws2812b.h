@@ -5,6 +5,7 @@
 #include <pico/sem.h>
 #include <hardware/pio.h>
 #include <hardware/dma.h>
+#include "config.h"
 
 struct __packed ws2812b_color {
     uint32_t pad : 8;
@@ -22,9 +23,9 @@ public:
     ws2812b_color& operator() (uint row, uint col);
     void display(void);
 
-private:
     const uint rows;
     const uint cols;
+private:
     const uint* const led_pins;
     ws2812b_color pixels[MAX_ROWS][MAX_COLS]; // TODO double buffer if needed
     PIO pios[MAX_ROWS];

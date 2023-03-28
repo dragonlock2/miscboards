@@ -36,7 +36,7 @@ static void __isr dma_complete_irq(void) {
 
 ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr, uint freq)
 :
-     i2c(i2c), addr(addr), height(height), width(width), x(0), y(0)
+    height(height), width(width), i2c(i2c), addr(addr), x(0), y(0)
 {
     i2c_init(i2c, freq);
     gpio_set_function(sda, GPIO_FUNC_I2C);

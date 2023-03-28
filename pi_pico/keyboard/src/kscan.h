@@ -10,9 +10,10 @@ public:
     void scan(void);
     bool operator() (uint row, uint col);
 
-private:
     const uint rows;
     const uint cols;
+
+private:
     const uint* const row_pins;
     const uint* const col_pins;
     uint debounce[MAX_ROWS][MAX_COLS];
