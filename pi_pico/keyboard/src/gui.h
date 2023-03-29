@@ -15,13 +15,16 @@ public:
 
 private:
     void oled_printf(const char* format, ...);
-    bool sleep_check(void);
+    bool sleep_check(int enc);
 
     kscan& keys;
     ssd1306& oled;
     ws2812b& leds;
     const uint sleep;
     uint sleep_ctr;
+
+    // TODO remove
+    int enc_ticks;
 };
 
 #endif // GUI_H

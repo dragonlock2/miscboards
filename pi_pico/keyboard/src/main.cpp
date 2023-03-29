@@ -28,11 +28,15 @@ static bool ticker(repeating_timer_t *rt) {
 static void cpu0_thread(void) {
     while (true) {
         while (!cpu0_tick);
-        // TODO cpu0 - BLE, USB, encoder
         keys.scan();
         enc.scan();
 
-        printf("%d\r\n", static_cast<int>(enc));
+        int diff = enc;
+        if (multicore_fifo_wready()) {
+            multicore_fifo_push_blocking((uint32_t) diff);
+        }
+        
+        // TODO cpu0 - BLE, USB
 
         cpu0_tick = false;
     }

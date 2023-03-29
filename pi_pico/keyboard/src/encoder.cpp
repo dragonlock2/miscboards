@@ -40,6 +40,6 @@ void encoder::scan(void) {
 
 encoder::operator int() {
     int t = ticks;
-    // ticks = 0;
+    ticks = 0;
     return t;
 }
