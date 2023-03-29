@@ -29,4 +29,7 @@ static const uint LED_PINS[NUM_ROWS] = { 1, 3, 5, 7, 9 };
 
 #define SLEEP_PIN (28)
 
+#define ENCODER_PIN_A (26)
+#define ENCODER_PIN_B (27)
+
 #endif // CONFIG_H

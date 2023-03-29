@@ -8,17 +8,22 @@ project(keyboard)
 pico_sdk_init()
 
 # project specific
+set (CMAKE_CXX_STANDARD 20)
+
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/kscan.cpp
     src/ws2812b.cpp
     src/ssd1306.cpp
     src/gui.cpp
+    src/encoder.cpp
 )
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/ws2812b.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 add_compile_definitions(
     PICO_MAX_SHARED_IRQ_HANDLERS=16
+    PICO_STACK_SIZE=4096
+    PICO_USE_STACK_GUARDS=1
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror)

@@ -15,6 +15,7 @@ public:
 
 private:
     void oled_printf(const char* format, ...);
+    bool sleep_check(void);
 
     kscan& keys;
     ssd1306& oled;

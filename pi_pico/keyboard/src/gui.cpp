@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <pico/stdlib.h>
+#include <tusb.h>
 #include "gui.h"
 
 #define SLEEP_TIME  (30000) // ms
@@ -18,7 +19,7 @@ void GUI::process(void) {
     // no press => red, press => green
     for (uint i = 0; i < keys.rows; i++) {
         for (uint j = 0; j < keys.cols; j++) {
-            leds(i, j) = keys(i, j) ? ws2812b_color(0, 40, 0) : ws2812b_color(40, 0, 0);
+            leds(i, j) = keys(i, j) ? ws2812b_color(0, 20, 20) : ws2812b_color(30, 0, 0);
         }
     }
 
@@ -27,15 +28,8 @@ void GUI::process(void) {
     oled.set_cursor(0, 0);
     oled_printf("sleep countdown: %ds", sleep_ctr / 1000);
 
-    // sleep counter
-    for (uint i = 0; i < keys.rows; i++) {
-        for (uint j = 0; j < keys.cols; j++) {
-            if (keys(i, j)) {
-                sleep_ctr = SLEEP_TIME; // TODO also wake if encoder touched
-            }
-        }
-    }
-    sleep_ctr--;
+    // sleep check
+    sleep_ctr = sleep_check() ? SLEEP_TIME : sleep_ctr - 1;
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
 }
 
@@ -51,4 +45,19 @@ void GUI::oled_printf(const char* format, ...) {
     vsnprintf(s, sizeof s, format, args);
     oled.draw_string(s);
     va_end(args);
+}
+
+bool GUI::sleep_check(void) {
+    // TODO keep awake if encoder changed
+    for (uint i = 0; i < keys.rows; i++) {
+        for (uint j = 0; j < keys.cols; j++) {
+            if (keys(i, j)) {
+                return true;
+            }
+        }
+    }
+    if (tud_mounted() && !tud_suspended()) {
+        return true;
+    }
+    return false;
 }

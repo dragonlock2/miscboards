@@ -3,16 +3,20 @@
 #include <pico/multicore.h>
 #include "config.h"
 #include "kscan.h"
+#include "encoder.h"
 #include "gui.h"
 
-// shared data
-kscan keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
+// large shared objects
+kscan   keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
+encoder enc(ENCODER_PIN_A, ENCODER_PIN_B);
+ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
+ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
+GUI     gui(keys, oled, leds, SLEEP_PIN);
 
 // ticker
-static bool cpu0_boot, cpu1_boot;
 static volatile bool cpu0_tick, cpu1_tick;
 static bool ticker(repeating_timer_t *rt) {
-    if ((cpu0_boot && cpu0_tick) || (cpu1_boot && cpu1_tick)) {
+    if (cpu0_tick || cpu1_tick) {
         panic("overrun, something took too long");
     }
     cpu0_tick = true;
@@ -22,23 +26,19 @@ static bool ticker(repeating_timer_t *rt) {
 
 // threads
 static void cpu0_thread(void) {
-    cpu0_boot = true;
-
     while (true) {
         while (!cpu0_tick);
         // TODO cpu0 - BLE, USB, encoder
         keys.scan();
+        enc.scan();
+
+        printf("%d\r\n", static_cast<int>(enc));
 
         cpu0_tick = false;
     }
 }
 
 static void cpu1_thread(void) {
-    ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
-    ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
-    GUI gui(keys, oled, leds, SLEEP_PIN);
-    cpu1_boot = true;
-
     while (true) {
         while (!cpu1_tick);
         // TODO cpu1 - GUI
