@@ -18,6 +18,7 @@ enum class usb_string_desc {
 enum class hid_report_id {
     KEYBOARD = 1,
     MOUSE    = 2,
+    CONSUMER = 3,
     COUNT
 };
 
@@ -41,6 +42,7 @@ tusb_desc_device_t const desc_device = {
 uint8_t const desc_hid_report[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::KEYBOARD))),
     TUD_HID_REPORT_DESC_MOUSE   (HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::MOUSE   ))),
+    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::CONSUMER))),
 };
 
 uint8_t const desc_configuration[] = {
@@ -93,6 +95,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 
 static hid_keyboard_report_t kb_report;
 static hid_mouse_report_t mouse_report;
+static uint16_t consumer_report;
 
 void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_t len) {
     (void) instance;
@@ -100,11 +103,15 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_
     hid_report_id next_report = static_cast<hid_report_id>(report[0] + 1);
     switch (next_report) {
         case hid_report_id::KEYBOARD:
-            tud_hid_n_report(0, static_cast<uint8_t>(hid_report_id::KEYBOARD), &kb_report, sizeof(kb_report));
+            tud_hid_report(static_cast<uint8_t>(hid_report_id::KEYBOARD), &kb_report, sizeof(kb_report));
             break;
 
         case hid_report_id::MOUSE:
-            tud_hid_n_report(0, static_cast<uint8_t>(hid_report_id::MOUSE), &mouse_report, sizeof(mouse_report));
+            tud_hid_report(static_cast<uint8_t>(hid_report_id::MOUSE), &mouse_report, sizeof(mouse_report));
+            break;
+
+        case hid_report_id::CONSUMER:
+            tud_hid_report(static_cast<uint8_t>(hid_report_id::CONSUMER), &consumer_report, sizeof(consumer_report));
             break;
 
         default:
@@ -142,8 +149,9 @@ USB::USB(void)
 void USB::process(void) {
     if (!hid_started && connected() && tud_hid_ready()) {
         // send first message, rest handled by callback
-        tud_hid_n_report(0, static_cast<uint8_t>(hid_report_id::KEYBOARD), &kb_report, sizeof(kb_report));
-        tud_hid_n_report(0, static_cast<uint8_t>(hid_report_id::MOUSE), &mouse_report, sizeof(mouse_report));
+        tud_hid_report(static_cast<uint8_t>(hid_report_id::KEYBOARD), &kb_report, sizeof(kb_report));
+        tud_hid_report(static_cast<uint8_t>(hid_report_id::MOUSE), &mouse_report, sizeof(mouse_report));
+        tud_hid_report(static_cast<uint8_t>(hid_report_id::CONSUMER), &consumer_report, sizeof(consumer_report));
         hid_started = true;
     } else {
         hid_started = false;
@@ -151,10 +159,11 @@ void USB::process(void) {
     tud_task();
 }
 
-void USB::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse) {
+void USB::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
     uint32_t s = spin_lock_blocking(lock);
     kb_report = kb;
     mouse_report = mouse;
+    consumer_report = consumer;
     spin_unlock(lock, s);
 }
 

@@ -9,7 +9,7 @@ public:
     USB(void);
 
     void process(void);
-    void set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse);
+    void set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer);
     bool connected(void);
 
 private:

@@ -18,6 +18,7 @@ add_executable(${PROJECT_NAME}
     src/gui.cpp
     src/encoder.cpp
     src/usb.cpp
+    src/macro.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     src/
