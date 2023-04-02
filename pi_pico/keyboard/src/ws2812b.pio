@@ -16,7 +16,7 @@ do_one:
     jmp loop        side 1 [T2-1]
 
 % c-sdk {
-#include "hardware/clocks.h"
+#include <hardware/clocks.h>
 
 static inline void ws2812b_program_init(PIO pio, uint sm, uint offset, uint pin) {
     pio_gpio_init(pio, pin);

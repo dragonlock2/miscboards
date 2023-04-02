@@ -7,11 +7,11 @@
 #include "gui.h"
 
 // large shared objects
-kscan   keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
-encoder enc(ENCODER_PIN_A, ENCODER_PIN_B);
-ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
-ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
-GUI     gui(keys, oled, leds, SLEEP_PIN);
+static kscan   keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
+static encoder enc(ENCODER_PIN_A, ENCODER_PIN_B, ENCODER_REVERSE);
+static ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
+static ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
+static GUI     gui(keys, oled, leds, SLEEP_PIN);
 
 // ticker
 static volatile bool cpu0_tick, cpu1_tick;
@@ -26,17 +26,21 @@ static bool ticker(repeating_timer_t *rt) {
 
 // threads
 static void cpu0_thread(void) {
+    int ticks = 0;
+
     while (true) {
         while (!cpu0_tick);
         keys.scan();
-        enc.scan();
 
         int diff = enc;
-        if (multicore_fifo_wready()) {
+        if (diff != 0 && multicore_fifo_wready()) {
             multicore_fifo_push_blocking((uint32_t) diff);
         }
-        
+        ticks += diff;
+
         // TODO cpu0 - BLE, USB
+            // add a macro class which maps keys/enc to report
+            // add a BLE and USB classes which can set report and return if sent
 
         cpu0_tick = false;
     }
@@ -45,7 +49,7 @@ static void cpu0_thread(void) {
 static void cpu1_thread(void) {
     while (true) {
         while (!cpu1_tick);
-        // TODO cpu1 - GUI
+        // TODO cpu1 - GUI (add CPU usage)
         gui.process();
         gui.display();
 

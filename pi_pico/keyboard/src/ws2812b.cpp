@@ -12,16 +12,27 @@ ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
 :
     rows(rows), cols(cols), led_pins(led_pins)
 {
-    const PIO PIOS[NUM_PIOS] = { pio0, pio1 };
-    const uint OFFSETS[NUM_PIOS] = {
-        pio_add_program(pio0, &ws2812b_program),
-        pio_add_program(pio1, &ws2812b_program),
-    };
+    uint offsets[NUM_PIOS] = { PIO_INSTRUCTION_COUNT, PIO_INSTRUCTION_COUNT };
     for (uint i = 0; i < rows; i++) {
-        pios[i] = PIOS[i / NUM_PIO_STATE_MACHINES];
-        sms[i]  = pio_claim_unused_sm(pios[i], true);
-        ws2812b_program_init(pios[i], sms[i], OFFSETS[i / NUM_PIO_STATE_MACHINES], LED_PINS[i]);
+        // find available PIO state machine
+        int p, s;
+        if ((s = pio_claim_unused_sm(pio0, false)) >= 0) {
+            p = 0;
+            pios[i] = pio0;
+            sms[i] = s;
+        } else {
+            p = 1;
+            pios[i] = pio1;
+            sms[i] = pio_claim_unused_sm(pio1, true);
+        }
 
+        // install/start program
+        if (offsets[p] >= PIO_INSTRUCTION_COUNT) {
+            offsets[p] = pio_add_program(pios[i], &ws2812b_program);
+        }
+        ws2812b_program_init(pios[i], sms[i], offsets[p], LED_PINS[i]);
+
+        // setup DMA channel
         sem_init(&done[i], 1, 1);
         dmas[i] = dma_claim_unused_channel(true);
         dma_cfgs[i] = dma_channel_get_default_config(dmas[i]);
@@ -43,10 +54,9 @@ ws2812b_color& ws2812b::operator() (uint row, uint col) {
 
 void ws2812b::display(void) {
     for (uint i = 0; i < rows; i++) {
-        if (!sem_try_acquire(&done[i])) {
-            panic("previous call to display didn't finish");
+        if (sem_try_acquire(&done[i])) {
+            dma_channel_configure(dmas[i], &dma_cfgs[i], &pios[i]->txf[sms[i]], &pixels[i], cols, true);
         }
-        dma_channel_configure(dmas[i], &dma_cfgs[i], &pios[i]->txf[sms[i]], &pixels[i], cols, true);
     }
 }
 

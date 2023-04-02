@@ -1,0 +1,96 @@
+.program encoder
+
+.wrap_target
+    ; x = pins & 0x3
+    mov osr, ::pins
+    out null, 30
+    mov x, osr
+    ; if x != y:
+    ;   x => isr
+    jmp x!=y state_change
+    jmp state_change_done
+state_change:
+    in x, 2
+state_change_done:
+    ; y = x
+    mov y, x
+.wrap
+
+% c-sdk {
+#include <hardware/clocks.h>
+#include <pico/stdlib.h>
+
+enum class encoder_state {
+    DETENT,
+    CW1,  CW2,  CW3,
+    CCW1, CCW2, CCW3,
+    ERROR,
+    COUNT
+};
+
+// loosely based on https://forum.arduino.cc/t/reading-rotary-encoders-as-a-state-machine/937388
+// 00 <> 10 <> 11 <> 01 <> 00
+using enum encoder_state;
+static const encoder_state ENCODER_STATE_LUT[(uint) COUNT][4] = {
+    //                 00,     01,     10,     11
+    [(uint) DETENT] = {ERROR,  CW1,    CCW1,   DETENT}, // 11
+    [(uint) CW1]    = {CW2,    CW1,    ERROR,  DETENT}, // 01
+    [(uint) CW2]    = {CW2,    CW1,    CW3,    ERROR }, // 00
+    [(uint) CW3]    = {CW2,    ERROR,  CW3,    DETENT}, // 10
+    [(uint) CCW1]   = {CCW2,   ERROR,  CCW1,   DETENT}, // 10
+    [(uint) CCW2]   = {CCW2,   CCW3,   CCW1,   ERROR }, // 00
+    [(uint) CCW3]   = {CCW2,   CCW3,   ERROR,  DETENT}, // 01
+    [(uint) ERROR]  = {ERROR,  ERROR,  ERROR,  DETENT},
+};
+
+static inline void encoder_program_init(PIO pio, uint sm, uint offset, uint a, uint b) {
+    if (a + 1 != b) {
+        panic("b must come right after a!");
+    }
+    gpio_init(a);
+    gpio_init(b);
+    gpio_set_dir(a, false);
+    gpio_set_dir(b, false);
+    gpio_pull_up(a);
+    gpio_pull_up(b);
+
+    pio_sm_config cfg = encoder_program_get_default_config(offset);
+    sm_config_set_in_pins(&cfg, a);
+    sm_config_set_in_shift(&cfg, true, true, 32);
+    sm_config_set_out_shift(&cfg, true, false, 0);
+    sm_config_set_fifo_join(&cfg, PIO_FIFO_JOIN_RX);
+    sm_config_set_clkdiv(&cfg, 1.0);
+
+    pio_sm_init(pio, sm, offset, &cfg);
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline int encoder_process(PIO pio, uint sm, encoder_state& state) {
+    int ticks = 0;
+
+    // push most recent samples into RX FIFO
+    if (!pio_sm_is_rx_fifo_full(pio, sm)) {
+        uint i = pio_sm_get_rx_fifo_level(pio, sm);
+        while (i == pio_sm_get_rx_fifo_level(pio, sm)) {
+            pio_sm_exec(pio, sm, pio_encode_in(pio_x, 2));
+        }
+    }
+    // empty FIFO and process samples
+    while (!pio_sm_is_rx_fifo_empty(pio, sm)) {
+        uint d = pio_sm_get(pio, sm); // pull 16 samples as 32-bit word
+        for (int i = 0; i < 16; i++) {
+            uint r = d & 0x3; // get one sample
+            encoder_state n = ENCODER_STATE_LUT[(uint) state][r];
+            if (state == CW3 && n == DETENT) {
+                ticks--;
+            } else if (state == CCW3 && n == DETENT) {
+                ticks++;
+            }
+            state = n;
+            d >>= 2;
+        }
+    }
+    return ticks;
+}
+
+%}

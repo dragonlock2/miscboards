@@ -1,26 +1,23 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
+#include <hardware/pio.h>
 #include <pico/stdlib.h>
-
-enum class encoder_state {
-    DETENT,
-    CW1,  CW2,  CW3,
-    CCW1, CCW2, CCW3,
-    COUNT
-};
+#include "encoder.pio.h"
 
 class encoder {
 public:
-    encoder(uint a, uint b);
+    encoder(uint a, uint b, bool reverse);
 
-    void scan(void);
     operator int();
 
 private:
+    void process(void);
+
+    PIO pio;
+    uint sm;
     encoder_state state;
-    const uint a, b;
-    int ticks;
+    bool reverse;
 };
 
 #endif // ENCODER_H

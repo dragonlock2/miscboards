@@ -14,8 +14,6 @@ GUI::GUI(kscan& keys, ssd1306& oled, ws2812b& leds, uint sleep)
     gpio_init(sleep);
     gpio_set_dir(sleep, true);
     gpio_put(sleep, 0);
-
-    // TODO remove
 }
 
 void GUI::process(void) {
