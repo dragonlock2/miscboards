@@ -9,7 +9,7 @@
 
 GUI::GUI(kscan& keys, ssd1306& oled, ws2812b& leds, uint sleep)
 :
-    keys(keys), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME)
+    keys(keys), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME), frame_ctr(0)
 {
     gpio_init(sleep);
     gpio_set_dir(sleep, true);
@@ -28,10 +28,21 @@ void GUI::process(bool usb_connected) {
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
 
     // TODO update to actual GUI
-    // no press => red, press => green
+    frame_ctr++;
+
+    // release causes fade
     for (uint i = 0; i < keys.rows; i++) {
         for (uint j = 0; j < keys.cols; j++) {
-            leds(i, j) = keys(i, j) ? ws2812b_color(0, 20, 20) : ws2812b_color(30, 0, 0);
+            if (keys(i, j)) {
+                leds(i, j) = ws2812b_color(0, 0, 100);
+            } else {
+                ws2812b_color &c = leds(i, j);
+                if (frame_ctr % 5 == 0) {
+                    if (c.r > 0) { c.r -= 1; }
+                    if (c.g > 0) { c.g -= 1; }
+                    if (c.b > 0) { c.b -= 1; }
+                }
+            }
         }
     }
 

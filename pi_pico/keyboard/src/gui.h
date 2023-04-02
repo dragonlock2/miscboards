@@ -23,7 +23,8 @@ private:
     const uint sleep;
     uint sleep_ctr;
 
-    // TODO remove
+    // GUI state
+    uint frame_ctr;
     int enc_ticks;
 };
 
