@@ -96,6 +96,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 static hid_keyboard_report_t kb_report;
 static hid_mouse_report_t mouse_report;
 static uint16_t consumer_report;
+static uint8_t kb_status;
 
 void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_t len) {
     (void) instance;
@@ -120,12 +121,11 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_
 }
 
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
-    // TODO use this to report LED status
     (void) instance;
-    (void) report_id;
-    (void) report_type;
-    (void) buffer;
-    (void) bufsize;
+
+    if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == static_cast<uint8_t>(hid_report_id::KEYBOARD) && bufsize > 0) {
+        kb_status = buffer[0];
+    }
 }
 
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
@@ -169,4 +169,8 @@ void USB::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint1
 
 bool USB::connected(void) {
     return tud_mounted() && !tud_suspended();
+}
+
+uint8_t USB::led_status(void) {
+    return kb_status;
 }

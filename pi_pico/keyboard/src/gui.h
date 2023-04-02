@@ -3,14 +3,15 @@
 
 #include <cstdarg>
 #include "kscan.h"
+#include "usb.h"
 #include "ws2812b.h"
 #include "ssd1306.h"
 
 class GUI {
 public:
-    GUI(kscan& keys, ssd1306& oled, ws2812b& leds, uint sleep);
+    GUI(kscan& keys, USB& usb, ssd1306& oled, ws2812b& leds, uint sleep);
 
-    void process(bool usb_connected);
+    void process(void);
     void display(void);
 
 private:
@@ -18,6 +19,7 @@ private:
     bool sleep_check(int enc);
 
     kscan& keys;
+    USB& usb;
     ssd1306& oled;
     ws2812b& leds;
     const uint sleep;

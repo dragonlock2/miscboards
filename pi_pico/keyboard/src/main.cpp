@@ -17,7 +17,7 @@ static macro   mac(keys, KEYMAP, KEYMODMAP, ENCMAP, CONSUMER_KEYMAP, CONSUMER_EN
 
 static ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
 static ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
-static GUI     gui(keys, oled, leds, SLEEP_PIN);
+static GUI     gui(keys, usb, oled, leds, SLEEP_PIN);
 
 // ticker
 static volatile bool cpu0_tick, cpu1_tick;
@@ -61,7 +61,7 @@ static void cpu1_thread(void) {
     while (true) {
         while (!cpu1_tick);
         // TODO cpu1 - GUI
-        gui.process(usb.connected());
+        gui.process();
         gui.display();
 
         cpu1_tick = false;
