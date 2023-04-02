@@ -16,7 +16,7 @@ GUI::GUI(kscan& keys, ssd1306& oled, ws2812b& leds, uint sleep)
     gpio_put(sleep, 0);
 }
 
-void GUI::process(void) {
+void GUI::process(bool usb_connected) {
     // receive encoder diff from cpu0 FIFO
     int enc = 0;
     if (multicore_fifo_rvalid()) {
@@ -24,7 +24,7 @@ void GUI::process(void) {
     }
 
     // sleep check
-    sleep_ctr = sleep_check(enc) ? SLEEP_TIME : sleep_ctr - 1;
+    sleep_ctr = (usb_connected || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
 
     // TODO update to actual GUI
@@ -68,9 +68,6 @@ bool GUI::sleep_check(int enc) {
                 return true;
             }
         }
-    }
-    if (tud_mounted() && !tud_suspended()) {
-        return true;
     }
     return false;
 }

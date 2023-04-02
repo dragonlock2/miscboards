@@ -31,16 +31,16 @@ enum class encoder_state {
 // loosely based on https://forum.arduino.cc/t/reading-rotary-encoders-as-a-state-machine/937388
 // 00 <> 10 <> 11 <> 01 <> 00
 using enum encoder_state;
-static const encoder_state ENCODER_STATE_LUT[(uint) COUNT][4] = {
+static const encoder_state ENCODER_STATE_LUT[static_cast<uint>(COUNT)][4] = {
     //                 00,     01,     10,     11
-    [(uint) DETENT] = {ERROR,  CW1,    CCW1,   DETENT}, // 11
-    [(uint) CW1]    = {CW2,    CW1,    ERROR,  DETENT}, // 01
-    [(uint) CW2]    = {CW2,    CW1,    CW3,    ERROR }, // 00
-    [(uint) CW3]    = {CW2,    ERROR,  CW3,    DETENT}, // 10
-    [(uint) CCW1]   = {CCW2,   ERROR,  CCW1,   DETENT}, // 10
-    [(uint) CCW2]   = {CCW2,   CCW3,   CCW1,   ERROR }, // 00
-    [(uint) CCW3]   = {CCW2,   CCW3,   ERROR,  DETENT}, // 01
-    [(uint) ERROR]  = {ERROR,  ERROR,  ERROR,  DETENT},
+    [static_cast<uint>(DETENT)] = {ERROR,  CW1,    CCW1,   DETENT}, // 11
+    [static_cast<uint>(CW1)]    = {CW2,    CW1,    ERROR,  DETENT}, // 01
+    [static_cast<uint>(CW2)]    = {CW2,    CW1,    CW3,    ERROR }, // 00
+    [static_cast<uint>(CW3)]    = {CW2,    ERROR,  CW3,    DETENT}, // 10
+    [static_cast<uint>(CCW1)]   = {CCW2,   ERROR,  CCW1,   DETENT}, // 10
+    [static_cast<uint>(CCW2)]   = {CCW2,   CCW3,   CCW1,   ERROR }, // 00
+    [static_cast<uint>(CCW3)]   = {CCW2,   CCW3,   ERROR,  DETENT}, // 01
+    [static_cast<uint>(ERROR)]  = {ERROR,  ERROR,  ERROR,  DETENT},
 };
 
 static inline void encoder_program_init(PIO pio, uint sm, uint offset, uint a, uint b) {

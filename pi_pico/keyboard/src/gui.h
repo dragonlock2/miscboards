@@ -10,7 +10,7 @@ class GUI {
 public:
     GUI(kscan& keys, ssd1306& oled, ws2812b& leds, uint sleep);
 
-    void process(void);
+    void process(bool usb_connected);
     void display(void);
 
 private:

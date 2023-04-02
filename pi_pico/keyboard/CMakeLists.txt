@@ -17,6 +17,10 @@ add_executable(${PROJECT_NAME}
     src/ssd1306.cpp
     src/gui.cpp
     src/encoder.cpp
+    src/usb.cpp
+)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    src/
 )
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/ws2812b.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/encoder.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -34,8 +38,9 @@ target_link_libraries(${PROJECT_NAME}
     pico_multicore
     hardware_pio
     hardware_i2c
+    tinyusb_device
 )
-pico_enable_stdio_usb(${PROJECT_NAME} 1)
+pico_enable_stdio_usb(${PROJECT_NAME} 0)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
 
 # boilerplate
