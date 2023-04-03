@@ -37,11 +37,42 @@ static hci_con_handle_t con_handle = HCI_CON_HANDLE_INVALID;
 static uint8_t protocol_mode = 1;
 
 static uint64_t timestamp;
-static bool should_send;
+static hid_report_id current_id = hid_report_id::KEYBOARD;
 
 static hid_keyboard_report_t kb_report;
 static hid_mouse_report_t mouse_report;
 static uint16_t consumer_report;
+
+static void send_report(void) {
+    switch (current_id) {
+        case hid_report_id::KEYBOARD:
+            att_server_notify(con_handle, protocol_mode == 0 ?
+                    ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_BOOT_KEYBOARD_INPUT_REPORT_01_VALUE_HANDLE :
+                    ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_REPORT_01_VALUE_HANDLE,
+                reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
+            current_id = hid_report_id::MOUSE;
+            break;
+
+        case hid_report_id::MOUSE:
+            att_server_notify(con_handle, protocol_mode == 0 ?
+                    ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_BOOT_MOUSE_INPUT_REPORT_01_VALUE_HANDLE :
+                    ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_REPORT_04_VALUE_HANDLE,
+                reinterpret_cast<uint8_t*>(&mouse_report), sizeof(mouse_report));
+            current_id = hid_report_id::CONSUMER;
+            break;
+
+        case hid_report_id::CONSUMER:
+            att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_REPORT_05_VALUE_HANDLE,
+                reinterpret_cast<uint8_t*>(&consumer_report), sizeof(consumer_report));
+            current_id = hid_report_id::KEYBOARD;
+            break;
+
+        default:
+            break;
+    }
+    // printf("period %llu us\r\n", time_us_64() - timestamp); // can vary widely between 2-8ms
+    timestamp = time_us_64();
+}
 
 static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     UNUSED(channel);
@@ -51,7 +82,6 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             con_handle = HCI_CON_HANDLE_INVALID;
             printf("Disconnected\n");
-            should_send = false;
             break;
 
         case SM_EVENT_JUST_WORKS_REQUEST:
@@ -73,13 +103,16 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
                     printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
-                    should_send = true;
                     break;
 
                 case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
                     printf("Boot Keyboard Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
-                    should_send = true;
+                    break;
+
+                case HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE:
+                    con_handle = hids_subevent_boot_mouse_input_report_enable_get_con_handle(packet);
+                    printf("Boot Mouse Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
                     break;
 
                 case HIDS_SUBEVENT_PROTOCOL_MODE:
@@ -88,20 +121,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     break;
 
                 case HIDS_SUBEVENT_CAN_SEND_NOW:
-                    // TODO alternate between all packet types and send on the 3 characteristics
-                    switch (protocol_mode) {
-                        case 0:
-                            hids_device_send_boot_keyboard_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
-                            break;
-                        case 1:
-                            hids_device_send_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
-                            break;
-
-                        default:
-                            break;
-                    }
-                    printf("period %llu us\r\n", time_us_64() - timestamp); // can vary widely between 2-8ms
-                    timestamp = time_us_64();
+                    send_report();
                     break;
 
                 default:
@@ -152,8 +172,6 @@ BLE::BLE(void)
     hids_device_register_packet_handler(packet_handler);
 
     printf("initialized BLE!\r\n");
-
-    should_send = false;
 }
 
 void BLE::process(void) {
@@ -165,7 +183,7 @@ void BLE::process(void) {
         started = true;
     }
 
-    if (con_handle != HCI_CON_HANDLE_INVALID && should_send && att_server_can_send_packet_now(con_handle)) { // need delay? sometimes locks up completely until reboot
+    if (con_handle != HCI_CON_HANDLE_INVALID && att_server_can_send_packet_now(con_handle)) {
         hids_device_request_can_send_now_event(con_handle);
     }
 

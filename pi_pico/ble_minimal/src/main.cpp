@@ -24,9 +24,13 @@ void thread1(void) {
     while (true) {
         printf("thread1 pressed A: %d\r\n", i++);
         kb.keycode[0] = HID_KEY_A;
+        consumer = HID_USAGE_CONSUMER_VOLUME_INCREMENT;
+        mouse.wheel = -10;
         ble.set_report(kb, mouse, consumer);
         sleep_ms(50);
         kb.keycode[0] = HID_KEY_NONE;
+        consumer = 0;
+        mouse.wheel = 0;
         ble.set_report(kb, mouse, consumer);
         sleep_ms(1000);
     }
