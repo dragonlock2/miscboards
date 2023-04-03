@@ -11,22 +11,22 @@ using namespace bt;
 /* BTstack specific */
 enum class hid_report_id {
     KEYBOARD = 1,
-    // MOUSE    = 2,
-    // CONSUMER = 3,
+    MOUSE    = 2,
+    CONSUMER = 3,
     COUNT
 };
 
 static const uint8_t desc_hid_report[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::KEYBOARD))),
-    // TUD_HID_REPORT_DESC_MOUSE   (HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::MOUSE   ))),
-    // TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::CONSUMER))),
+    TUD_HID_REPORT_DESC_MOUSE   (HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::MOUSE   ))),
+    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::CONSUMER))),
 };
 
 static const uint8_t adv_data[] = {
     // Flags general discoverable, BR/EDR not supported
     0x02, BLUETOOTH_DATA_TYPE_FLAGS, 0x06,
     // Name
-    0x0d, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'M', 'a', 't', 't', '\'', 's', ' ', 'K', 'e', 'y', 'b', 'o', 'a', 'r', 'd',
+    0x10, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'M', 'a', 't', 't', '\'', 's', ' ', 'K', 'e', 'y', 'b', 'o', 'a', 'r', 'd',
     // 16-bit Service UUIDs
     0x03, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_16_BIT_SERVICE_CLASS_UUIDS, ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE & 0xff, ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE >> 8,
     // Appearance HID - Keyboard (Category 15, Sub-Category 1)
@@ -40,6 +40,8 @@ static uint64_t timestamp;
 static bool can_send;
 
 static hid_keyboard_report_t kb_report;
+static hid_mouse_report_t mouse_report;
+static uint16_t consumer_report;
 
 static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     UNUSED(channel);
@@ -76,6 +78,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
                     printf("Boot Keyboard Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
+                    can_send = true;
                     break;
 
                 case HIDS_SUBEVENT_PROTOCOL_MODE:
@@ -83,7 +86,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     printf("Protocol Mode: %s mode\n", hids_subevent_protocol_mode_get_protocol_mode(packet) ? "Report" : "Boot");
                     break;
 
-                case HIDS_SUBEVENT_CAN_SEND_NOW:
+                case HIDS_SUBEVENT_CAN_SEND_NOW: // TODO how to choose report id? need to change GATT?
                     switch (protocol_mode) {
                         case 0:
                             hids_device_send_boot_keyboard_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
@@ -95,7 +98,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                         default:
                             break;
                     }
-                    printf("period %llu us\r\n", time_us_64() - timestamp); // varies widely between 2-8ms
+                    // printf("period %llu us\r\n", time_us_64() - timestamp); // can vary widely between 2-8ms
                     timestamp = time_us_64();
                     can_send = true;
                     break;
@@ -125,7 +128,7 @@ BLE::BLE(void)
     sm_set_authentication_requirements(SM_AUTHREQ_SECURE_CONNECTION | SM_AUTHREQ_BONDING);
     att_server_init(profile_data, NULL, NULL);
 
-    battery_service_server_init(42);
+    battery_service_server_init(69);
     device_information_service_server_init();
     hids_device_init(0, desc_hid_report, sizeof(desc_hid_report));
 
@@ -159,7 +162,7 @@ void BLE::process(void) {
         started = true;
     }
 
-    if (can_send && con_handle != HCI_CON_HANDLE_INVALID) {
+    if (can_send && con_handle != HCI_CON_HANDLE_INVALID) { // need delay? sometimes locks up completely until reboot
         uint32_t s = spin_lock_blocking(lock);
         can_send = false;
         hids_device_request_can_send_now_event(con_handle);
@@ -169,8 +172,10 @@ void BLE::process(void) {
     async_context_poll(cyw43_arch_async_context());
 }
 
-void BLE::set_report(hid_keyboard_report_t& kb) {
+void BLE::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
     uint32_t s = spin_lock_blocking(lock);
     kb_report = kb;
+    mouse_report = mouse;
+    consumer_report = consumer;
     spin_unlock(lock, s);
 }

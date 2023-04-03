@@ -19,13 +19,15 @@ void thread1(void) {
 
     int8_t i = 0;
     hid_keyboard_report_t kb = {0};
+    hid_mouse_report_t mouse = {0};
+    uint16_t consumer = 0;
     while (true) {
         printf("thread1 pressed A: %d\r\n", i++);
         kb.keycode[0] = HID_KEY_A;
-        ble.set_report(kb);
+        ble.set_report(kb, mouse, consumer);
         sleep_ms(50);
         kb.keycode[0] = HID_KEY_NONE;
-        ble.set_report(kb);
+        ble.set_report(kb, mouse, consumer);
         sleep_ms(1000);
     }
 }
