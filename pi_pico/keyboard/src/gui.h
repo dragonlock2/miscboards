@@ -4,12 +4,13 @@
 #include <cstdarg>
 #include "kscan.h"
 #include "usb.h"
+#include "ble.h"
 #include "ws2812b.h"
 #include "ssd1306.h"
 
 class GUI {
 public:
-    GUI(kscan& keys, USB& usb, ssd1306& oled, ws2812b& leds, uint sleep);
+    GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep);
 
     void process(void);
     void display(void);
@@ -20,6 +21,7 @@ private:
 
     kscan& keys;
     USB& usb;
+    BLE& ble;
     ssd1306& oled;
     ws2812b& leds;
     const uint sleep;

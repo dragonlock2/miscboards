@@ -18,6 +18,7 @@ add_executable(${PROJECT_NAME}
     src/gui.cpp
     src/encoder.cpp
     src/usb.cpp
+    src/ble.cpp
     src/macro.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -25,17 +26,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/ws2812b.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/encoder.pio OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+pico_btstack_make_gatt_header(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src/keyboard.gatt)
 
-add_compile_definitions(
+target_compile_definitions(${PROJECT_NAME} PRIVATE
     PICO_MAX_SHARED_IRQ_HANDLERS=16
     PICO_STACK_SIZE=4096
     PICO_USE_STACK_GUARDS=1
+    CYW43_ENABLE_BLUETOOTH=1
+    CYW43_LWIP=0
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror)
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib
-    pico_cyw43_arch_none
+    pico_btstack_ble
+    pico_btstack_cyw43
+    pico_cyw43_arch_threadsafe_background
     pico_multicore
     hardware_pio
     hardware_i2c
@@ -43,6 +49,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 pico_enable_stdio_usb(${PROJECT_NAME} 0)
 pico_enable_stdio_uart(${PROJECT_NAME} 0)
+suppress_btstack_warnings()
 
 # boilerplate
 add_custom_command(

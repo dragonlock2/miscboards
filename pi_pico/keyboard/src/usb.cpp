@@ -22,7 +22,7 @@ enum class hid_report_id {
     COUNT
 };
 
-tusb_desc_device_t const desc_device = {
+static const tusb_desc_device_t desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = 0x0200, // USB 2.0
@@ -39,18 +39,18 @@ tusb_desc_device_t const desc_device = {
     .bNumConfigurations = 0x01,
 };
 
-uint8_t const desc_hid_report[] = {
+static const uint8_t desc_hid_report[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::KEYBOARD))),
     TUD_HID_REPORT_DESC_MOUSE   (HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::MOUSE   ))),
     TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(static_cast<uint8_t>(hid_report_id::CONSUMER))),
 };
 
-uint8_t const desc_configuration[] = {
+static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, 1, 0, (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN), TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 500), // 500mA
     TUD_HID_DESCRIPTOR(0, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, POLL_RATE)
 };
 
-char const* desc_strings[] = { // keep <= 127 chars due to encoding
+static char const* desc_strings[] = { // keep <= 127 chars due to encoding
     [static_cast<uint>(usb_string_desc::LANGID)]        = (const char[]) { 0x09, 0x04 }, // supported language is English (0x0409)
     [static_cast<uint>(usb_string_desc::MANUFACTURER)]  = "Matt Tran",
     [static_cast<uint>(usb_string_desc::PRODUCT)]       = "Keyboard",

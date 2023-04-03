@@ -7,9 +7,9 @@
 #define SLEEP_TIME  (30000) // ms
 #define SLEEP_PULSE (100) // ms (>50ms pulse => sleep)
 
-GUI::GUI(kscan& keys, USB& usb, ssd1306& oled, ws2812b& leds, uint sleep)
+GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep)
 :
-    keys(keys), usb(usb), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME), frame_ctr(0)
+    keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME), frame_ctr(0)
 {
     gpio_init(sleep);
     gpio_set_dir(sleep, true);
@@ -24,10 +24,10 @@ void GUI::process(void) {
     }
 
     // sleep check
-    sleep_ctr = (usb.connected() || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
+    sleep_ctr = (usb.connected() || ble.connected() || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
 
-    // TODO update to actual GUI
+    // TODO update to actual GUI (BLE host selection?)
     frame_ctr++;
 
     // release causes fade

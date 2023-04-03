@@ -1,5 +1,4 @@
 #include <pico/stdlib.h>
-#include <pico/cyw43_arch.h>
 #include <pico/multicore.h>
 #include <tusb.h>
 #include "config.h"
@@ -13,11 +12,12 @@
 static kscan   keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
 static encoder enc(ENCODER_PIN_A, ENCODER_PIN_B, ENCODER_REVERSE);
 static USB     usb;
+static BLE     ble;
 static macro   mac(keys, KEYMAP, KEYMODMAP, ENCMAP, CONSUMER_KEYMAP, CONSUMER_ENCMAP);
 
 static ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
 static ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
-static GUI     gui(keys, usb, oled, leds, SLEEP_PIN);
+static GUI     gui(keys, usb, ble, oled, leds, SLEEP_PIN);
 
 // ticker
 static volatile bool cpu0_tick, cpu1_tick;
@@ -44,7 +44,6 @@ static void cpu0_thread(void) {
         }
         ticks += diff;
 
-        // TODO cpu0 - BLE
         hid_keyboard_report_t kb_report = {0};
         hid_mouse_report_t mouse_report = {0};
         uint16_t consumer_report = 0;
@@ -53,6 +52,9 @@ static void cpu0_thread(void) {
         usb.process();
         usb.set_report(kb_report, mouse_report, consumer_report);
 
+        ble.process();
+        ble.set_report(kb_report, mouse_report, consumer_report);
+
         cpu0_tick = false;
     }
 }
@@ -60,7 +62,6 @@ static void cpu0_thread(void) {
 static void cpu1_thread(void) {
     while (true) {
         while (!cpu1_tick);
-        // TODO cpu1 - GUI
         gui.process();
         gui.display();
 
@@ -69,9 +70,6 @@ static void cpu1_thread(void) {
 }
 
 int main() {
-    stdio_init_all();
-    cyw43_arch_init();
-
     repeating_timer_t timer;
     add_repeating_timer_ms(1, ticker, NULL, &timer);
 
