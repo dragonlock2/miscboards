@@ -10,7 +10,7 @@ using namespace bt;
 
 /* BTstack specific */
 enum class hid_report_id {
-    KEYBOARD = 1,
+    KEYBOARD = 1, // matches keyboard.gatt!
     MOUSE    = 2,
     CONSUMER = 3,
     COUNT
@@ -37,7 +37,7 @@ static hci_con_handle_t con_handle = HCI_CON_HANDLE_INVALID;
 static uint8_t protocol_mode = 1;
 
 static uint64_t timestamp;
-static bool can_send;
+static bool should_send;
 
 static hid_keyboard_report_t kb_report;
 static hid_mouse_report_t mouse_report;
@@ -51,6 +51,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             con_handle = HCI_CON_HANDLE_INVALID;
             printf("Disconnected\n");
+            should_send = false;
             break;
 
         case SM_EVENT_JUST_WORKS_REQUEST:
@@ -72,13 +73,13 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
                     printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
-                    can_send = true;
+                    should_send = true;
                     break;
 
                 case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
                     printf("Boot Keyboard Characteristic Subscribed %u\n", hids_subevent_boot_keyboard_input_report_enable_get_enable(packet));
-                    can_send = true;
+                    should_send = true;
                     break;
 
                 case HIDS_SUBEVENT_PROTOCOL_MODE:
@@ -86,7 +87,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     printf("Protocol Mode: %s mode\n", hids_subevent_protocol_mode_get_protocol_mode(packet) ? "Report" : "Boot");
                     break;
 
-                case HIDS_SUBEVENT_CAN_SEND_NOW: // TODO how to choose report id? need to change GATT?
+                case HIDS_SUBEVENT_CAN_SEND_NOW:
+                    // TODO alternate between all packet types and send on the 3 characteristics
                     switch (protocol_mode) {
                         case 0:
                             hids_device_send_boot_keyboard_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
@@ -98,9 +100,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                         default:
                             break;
                     }
-                    // printf("period %llu us\r\n", time_us_64() - timestamp); // can vary widely between 2-8ms
+                    printf("period %llu us\r\n", time_us_64() - timestamp); // can vary widely between 2-8ms
                     timestamp = time_us_64();
-                    can_send = true;
                     break;
 
                 default:
@@ -151,6 +152,8 @@ BLE::BLE(void)
     hids_device_register_packet_handler(packet_handler);
 
     printf("initialized BLE!\r\n");
+
+    should_send = false;
 }
 
 void BLE::process(void) {
@@ -162,11 +165,8 @@ void BLE::process(void) {
         started = true;
     }
 
-    if (can_send && con_handle != HCI_CON_HANDLE_INVALID) { // need delay? sometimes locks up completely until reboot
-        uint32_t s = spin_lock_blocking(lock);
-        can_send = false;
+    if (con_handle != HCI_CON_HANDLE_INVALID && should_send && att_server_can_send_packet_now(con_handle)) { // need delay? sometimes locks up completely until reboot
         hids_device_request_can_send_now_event(con_handle);
-        spin_unlock(lock, s);
     }
 
     async_context_poll(cyw43_arch_async_context());
