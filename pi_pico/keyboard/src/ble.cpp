@@ -70,11 +70,11 @@ BLE::BLE(void) {
     gap_advertisements_set_data(sizeof(adv_data), const_cast<uint8_t*>(adv_data));
     gap_advertisements_enable(1);
 
-    btstack_packet_callback_registration_t hci_event_callback_registration = {0};
+    static btstack_packet_callback_registration_t hci_event_callback_registration = {0};
     hci_event_callback_registration.callback = &btstack_packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
 
-    btstack_packet_callback_registration_t sm_event_callback_registration = {0};
+    static btstack_packet_callback_registration_t sm_event_callback_registration = {0};
     sm_event_callback_registration.callback = &btstack_packet_handler;
     sm_add_event_handler(&sm_event_callback_registration);
 

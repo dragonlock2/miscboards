@@ -3,8 +3,9 @@
 #include <pico/multicore.h>
 #include "ble.h"
 
+BLE ble;
+
 void thread0(void) {
-    BLE ble;
     printf("thread0 booted!\r\n");
 
     while (true) {
@@ -17,9 +18,15 @@ void thread1(void) {
     printf("thread1 booted!\r\n");
 
     int8_t i = 0;
+    hid_keyboard_report_t kb = {0};
     while (true) {
-        printf("thread1 says hi %d\r\n", i++);
-        sleep_ms(2500);
+        printf("thread1 pressed A: %d\r\n", i++);
+        kb.keycode[0] = HID_KEY_A;
+        ble.set_report(kb);
+        sleep_ms(50);
+        kb.keycode[0] = HID_KEY_NONE;
+        ble.set_report(kb);
+        sleep_ms(1000);
     }
 }
 

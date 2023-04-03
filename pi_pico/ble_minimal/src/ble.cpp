@@ -36,6 +36,11 @@ static const uint8_t adv_data[] = {
 static hci_con_handle_t con_handle = HCI_CON_HANDLE_INVALID;
 static uint8_t protocol_mode = 1;
 
+static uint64_t timestamp;
+static bool can_send;
+
+static hid_keyboard_report_t kb_report;
+
 static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     UNUSED(channel);
     UNUSED(size);
@@ -65,7 +70,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                 case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
                     printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
-                    // TODO can send keys now
+                    can_send = true;
                     break;
 
                 case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
@@ -79,7 +84,20 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     break;
 
                 case HIDS_SUBEVENT_CAN_SEND_NOW:
-                    // typing_can_send_now(); // TODO
+                    switch (protocol_mode) {
+                        case 0:
+                            hids_device_send_boot_keyboard_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
+                            break;
+                        case 1:
+                            hids_device_send_input_report(con_handle, reinterpret_cast<uint8_t*>(&kb_report), sizeof(kb_report));
+                            break;
+
+                        default:
+                            break;
+                    }
+                    printf("period %llu us\r\n", time_us_64() - timestamp); // varies widely between 2-8ms
+                    timestamp = time_us_64();
+                    can_send = true;
                     break;
 
                 default:
@@ -97,6 +115,7 @@ BLE::BLE(void)
 :
     started(false)
 {
+    lock = spin_lock_init(spin_lock_claim_unused(true));
     printf("initializing BLE...\r\n");
     cyw43_arch_init();
 
@@ -136,7 +155,22 @@ void BLE::process(void) {
         printf("turning on HCI...\r\n");
         hci_power_control(HCI_POWER_ON);
         printf("turned on HCI!\r\n");
+        timestamp = time_us_64();
         started = true;
     }
+
+    if (can_send && con_handle != HCI_CON_HANDLE_INVALID) {
+        uint32_t s = spin_lock_blocking(lock);
+        can_send = false;
+        hids_device_request_can_send_now_event(con_handle);
+        spin_unlock(lock, s);
+    }
+
     async_context_poll(cyw43_arch_async_context());
+}
+
+void BLE::set_report(hid_keyboard_report_t& kb) {
+    uint32_t s = spin_lock_blocking(lock);
+    kb_report = kb;
+    spin_unlock(lock, s);
 }
