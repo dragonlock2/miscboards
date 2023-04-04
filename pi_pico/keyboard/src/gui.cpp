@@ -11,7 +11,7 @@
 GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep)
 :
     keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME),
-    enc_ticks(0), fade_next(get_absolute_time()), cpu0_next(get_absolute_time()), cpu0_time(0)
+    enc_ticks(0), display_next(get_absolute_time()), fade_next(get_absolute_time()), cpu0_next(get_absolute_time()), cpu0_time(0)
 {
     gpio_init(sleep);
     gpio_set_dir(sleep, true);
@@ -96,8 +96,11 @@ void GUI::process(int enc, uint64_t cpu0_time) {
 }
 
 void GUI::display(void) {
-    leds.display();
-    oled.display();
+    if (time_reached(display_next)) {
+        display_next = make_timeout_time_ms(1);
+        leds.display();
+        oled.display();
+    }
 }
 
 void GUI::oled_printf(const char* format, ...) {
