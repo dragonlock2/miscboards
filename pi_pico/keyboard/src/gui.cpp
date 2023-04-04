@@ -10,7 +10,8 @@
 
 GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep)
 :
-    keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME), frame_ctr(0)
+    keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME),
+    enc_ticks(0), fade_next(get_absolute_time()), cpu0_next(get_absolute_time()), cpu0_time(0)
 {
     gpio_init(sleep);
     gpio_set_dir(sleep, true);
@@ -18,6 +19,8 @@ GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sle
 }
 
 void GUI::process(int enc, uint64_t cpu0_time) {
+    // gets called every 0.6ms to 8ms due to BLE latency
+
     // sleep check
     bool usb_connected = usb.connected();
     bool ble_connected = ble.connected();
@@ -31,13 +34,16 @@ void GUI::process(int enc, uint64_t cpu0_time) {
                 leds(i, j) = ws2812b_color(0, 0, 100);
             } else {
                 ws2812b_color &c = leds(i, j);
-                if (frame_ctr % 5 == 0) {
-                    if (c.r > 0) { c.r -= 1; }
-                    if (c.g > 0) { c.g -= 1; }
-                    if (c.b > 0) { c.b -= 1; }
+                if (time_reached(fade_next)) {
+                    if (c.r > 0) { c.r -= 2; }
+                    if (c.g > 0) { c.g -= 2; }
+                    if (c.b > 0) { c.b -= 2; }
                 }
             }
         }
+    }
+    if (time_reached(fade_next)) {
+        fade_next = make_timeout_time_ms(10);
     }
 
     // provide info
@@ -50,8 +56,9 @@ void GUI::process(int enc, uint64_t cpu0_time) {
     oled_printf("sleep countdown: %ds", sleep_ctr / 1000);
     y += 8;
     
-    if (frame_ctr % 100 == 0) {
+    if (time_reached(cpu0_next)) {
         this->cpu0_time = cpu0_time;
+        cpu0_next = make_timeout_time_ms(100);
     }
 
     oled.set_cursor(0, y);

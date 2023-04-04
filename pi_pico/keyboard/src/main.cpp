@@ -29,6 +29,9 @@ static void cpu0_thread(void) {
         int diff = enc;
         ticks += diff;
 
+        gui.process(diff, cpu0_time);
+        gui.display();
+
         hid_keyboard_report_t kb_report = {0};
         hid_mouse_report_t mouse_report = {0};
         uint16_t consumer_report = 0;
@@ -39,9 +42,6 @@ static void cpu0_thread(void) {
 
         ble.process();
         ble.set_report(kb_report, mouse_report, consumer_report);
-
-        gui.process(diff, cpu0_time);
-        gui.display();
 
         cpu0_time = time_us_64() - s;
     }

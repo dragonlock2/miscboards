@@ -28,8 +28,11 @@ private:
     uint sleep_ctr;
 
     // GUI state
-    uint frame_ctr;
     int enc_ticks;
+
+    absolute_time_t fade_next;
+
+    absolute_time_t cpu0_next;
     uint64_t cpu0_time;
 };
 
