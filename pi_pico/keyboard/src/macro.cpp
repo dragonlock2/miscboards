@@ -2,8 +2,9 @@
 
 // iOS uses 15ms for BLE
 // Windows is 2 volume counts per 5ms
-#define PRESS_TIME   (5) // ms
-#define RELEASE_TIME (5) // ms
+// BLE adds quite a bit of variance to timing, adjusting for that
+#define PRESS_TIME   (20) // ms
+#define RELEASE_TIME (20) // ms
 
 macro::macro(kscan& keys, const uint8_t keymap[MAX_ROWS][MAX_COLS], const uint8_t keymodmap[MAX_ROWS][MAX_COLS], const uint8_t encmap[2],
     const uint16_t consumer_keymap[MAX_ROWS][MAX_COLS], const uint16_t consumer_encmap[2])
