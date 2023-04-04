@@ -70,7 +70,7 @@ void __isr ws2812b::dma_complete(void) {
         if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
             dma_hw->ints0 = (1 << i);
             if (add_alarm_in_us(ws2812b_RESET, reset_complete, (void*) i, true) < 0) {
-                panic("couldn't add reset timer callback");
+                reset_complete(0, (void*) i);
             }
         }
     }

@@ -16,7 +16,7 @@ GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sle
     gpio_put(sleep, 0);
 }
 
-void GUI::process(void) {
+void GUI::process(uint64_t cpu0_time, uint64_t cpu1_time) {
     // receive encoder diff from cpu0 FIFO
     int enc = 0;
     if (multicore_fifo_rvalid()) {
@@ -54,6 +54,15 @@ void GUI::process(void) {
     oled.clear();
     oled.set_cursor(0, y);
     oled_printf("sleep countdown: %ds", sleep_ctr / 1000);
+    y += 8;
+    
+    if (frame_ctr % 100 == 0) {
+        this->cpu0_time = cpu0_time;
+        this->cpu1_time = cpu1_time;
+    }
+
+    oled.set_cursor(0, y);
+    oled_printf("cpu0 %4lldus, cpu1 %4lldus", this->cpu0_time, this->cpu1_time);
     y += 8;
 
     oled.set_cursor(0, y);

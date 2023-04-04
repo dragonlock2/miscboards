@@ -20,6 +20,7 @@ static ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
 static GUI     gui(keys, usb, ble, oled, leds, SLEEP_PIN);
 
 // ticker
+static volatile uint64_t cpu0_time, cpu1_time;
 static volatile bool cpu0_tick, cpu1_tick;
 static bool ticker(repeating_timer_t *rt) {
     cpu0_tick = true;
@@ -33,6 +34,8 @@ static void cpu0_thread(void) {
 
     while (true) {
         while (!cpu0_tick);
+        uint64_t s = time_us_64();
+
         keys.scan();
 
         int diff = enc;
@@ -52,6 +55,7 @@ static void cpu0_thread(void) {
         ble.process();
         ble.set_report(kb_report, mouse_report, consumer_report);
 
+        cpu0_time = time_us_64() - s;
         cpu0_tick = false;
     }
 }
@@ -59,9 +63,12 @@ static void cpu0_thread(void) {
 static void cpu1_thread(void) {
     while (true) {
         while (!cpu1_tick);
-        gui.process();
+        uint64_t s = time_us_64();
+
+        gui.process(cpu0_time, cpu1_time);
         gui.display();
 
+        cpu1_time = time_us_64() - s;
         cpu1_tick = false;
     }
 }
@@ -74,5 +81,5 @@ int main() {
     cpu0_thread();
 
     // TODO BLE LEDs
-    // TODO debug BLE hangs
+    // TODO debug BLE hangs esp when pairing
 }
