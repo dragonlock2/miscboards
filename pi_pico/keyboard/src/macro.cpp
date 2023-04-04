@@ -1,6 +1,8 @@
 #include "macro.h"
 
-#define PRESS_TIME   (5)
+// iOS uses 15ms for BLE
+// Windows is 2 volume counts per 5ms
+#define PRESS_TIME   (5) // compromise, will miss ticks in iOS
 #define RELEASE_TIME (5)
 
 macro::macro(kscan& keys, const uint8_t keymap[MAX_ROWS][MAX_COLS], const uint8_t keymodmap[MAX_ROWS][MAX_COLS], const uint8_t encmap[2],

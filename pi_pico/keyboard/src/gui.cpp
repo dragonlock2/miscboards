@@ -27,7 +27,7 @@ void GUI::process(void) {
     sleep_ctr = (usb.connected() || ble.connected() || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
 
-    // TODO update to actual GUI (BLE host selection?)
+    // render GUI
     frame_ctr++;
 
     // release causes fade
@@ -46,16 +46,43 @@ void GUI::process(void) {
         }
     }
 
-    // display sleep time
+    // provide info
     enc_ticks += enc;
+    uint32_t key;
+    uint y = 0;
+
     oled.clear();
-    oled.set_cursor(0, 0);
+    oled.set_cursor(0, y);
     oled_printf("sleep countdown: %ds", sleep_ctr / 1000);
-    oled.set_cursor(0, 8);
+    y += 8;
+
+    oled.set_cursor(0, y);
     oled_printf("encoder ticks: %d", enc_ticks);
-    oled.set_cursor(0, 16);
-    if (usb.connected() && (usb.led_status() & KEYBOARD_LED_CAPSLOCK)) {
+    y += 8;
+
+    oled.set_cursor(0, y);
+    if (usb.connected()) {
+        oled_printf("usb connected");
+        y += 8;
+    }
+
+    oled.set_cursor(0, y);
+    if (ble.connected()) {
+        oled_printf("ble connected");
+        y += 8;
+    }
+
+    oled.set_cursor(0, y);
+    if (ble.passkey(key)) {
+        oled_printf("passkey: %ld", key);
+        y += 8;
+    }
+
+    oled.set_cursor(0, y);
+    if ((usb.connected() && (usb.led_status() & KEYBOARD_LED_CAPSLOCK)) ||
+        (ble.connected() && (ble.led_status() & KEYBOARD_LED_CAPSLOCK))) {
         oled_printf("caps locked!");
+        y += 8;
     }
 }
 

@@ -145,11 +145,18 @@ void ssd1306::send_command(uint8_t cmd) {
     i2c_write_blocking(i2c, addr, buf, 2, false);
 }
 
+int64_t ssd1306::reset_complete(alarm_id_t id, void* dma_chan) {
+    sem_release(dma_lut[(uint) dma_chan]);
+    return 0;
+}
+
 void __isr ssd1306::dma_complete(void) {
     for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
         if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
             dma_hw->ints0 = (1 << i);
-            sem_release(dma_lut[i]);
+            if (add_alarm_in_us(1000, reset_complete, (void*) i, true) < 0) {
+                panic("couldn't add reset timer callback");
+            }
         }
     }
 }

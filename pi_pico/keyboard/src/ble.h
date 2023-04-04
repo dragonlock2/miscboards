@@ -12,9 +12,11 @@ public:
     void set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer);
     bool connected(void);
     uint8_t led_status(void);
+    bool passkey(uint32_t& key);
 
 private:
     spin_lock_t* lock;
+    bool started;
 };
 
 #endif // BLE_H

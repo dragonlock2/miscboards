@@ -22,9 +22,6 @@ static GUI     gui(keys, usb, ble, oled, leds, SLEEP_PIN);
 // ticker
 static volatile bool cpu0_tick, cpu1_tick;
 static bool ticker(repeating_timer_t *rt) {
-    if (cpu0_tick || cpu1_tick) {
-        panic("overrun, something took too long");
-    }
     cpu0_tick = true;
     cpu1_tick = true;
     return true;
@@ -75,4 +72,7 @@ int main() {
 
     multicore_launch_core1(cpu1_thread);
     cpu0_thread();
+
+    // TODO BLE LEDs
+    // TODO debug BLE hangs
 }
