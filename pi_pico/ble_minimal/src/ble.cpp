@@ -102,7 +102,12 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             switch (hci_event_hids_meta_get_subevent_code(packet)){
                 case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
                     con_handle = hids_subevent_input_report_enable_get_con_handle(packet);
-                    printf("Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
+                    printf("Input Report Characteristic Subscribed %u\n", hids_subevent_input_report_enable_get_enable(packet));
+                    break;
+
+                case HIDS_SUBEVENT_OUTPUT_REPORT_ENABLE:
+                    con_handle = hids_subevent_output_report_enable_get_con_handle(packet);
+                    printf("Output Report Characteristic Subscribed %u\n", hids_subevent_output_report_enable_get_enable(packet));
                     break;
 
                 case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
@@ -187,7 +192,7 @@ void BLE::process(void) {
         hids_device_request_can_send_now_event(con_handle);
     }
 
-    async_context_poll(cyw43_arch_async_context());
+    // async_context_poll(cyw43_arch_async_context());
 }
 
 void BLE::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
