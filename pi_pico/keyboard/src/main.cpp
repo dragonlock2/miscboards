@@ -23,6 +23,7 @@ static GUI     gui(keys, usb, ble, oled, leds, SLEEP_PIN);
 static volatile uint64_t cpu0_time, cpu1_time;
 static volatile bool cpu0_tick, cpu1_tick;
 static bool ticker(repeating_timer_t *rt) {
+    // BLE messes with timing
     cpu0_tick = true;
     cpu1_tick = true;
     return true;
@@ -81,5 +82,5 @@ int main() {
     cpu0_thread();
 
     // TODO BLE LEDs
-    // TODO debug BLE hangs esp when pairing
+    // TODO debug hang during BLE pairing process
 }

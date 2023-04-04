@@ -181,7 +181,7 @@ void BLE::process(void) {
         hids_device_request_can_send_now_event(con_handle);
     }
 
-    async_context_poll(cyw43_arch_async_context());
+    // async_context_poll(cyw43_arch_async_context()); // unnecessary w/ threadsafe_background
 }
 
 void BLE::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
