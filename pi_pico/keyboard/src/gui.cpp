@@ -19,8 +19,8 @@ GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sle
 void GUI::process(uint64_t cpu0_time, uint64_t cpu1_time) {
     // receive encoder diff from cpu0 FIFO
     int enc = 0;
-    if (multicore_fifo_rvalid()) {
-        enc = (int) multicore_fifo_pop_blocking();
+    while (multicore_fifo_rvalid()) {
+        enc += (int) multicore_fifo_pop_blocking();
     }
 
     // sleep check

@@ -83,7 +83,7 @@ int main() {
 
     // TODO BLE LEDs
     // TODO debug hang during BLE pairing process
-        // doesn't happen w/ ble_minimal??
+        // increase cpu1 tick rate => much more likely to fail
         // sometimes only stalls cpu1
         // completely fine if can get thru pairing process
 }
