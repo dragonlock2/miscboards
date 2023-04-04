@@ -25,7 +25,7 @@ private:
     ssd1306& oled;
     ws2812b& leds;
     const uint sleep;
-    uint sleep_ctr;
+    absolute_time_t sleep_next;
 
     // GUI state
     int enc_ticks;

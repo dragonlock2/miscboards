@@ -4,13 +4,13 @@
 #include "gui.h"
 
 #define SLEEP_TIME  (30000) // ms
-#define SLEEP_PULSE (100) // ms (>50ms pulse => sleep)
+#define SLEEP_PULSE (75) // ms (>50ms pulse => sleep)
 
 #define ROW_HEIGHT (8) // pixels
 
 GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep)
 :
-    keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_ctr(SLEEP_TIME),
+    keys(keys), usb(usb), ble(ble), oled(oled), leds(leds), sleep(sleep), sleep_next(make_timeout_time_ms(SLEEP_TIME)),
     enc_ticks(0), display_next(get_absolute_time()), fade_next(get_absolute_time()), cpu0_next(get_absolute_time()), cpu0_time(0)
 {
     gpio_init(sleep);
@@ -24,8 +24,15 @@ void GUI::process(int enc, uint64_t cpu0_time) {
     // sleep check
     bool usb_connected = usb.connected();
     bool ble_connected = ble.connected();
-    sleep_ctr = (usb_connected || ble_connected || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
-    gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
+    if (usb_connected || ble_connected || sleep_check(enc)) {
+        sleep_next = make_timeout_time_ms(SLEEP_TIME);
+    }
+    if (time_reached(sleep_next)) {
+        gpio_put(sleep, 1);
+        sleep_ms(SLEEP_PULSE);
+        gpio_put(sleep, 0);
+        while (1);
+    }
 
     // release causes fade
     for (uint i = 0; i < keys.rows; i++) {
@@ -53,7 +60,7 @@ void GUI::process(int enc, uint64_t cpu0_time) {
 
     oled.clear();
     oled.set_cursor(0, y);
-    oled_printf("sleep countdown: %ds", sleep_ctr / 1000);
+    oled_printf("sleep countdown: %llds", absolute_time_diff_us(get_absolute_time(), sleep_next) / 1000000);
     y += 8;
     
     if (time_reached(cpu0_next)) {
