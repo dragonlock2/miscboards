@@ -1,11 +1,12 @@
 #include <cstdio>
 #include <pico/stdlib.h>
-#include <pico/multicore.h>
 #include <tusb.h>
 #include "gui.h"
 
 #define SLEEP_TIME  (30000) // ms
 #define SLEEP_PULSE (100) // ms (>50ms pulse => sleep)
+
+#define ROW_HEIGHT (8) // pixels
 
 GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep)
 :
@@ -16,19 +17,12 @@ GUI::GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sle
     gpio_put(sleep, 0);
 }
 
-void GUI::process(uint64_t cpu0_time, uint64_t cpu1_time) {
-    // receive encoder diff from cpu0 FIFO
-    int enc = 0;
-    while (multicore_fifo_rvalid()) {
-        enc += (int) multicore_fifo_pop_blocking();
-    }
-
+void GUI::process(int enc, uint64_t cpu0_time) {
     // sleep check
-    sleep_ctr = (usb.connected() || ble.connected() || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
+    bool usb_connected = usb.connected();
+    bool ble_connected = ble.connected();
+    sleep_ctr = (usb_connected || ble_connected || sleep_check(enc)) ? SLEEP_TIME : sleep_ctr - 1;
     gpio_put(sleep, !(sleep_ctr == 0 || sleep_ctr > SLEEP_PULSE));
-
-    // render GUI
-    frame_ctr++;
 
     // release causes fade
     for (uint i = 0; i < keys.rows; i++) {
@@ -58,40 +52,39 @@ void GUI::process(uint64_t cpu0_time, uint64_t cpu1_time) {
     
     if (frame_ctr % 100 == 0) {
         this->cpu0_time = cpu0_time;
-        this->cpu1_time = cpu1_time;
     }
 
     oled.set_cursor(0, y);
-    oled_printf("cpu0 %4lldus, cpu1 %4lldus", this->cpu0_time, this->cpu1_time);
-    y += 8;
+    oled_printf("cpu0: %4lldus", this->cpu0_time);
+    y += ROW_HEIGHT;
 
     oled.set_cursor(0, y);
     oled_printf("encoder ticks: %d", enc_ticks);
-    y += 8;
+    y += ROW_HEIGHT;
 
     oled.set_cursor(0, y);
-    if (usb.connected()) {
+    if (usb_connected && ble_connected) {
+        oled_printf("usb & ble connected :P");
+        y += ROW_HEIGHT;
+    } else if (usb_connected) {
         oled_printf("usb connected");
-        y += 8;
-    }
-
-    oled.set_cursor(0, y);
-    if (ble.connected()) {
+        y += ROW_HEIGHT;
+    } else if (ble_connected) {
         oled_printf("ble connected");
-        y += 8;
+        y += ROW_HEIGHT;
     }
 
     oled.set_cursor(0, y);
     if (ble.passkey(key)) {
         oled_printf("passkey: %ld", key);
-        y += 8;
+        y += ROW_HEIGHT;
     }
 
     oled.set_cursor(0, y);
-    if ((usb.connected() && (usb.led_status() & KEYBOARD_LED_CAPSLOCK)) ||
-        (ble.connected() && (ble.led_status() & KEYBOARD_LED_CAPSLOCK))) {
+    if ((usb_connected && (usb.led_status() & KEYBOARD_LED_CAPSLOCK)) ||
+        (ble_connected && (ble.led_status() & KEYBOARD_LED_CAPSLOCK))) {
         oled_printf("caps locked!");
-        y += 8;
+        y += ROW_HEIGHT;
     }
 }
 

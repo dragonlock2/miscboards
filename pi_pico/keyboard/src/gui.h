@@ -12,7 +12,7 @@ class GUI {
 public:
     GUI(kscan& keys, USB& usb, BLE& ble, ssd1306& oled, ws2812b& leds, uint sleep);
 
-    void process(uint64_t cpu0_time, uint64_t cpu1_time);
+    void process(int enc, uint64_t cpu0_time);
     void display(void);
 
 private:
@@ -30,7 +30,7 @@ private:
     // GUI state
     uint frame_ctr;
     int enc_ticks;
-    uint64_t cpu0_time, cpu1_time;
+    uint64_t cpu0_time;
 };
 
 #endif // GUI_H

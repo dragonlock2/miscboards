@@ -154,7 +154,7 @@ void __isr ssd1306::dma_complete(void) {
     for (uint i = 0; i < NUM_DMA_CHANNELS; i++) {
         if (dma_lut[i] && (dma_hw->ints0 & (1 << i))) {
             dma_hw->ints0 = (1 << i);
-            if (add_alarm_in_us(1000, reset_complete, (void*) i, true) < 0) {
+            if (add_alarm_in_us(1000, reset_complete, (void*) i, true) < 0) { // prevents weird scrolling
                 reset_complete(0, (void*) i);
             }
         }

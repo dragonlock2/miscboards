@@ -2,13 +2,13 @@
 
 // iOS uses 15ms for BLE
 // Windows is 2 volume counts per 5ms
-#define PRESS_TIME   (5) // compromise, will miss ticks in iOS
-#define RELEASE_TIME (5)
+#define PRESS_TIME   (5) // ms
+#define RELEASE_TIME (5) // ms
 
 macro::macro(kscan& keys, const uint8_t keymap[MAX_ROWS][MAX_COLS], const uint8_t keymodmap[MAX_ROWS][MAX_COLS], const uint8_t encmap[2],
     const uint16_t consumer_keymap[MAX_ROWS][MAX_COLS], const uint16_t consumer_encmap[2])
 :
-    keys(keys), tick_ctr(0), ticked(false), prev_keys({0}), consumer_ctr(0)
+    keys(keys), tick_end(get_absolute_time()), ticked(false), prev_keys({0}), consumer_end(get_absolute_time())
 {
     memcpy(this->keymap,          keymap,          sizeof(this->keymap));
     memcpy(this->keymodmap,       keymodmap,       sizeof(this->keymodmap));
@@ -22,18 +22,15 @@ void macro::get_report(int& ticks, hid_keyboard_report_t& kb, hid_mouse_report_t
     uint kb_idx = 0;
 
     // encoder overrides everything
-    if (tick_ctr == 0 && !ticked && ticks) {
-        tick_ctr = PRESS_TIME;
+    if (time_reached(tick_end) && !ticked && ticks) {
+        tick_end = make_timeout_time_ms(PRESS_TIME);
         ticked = true;
         tick_key = encmap[ticks < 0 ? 0 : 1];
         ckey = consumer_encmap[ticks < 0 ? 0 : 1];
         ticks += ticks < 0 ? 1 : -1;
-        
-    } else if (tick_ctr == 0 && ticked) {
-        tick_ctr = RELEASE_TIME;
+    } else if (time_reached(tick_end) && ticked) {
+        tick_end = make_timeout_time_ms(RELEASE_TIME);
         ticked = false;
-    } else if (tick_ctr) {
-        tick_ctr--;
     }
     if (ticked && tick_key != HID_KEY_NONE) {
         kb.keycode[kb_idx++] = tick_key;
@@ -55,13 +52,12 @@ void macro::get_report(int& ticks, hid_keyboard_report_t& kb, hid_mouse_report_t
     }
 
     // Windows doesn't like a held media key...
-    if (consumer_ctr) {
-        consumer_ctr--;
+    if (!time_reached(consumer_end)) {
         consumer = consumer_key;
     } else if (ckey != 0x0000) {
-        consumer_ctr = PRESS_TIME;
+        consumer_end = make_timeout_time_ms(PRESS_TIME);
         consumer_key = ckey;
-        consumer = ckey;
+        consumer     = ckey;
     }
 }
 

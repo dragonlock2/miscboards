@@ -21,13 +21,13 @@ private:
 
     kscan& keys;
 
-    uint     tick_ctr;
-    bool     ticked;
-    uint8_t  tick_key;
+    absolute_time_t tick_end;
+    bool            ticked;
+    uint8_t         tick_key;
 
-    bool     prev_keys[MAX_ROWS][MAX_COLS];
-    uint     consumer_ctr;
-    uint16_t consumer_key;
+    bool            prev_keys[MAX_ROWS][MAX_COLS];
+    absolute_time_t consumer_end;
+    uint16_t        consumer_key;
 };
 
 #endif // MACRO_H

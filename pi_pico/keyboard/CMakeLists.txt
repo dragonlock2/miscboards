@@ -36,13 +36,12 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     CYW43_LWIP=0
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror -Wno-unused-function) # update once https://github.com/raspberrypi/pico-sdk/issues/1282 fixed
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     pico_btstack_ble
     pico_btstack_cyw43
     pico_cyw43_arch_threadsafe_background
-    pico_multicore
     hardware_pio
     hardware_i2c
     tinyusb_device

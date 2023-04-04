@@ -197,7 +197,7 @@ bool BLE::connected(void) {
 }
 
 uint8_t BLE::led_status(void) {
-    return kb_status;
+    return kb_status; // TODO implement
 }
 
 bool BLE::passkey(uint32_t& key) {
