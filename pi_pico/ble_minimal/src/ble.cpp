@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <pico/cyw43_arch.h>
-#include <hardware/watchdog.h>
 #include "ble.h"
 
 namespace bt { // conflicts w/ TinyUSB
@@ -95,15 +94,18 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
             con_passkey = sm_event_numeric_comparison_request_get_passkey(packet);
             con_passkey_valid = true;
             sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
+            printf("numeric comparison: %ld\r\n", con_passkey);
             break;
 
         case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
             con_passkey = sm_event_passkey_display_number_get_passkey(packet);
             con_passkey_valid = true;
+            printf("passkey: %ld\r\n", con_passkey);
             break;
 
         case SM_EVENT_PAIRING_COMPLETE:
             con_passkey_valid = false;
+            printf("pairing complete\r\n");
             break;
 
         case HCI_EVENT_HIDS_META:
@@ -139,10 +141,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
 }
 
 /* BLE abstractions */
-BLE::BLE(void)
-:
-    started(false)
-{
+BLE::BLE(void) {
+    printf("Starting BLE...\r\n");
     lock = spin_lock_init(spin_lock_claim_unused(true));
     cyw43_arch_init();
 
@@ -174,17 +174,12 @@ BLE::BLE(void)
     sm_add_event_handler(&sm_event_callback_registration);
 
     hids_device_register_packet_handler(packet_handler);
+
+    hci_power_control(HCI_POWER_ON);
+    printf("Started BLE!\r\n");
 }
 
 void BLE::process(void) {
-    if (!started) {
-        if (hci_power_control(HCI_POWER_ON)) {
-            watchdog_reboot(0, SRAM_END, 10); // software reset from https://github.com/raspberrypi/pico-sdk/issues/453
-            while (1);
-        }
-        started = true;
-    }
-
     if (con_handle != HCI_CON_HANDLE_INVALID && att_server_can_send_packet_now(con_handle)) {
         hids_device_request_can_send_now_event(con_handle);
     }
