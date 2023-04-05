@@ -35,7 +35,8 @@ static void cpu0_thread(void) {
         hid_keyboard_report_t kb_report = {0};
         hid_mouse_report_t mouse_report = {0};
         uint16_t consumer_report = 0;
-        mac.get_report(ticks, kb_report, mouse_report, consumer_report);
+        bool consumer_txd = usb.consumer_transmitted() || ble.consumer_transmitted();
+        mac.get_report(ticks, consumer_txd, kb_report, mouse_report, consumer_report);
 
         usb.process();
         usb.set_report(kb_report, mouse_report, consumer_report);

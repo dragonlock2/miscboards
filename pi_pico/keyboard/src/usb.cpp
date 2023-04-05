@@ -98,6 +98,8 @@ static hid_mouse_report_t mouse_report;
 static uint16_t consumer_report;
 static uint8_t kb_status;
 
+static bool consumer_txd;
+
 void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_t len) {
     (void) instance;
     (void) len;
@@ -113,6 +115,7 @@ void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint16_
 
         case hid_report_id::CONSUMER:
             tud_hid_report(static_cast<uint8_t>(hid_report_id::CONSUMER), &consumer_report, sizeof(consumer_report));
+            consumer_txd = true;
             break;
 
         default:
@@ -169,6 +172,17 @@ void USB::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint1
 
 bool USB::connected(void) {
     return tud_mounted() && !tud_suspended();
+}
+
+bool USB::consumer_transmitted(void) {
+    // note doesn't guarantee last set report transmitted
+    bool tx = consumer_txd;
+    if (tx) {
+        uint32_t s = spin_lock_blocking(lock);
+        consumer_txd = false;
+        spin_unlock(lock, s);
+    }
+    return tx;
 }
 
 uint8_t USB::led_status(void) {

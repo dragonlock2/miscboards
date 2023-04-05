@@ -1,15 +1,14 @@
 #include "macro.h"
 
-// iOS uses 15ms for BLE
-// Windows is 2 volume counts per 5ms
-// BLE adds quite a bit of variance to timing, adjusting for that
-#define PRESS_TIME   (20) // ms
-#define RELEASE_TIME (20) // ms
+// report based system should be universal
+#define PRESS_COUNTS    (2) // reports
+#define RELEASE_COUNTS  (2) // reports
+#define CONSUMER_COUNTS (2) // reports
 
 macro::macro(kscan& keys, const uint8_t keymap[MAX_ROWS][MAX_COLS], const uint8_t keymodmap[MAX_ROWS][MAX_COLS], const uint8_t encmap[2],
     const uint16_t consumer_keymap[MAX_ROWS][MAX_COLS], const uint16_t consumer_encmap[2])
 :
-    keys(keys), tick_end(get_absolute_time()), ticked(false), prev_keys({0}), consumer_end(get_absolute_time())
+    keys(keys), tick_ctr(0), ticked(false), prev_keys({0}), consumer_ctr(0)
 {
     memcpy(this->keymap,          keymap,          sizeof(this->keymap));
     memcpy(this->keymodmap,       keymodmap,       sizeof(this->keymodmap));
@@ -18,19 +17,24 @@ macro::macro(kscan& keys, const uint8_t keymap[MAX_ROWS][MAX_COLS], const uint8_
     memcpy(this->consumer_encmap, consumer_encmap, sizeof(this->consumer_encmap));
 }
 
-void macro::get_report(int& ticks, hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
+void macro::get_report(int& ticks, bool consumer_txd, hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint16_t& consumer) {
     uint16_t ckey = 0x0000;
     uint kb_idx = 0;
 
+    if (consumer_txd) {
+        if (tick_ctr) { tick_ctr--; }
+        if (consumer_ctr) { consumer_ctr--; }
+    }
+
     // encoder overrides everything
-    if (time_reached(tick_end) && !ticked && ticks) {
-        tick_end = make_timeout_time_ms(PRESS_TIME);
+    if (tick_ctr == 0 && !ticked && ticks) {
+        tick_ctr = PRESS_COUNTS;
         ticked = true;
         tick_key = encmap[ticks < 0 ? 0 : 1];
         ckey = consumer_encmap[ticks < 0 ? 0 : 1];
         ticks += ticks < 0 ? 1 : -1;
-    } else if (time_reached(tick_end) && ticked) {
-        tick_end = make_timeout_time_ms(RELEASE_TIME);
+    } else if (tick_ctr == 0 && ticked) {
+        tick_ctr = RELEASE_COUNTS;
         ticked = false;
     }
     if (ticked && tick_key != HID_KEY_NONE) {
@@ -53,10 +57,10 @@ void macro::get_report(int& ticks, hid_keyboard_report_t& kb, hid_mouse_report_t
     }
 
     // Windows doesn't like a held media key...
-    if (!time_reached(consumer_end)) {
+    if (consumer_ctr) {
         consumer = consumer_key;
     } else if (ckey != 0x0000) {
-        consumer_end = make_timeout_time_ms(PRESS_TIME);
+        consumer_ctr = CONSUMER_COUNTS;
         consumer_key = ckey;
         consumer     = ckey;
     }

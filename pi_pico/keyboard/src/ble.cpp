@@ -45,6 +45,8 @@ static hid_mouse_report_t mouse_report;
 static uint16_t consumer_report;
 static uint8_t kb_status;
 
+static bool consumer_txd;
+
 static void send_report(void) {
     switch (current_id) {
         case hid_report_id::KEYBOARD:
@@ -66,6 +68,7 @@ static void send_report(void) {
         case hid_report_id::CONSUMER:
             att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_REPORT_05_VALUE_HANDLE,
                 reinterpret_cast<uint8_t*>(&consumer_report), sizeof(consumer_report));
+            consumer_txd = true;
             current_id = hid_report_id::KEYBOARD;
             break;
 
@@ -194,6 +197,17 @@ void BLE::set_report(hid_keyboard_report_t& kb, hid_mouse_report_t& mouse, uint1
 
 bool BLE::connected(void) {
     return con_handle != HCI_CON_HANDLE_INVALID;
+}
+
+bool BLE::consumer_transmitted(void) {
+    // note doesn't guarantee last set report transmitted
+    bool tx = consumer_txd;
+    if (tx) {
+        uint32_t s = spin_lock_blocking(lock);
+        consumer_txd = false;
+        spin_unlock(lock, s);
+    }
+    return tx;
 }
 
 uint8_t BLE::led_status(void) {

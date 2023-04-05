@@ -22,9 +22,11 @@ void GUI::process(int enc, uint64_t cpu0_time) {
     // gets called every 0.6ms to 8ms due to BLE latency
 
     // sleep check
+    uint32_t key;
     bool usb_connected = usb.connected();
     bool ble_connected = ble.connected();
-    if (usb_connected || ble_connected || sleep_check(enc)) {
+    bool ble_keyed     = ble.passkey(key);
+    if (usb_connected || ble_connected || ble_keyed || sleep_check(enc)) {
         sleep_next = make_timeout_time_ms(SLEEP_TIME);
     }
     if (time_reached(sleep_next)) {
@@ -55,7 +57,6 @@ void GUI::process(int enc, uint64_t cpu0_time) {
 
     // provide info
     enc_ticks += enc;
-    uint32_t key;
     uint y = 0;
 
     oled.clear();
@@ -89,7 +90,7 @@ void GUI::process(int enc, uint64_t cpu0_time) {
     }
 
     oled.set_cursor(0, y);
-    if (ble.passkey(key)) {
+    if (ble_keyed) {
         oled_printf("passkey: %ld", key);
         y += ROW_HEIGHT;
     }
