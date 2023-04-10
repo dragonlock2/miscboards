@@ -8,10 +8,10 @@
 #include "config.h"
 
 struct __packed ws2812b_color {
-    uint32_t pad : 8;
     uint32_t b   : 8;
     uint32_t r   : 8;
-    uint32_t g   : 8; // matches WS2812B protocol
+    uint32_t g   : 8;
+    uint32_t pad : 8; // not sure why moving pad fixes it...
 
     ws2812b_color(void) : b(0), r(0), g(0) {}
     ws2812b_color(uint8_t r, uint8_t g, uint8_t b) : b(b), r(r), g(g) {}
