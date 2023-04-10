@@ -29,6 +29,7 @@ pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/encoder.p
 pico_btstack_make_gatt_header(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src/keyboard.gatt)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    BOARD=0
     PICO_MAX_SHARED_IRQ_HANDLERS=16
     PICO_STACK_SIZE=4096
     PICO_USE_STACK_GUARDS=1

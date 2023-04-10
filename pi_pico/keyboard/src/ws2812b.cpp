@@ -8,9 +8,9 @@
 
 struct semaphore* ws2812b::dma_lut[NUM_DMA_CHANNELS];
 
-ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
+ws2812b::ws2812b(const kb_config& cfg)
 :
-    rows(rows), cols(cols), led_pins(led_pins)
+    rows(cfg.num_rows), cols(cfg.num_cols), led_pins(cfg.led.pins), reverse(cfg.led.col_reverse)
 {
     uint offsets[NUM_PIOS] = { PIO_INSTRUCTION_COUNT, PIO_INSTRUCTION_COUNT };
     for (uint i = 0; i < rows; i++) {
@@ -30,7 +30,7 @@ ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
         if (offsets[p] >= PIO_INSTRUCTION_COUNT) {
             offsets[p] = pio_add_program(pios[i], &ws2812b_program);
         }
-        ws2812b_program_init(pios[i], sms[i], offsets[p], LED_PINS[i]);
+        ws2812b_program_init(pios[i], sms[i], offsets[p], led_pins[i]);
 
         // setup DMA channel
         sem_init(&done[i], 1, 1);
@@ -45,11 +45,11 @@ ws2812b::ws2812b(uint rows, uint cols, const uint* led_pins)
 }
 
 ws2812b_color& ws2812b::operator() (uint row, uint col) {
-#if LED_COL_REVERSE
-    return pixels[row][cols - 1 - col];
-#else
-    return pixels[row][col];
-#endif
+    if (reverse) {
+        return pixels[row][cols - 1 - col];
+    } else {
+        return pixels[row][col];
+    }
 }
 
 void ws2812b::display(void) {

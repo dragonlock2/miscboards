@@ -3,11 +3,12 @@
 
 #include <hardware/pio.h>
 #include <pico/stdlib.h>
+#include "config.h"
 #include "encoder.pio.h"
 
 class encoder {
 public:
-    encoder(uint a, uint b, bool reverse);
+    encoder(const kb_config& cfg);
 
     operator int();
 

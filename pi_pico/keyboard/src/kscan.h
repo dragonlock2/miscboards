@@ -6,7 +6,7 @@
 
 class kscan {
 public:
-    kscan(uint rows, uint cols, const uint* row_pins, const uint* col_pins);
+    kscan(const kb_config& cfg);
     void scan(void);
     bool operator() (uint row, uint col);
 

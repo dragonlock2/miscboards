@@ -7,15 +7,15 @@
 #include "macro.h"
 #include "gui.h"
 
-static kscan   keys(NUM_ROWS, NUM_COLS, ROW_PINS, COL_PINS);
-static encoder enc(ENCODER_PIN_A, ENCODER_PIN_B, ENCODER_REVERSE);
+static kscan   keys(board_cfg);
+static encoder enc(board_cfg);
 static USB     usb;
 static BLE     ble;
-static macro   mac(keys, KEYMAP, KEYMODMAP, ENCMAP, CONSUMER_KEYMAP, CONSUMER_ENCMAP);
+static macro   mac(keys, board_cfg, board_map);
 
-static ssd1306 oled(OLED_HEIGHT, OLED_WIDTH, OLED_I2C, OLED_SDA, OLED_SCL, OLED_ADDR, OLED_FREQ);
-static ws2812b leds(NUM_ROWS, NUM_COLS, LED_PINS);
-static GUI     gui(keys, usb, ble, oled, leds, SLEEP_PIN);
+static ssd1306 oled(board_cfg);
+static ws2812b leds(board_cfg);
+static GUI     gui(keys, usb, ble, oled, leds, board_cfg.sleep);
 
 static void cpu0_thread(void) {
     uint64_t cpu0_time = 0;

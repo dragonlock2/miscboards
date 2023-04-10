@@ -19,7 +19,7 @@ struct __packed ws2812b_color {
 
 class ws2812b {
 public:
-    ws2812b(uint rows, uint cols, const uint* led_pins);
+    ws2812b(const kb_config& cfg);
     ws2812b_color& operator() (uint row, uint col);
     void display(void);
 
@@ -27,6 +27,7 @@ public:
     const uint cols;
 private:
     const uint* const led_pins;
+    const bool reverse;
     ws2812b_color pixels[MAX_ROWS][MAX_COLS]; // TODO double buffer if needed
     PIO pios[MAX_ROWS];
     uint sms[MAX_ROWS];

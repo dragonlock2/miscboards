@@ -9,7 +9,7 @@
 
 class ssd1306 {
 public:
-    ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr, uint freq);
+    ssd1306(const kb_config& cfg);
 
     void set_cursor(uint x, uint y);
     void draw_pixel(uint x, uint y, bool on);

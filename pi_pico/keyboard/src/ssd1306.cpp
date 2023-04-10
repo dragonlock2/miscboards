@@ -25,13 +25,13 @@ static const uint32_t FONT[128] = { // 4x6 font (including spaces) stored in low
 
 struct semaphore* ssd1306::dma_lut[NUM_DMA_CHANNELS];
 
-ssd1306::ssd1306(uint height, uint width, i2c_inst_t *i2c, uint sda, uint scl, uint8_t addr, uint freq)
+ssd1306::ssd1306(const kb_config& cfg)
 :
-    height(height), width(width), i2c(i2c), addr(addr), x(0), y(0)
+    height(cfg.oled.height), width(cfg.oled.width), i2c(cfg.oled.i2c), addr(cfg.oled.addr), x(0), y(0)
 {
-    i2c_init(i2c, freq);
-    gpio_set_function(sda, GPIO_FUNC_I2C);
-    gpio_set_function(scl, GPIO_FUNC_I2C);
+    i2c_init(i2c, cfg.oled.freq);
+    gpio_set_function(cfg.oled.sda, GPIO_FUNC_I2C);
+    gpio_set_function(cfg.oled.scl, GPIO_FUNC_I2C);
 
     send_command(0xAE); // display off
     send_command(0x00); // set lower column start address

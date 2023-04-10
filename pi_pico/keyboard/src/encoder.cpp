@@ -1,8 +1,8 @@
 #include "encoder.h"
 
-encoder::encoder(uint a, uint b, bool reverse)
+encoder::encoder(const kb_config& cfg)
 :
-    state(DETENT), reverse(reverse)
+    state(DETENT), reverse(cfg.enc.rev)
 {
     // find available PIO state machine
     int s;
@@ -16,7 +16,7 @@ encoder::encoder(uint a, uint b, bool reverse)
 
     // install/start program
     uint offset = pio_add_program(pio0, &encoder_program);
-    encoder_program_init(pio, sm, offset, a, b);
+    encoder_program_init(pio, sm, offset, cfg.enc.a, cfg.enc.b);
 }
 
 encoder::operator int() {

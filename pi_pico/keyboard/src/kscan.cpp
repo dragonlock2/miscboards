@@ -1,9 +1,9 @@
 #include <string.h>
 #include "kscan.h"
 
-kscan::kscan(uint rows, uint cols, const uint* row_pins, const uint* col_pins)
+kscan::kscan(const kb_config& cfg)
 :
-    rows(rows), cols(cols), row_pins(row_pins), col_pins(col_pins)
+    rows(cfg.num_rows), cols(cfg.num_cols), row_pins(cfg.row_pins), col_pins(cfg.col_pins)
 {
     // init all row pins to outputs
     for (uint i = 0; i < rows; i++) {
