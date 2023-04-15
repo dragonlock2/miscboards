@@ -1,7 +1,7 @@
 // inspired by https://github.com/bluekitchen/btstack/blob/master/example/hog_keyboard_demo.gatt
 
 PRIMARY_SERVICE, GAP_SERVICE
-CHARACTERISTIC, GAP_DEVICE_NAME, READ, "Matt's Keyboard"
+CHARACTERISTIC, GAP_DEVICE_NAME, READ, "Matt's Keyboard R"
 
 #import <battery_service.gatt>
 #import <device_information_service.gatt>

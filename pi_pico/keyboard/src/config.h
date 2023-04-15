@@ -76,7 +76,9 @@ struct kb_map {
 #endif
 
 #if BOARD == 0
-#include "configs/macropad.h"
+#include "configs/macropad_left.h"
+#elif BOARD == 1
+#include "configs/macropad_right.h"
 #else
 #error "select a board!"
 #endif

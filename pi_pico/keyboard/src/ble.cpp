@@ -27,7 +27,7 @@ static const uint8_t adv_data[] = {
     // Flags general discoverable, BR/EDR not supported
     0x02, BLUETOOTH_DATA_TYPE_FLAGS, 0x06,
     // Name
-    0x10, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'M', 'a', 't', 't', '\'', 's', ' ', 'K', 'e', 'y', 'b', 'o', 'a', 'r', 'd',
+    0x12, BLUETOOTH_DATA_TYPE_COMPLETE_LOCAL_NAME, 'M', 'a', 't', 't', '\'', 's', ' ', 'K', 'e', 'y', 'b', 'o', 'a', 'r', 'd', ' ', 'R',
     // 16-bit Service UUIDs
     0x03, BLUETOOTH_DATA_TYPE_COMPLETE_LIST_OF_16_BIT_SERVICE_CLASS_UUIDS, ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE & 0xff, ORG_BLUETOOTH_SERVICE_HUMAN_INTERFACE_DEVICE >> 8,
     // Appearance HID - Keyboard (Category 15, Sub-Category 1)
