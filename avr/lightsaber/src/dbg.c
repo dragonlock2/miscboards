@@ -1,28 +1,42 @@
 #include <stdio.h>
 #include <avr/io.h>
-#include <util/delay.h>
+#include <util/delay_basic.h>
 #include "dbg.h"
 
-#define BAUD_RATE (57600L)
+#if (F_CPU == 20000000L)
+#define BIT_TIME (55) // 115200bps
+#endif
+
+#define TX_PORT (PORTC)
+#define TX_PIN  (PIN3_bm)
 
 /* private helpers */
-static int uart_putc(char c, FILE *f) {
-    USART0.TXDATAL = c;
-    while (!(USART0.STATUS & USART_TXCIF_bm));
-    USART0.STATUS |= USART_TXCIF_bm;
+static int dbg_putc(char c, FILE *f) {
+    // start bit
+    TX_PORT.OUTCLR = TX_PIN;
+    _delay_loop_1(BIT_TIME);
+    // bits
+    for (int i = 0; i < 8; i++) {
+        if (c & 0x01) {
+            TX_PORT.OUTSET = TX_PIN;
+        } else {
+            TX_PORT.OUTCLR = TX_PIN;
+        }
+        c >>= 1;
+        _delay_loop_1(BIT_TIME);
+    }
+    // stop bit
+    TX_PORT.OUTSET = TX_PIN;
+    _delay_loop_1(BIT_TIME);
     return 0;
 }
 
 /* public functions */
 void dbg_init() {
-    USART0.BAUD  = 4L * F_CPU / BAUD_RATE; // 64*fclk_per/16/fbaud
-    USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc |
-                   USART_PMODE_DISABLED_gc |
-                   USART_SBMODE_1BIT_gc |
-                   USART_CHSIZE_8BIT_gc; // 8N1 UART
-    PORTB.DIRSET = PIN2_bm; // TX (PB2) as output
-    USART0.CTRLB = USART_TXEN_bm | USART_RXMODE_NORMAL_gc; // enable TX
+    // TX (PC3)
+    TX_PORT.DIRSET = TX_PIN;
+    TX_PORT.OUTSET = TX_PIN;
 
-    static FILE uart_stdout = FDEV_SETUP_STREAM(uart_putc, NULL, _FDEV_SETUP_WRITE);
+    static FILE uart_stdout = FDEV_SETUP_STREAM(dbg_putc, NULL, _FDEV_SETUP_WRITE);
     stdout = &uart_stdout;
 }

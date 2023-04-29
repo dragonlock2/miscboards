@@ -9,14 +9,13 @@
 #include "audio.h"
 
 /* private data */
-typedef struct {
+struct {
     uint16_t tick_ctr;
     volatile bool tick;
 
     // TODO cleanup
     bool on;
-} main_data_S;
-static main_data_S main_data;
+} main_data;
 
 /* private helpers */
 static void run50Hz() {
@@ -50,13 +49,13 @@ static void runPWMFreq() {
 
 /* public functions */
 int main(void) {
-    // HW init
+    // init
     cli();
     clk_init();
     dbg_init();
-    btn_init();
-    anim_init();
-    audio_init(runPWMFreq);
+    // btn_init();
+    // anim_init();
+    // audio_init(runPWMFreq);
     sei();
     printf("booted!\r\n");
 

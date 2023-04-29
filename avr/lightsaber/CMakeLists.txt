@@ -9,8 +9,8 @@ set(CMAKE_ASM_COMPILER avr-gcc)
 # project-specific settings
 project(lightsaber)
 
-set(MCU   attiny817)
-set(PROG  xplainedmini_updi)
+set(MCU   attiny1616)
+set(PROG  snap_updi)
 set(F_CPU 20000000L)
 
 include_directories(
@@ -28,6 +28,7 @@ add_compile_options(
     -std=gnu18
     -Wall
     -Werror
+    -Wno-error=unused-function # TODO remove
     -O2
     -g
     -funsigned-char
