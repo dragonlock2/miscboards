@@ -3,6 +3,7 @@
 #include <util/delay_basic.h>
 #include "dbg.h"
 
+/* private defines */
 #if (F_CPU == 20000000L)
 #define BIT_TIME (55) // 115200bps
 #endif

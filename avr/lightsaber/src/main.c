@@ -49,17 +49,15 @@ static void runPWMFreq() {
 
 /* public functions */
 int main(void) {
-    // init
     cli();
     clk_init();
     dbg_init();
-    // btn_init();
+    btn_init();
     // anim_init();
     // audio_init(runPWMFreq);
     sei();
     printf("booted!\r\n");
 
-    // loop
     while (1) {
         while (!main_data.tick);
         run50Hz();

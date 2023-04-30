@@ -1,25 +1,35 @@
 #include <avr/io.h>
 #include "btn.h"
 
+/* private defines */
+#define BTN_PORT (PORTA)
+#define BTN_PIN  (PIN5_bm)
+#define BTN_CTRL (PORTA.PIN5CTRL)
+
 /* private data */
-typedef struct {
+struct {
     bool prev;
     bool rising;
-} btn_data_S;
-static btn_data_S btn_data;
+    bool falling;
+} btn_data;
 
 /* public functions */
 void btn_init() {
-    PORTC.DIRCLR = PIN5_bm;
-    PORTC.PIN5CTRL = 0x88; // INVEN=1, PULLUPEN=1
+    BTN_PORT.DIRCLR = BTN_PIN;
+    BTN_CTRL = 0x88; // INVEN=1, PULLUPEN=1
 }
 
 void btn_run50Hz() {
-    bool curr = PORTC.IN & PIN5_bm;
-    btn_data.rising = curr & !btn_data.prev;
-    btn_data.prev = curr;
+    bool curr = BTN_PORT.IN & BTN_PIN;
+    btn_data.rising  = curr  && !btn_data.prev;
+    btn_data.falling = !curr && btn_data.prev;
+    btn_data.prev    = curr;
 }
 
 bool btn_rising() {
     return btn_data.rising;
+}
+
+bool btn_falling() {
+    return btn_data.falling;
 }

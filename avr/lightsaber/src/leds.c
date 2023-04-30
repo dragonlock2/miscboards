@@ -5,14 +5,15 @@
 #include "leds.h"
 
 /* private defines */
-#define LED_MASK (PIN1_bm | PIN2_bm)
+#define LED_PORT (PORTC)
+#define LED_MASK (PIN0_bm | PIN1_bm)
 
 /* private helpers */
 static inline void leds_write_bit(bool b) {
     cli(); // high pulse needs precise timing
-    PORTC.OUTSET = LED_MASK;
+    LED_PORT.OUTSET = LED_MASK;
     _delay_loop_1(b ? 4 : 1);
-    PORTC.OUTCLR = LED_MASK;
+    LED_PORT.OUTCLR = LED_MASK;
     sei(); // low pulse just needs to be <50us (interruptible)
     if (!b) { asm volatile ("nop"); } // adjust delay for loop overhead
 }
@@ -26,9 +27,9 @@ static inline void leds_write_byte(uint8_t b) {
 
 /* public functions */
 void leds_init() {
-    /* top (PC1), bot (PC2) */
-    PORTC.DIRSET = LED_MASK;
-    PORTC.OUTCLR = LED_MASK;
+    /* top (PC1), bot (PC0) */
+    LED_PORT.DIRSET = LED_MASK;
+    LED_PORT.OUTCLR = LED_MASK;
 }
 
 void leds_write(uint8_t r, uint8_t g, uint8_t b) {
