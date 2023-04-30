@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ANIM_STRIP_LEN (14)
+#define ANIM_STRIP_LEN (125)
 
 typedef enum {
     ANIM_TYPE_OFF,

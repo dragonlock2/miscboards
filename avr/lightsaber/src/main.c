@@ -7,6 +7,7 @@
 #include "btn.h"
 #include "anim.h"
 #include "audio.h"
+#include "pwr.h"
 
 /* private data */
 struct {
@@ -33,12 +34,6 @@ static void run50Hz() {
     }
 }
 
-static void clk_init() {
-    // divider = 1 => 20MHz
-    CCP = CCP_IOREG_gc;
-    CLKCTRL.MCLKCTRLB = 0x00;
-}
-
 static void runPWMFreq() {
     main_data.tick_ctr++;
     if (main_data.tick_ctr == (PWM_FREQ / 50)) {
@@ -49,12 +44,16 @@ static void runPWMFreq() {
 
 /* public functions */
 int main(void) {
+    // divider = 1 => 20MHz
+    CCP = CCP_IOREG_gc;
+    CLKCTRL.MCLKCTRLB = 0x00;
+
     cli();
-    clk_init();
     dbg_init();
     btn_init();
-    // anim_init();
+    anim_init();
     // audio_init(runPWMFreq);
+    pwr_init();
     sei();
     printf("booted!\r\n");
 
