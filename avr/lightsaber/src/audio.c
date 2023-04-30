@@ -132,5 +132,5 @@ void audio_init(audio_ticker_F ticker) {
     
     // WO2 => PB5
     PORTB.DIRSET  = PIN5_bm;
-    PORTMUX_CTRLC = PORTMUX_TCA02_bm;
+    PORTMUX.CTRLC = PORTMUX_TCA02_bm;
 }

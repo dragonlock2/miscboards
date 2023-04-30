@@ -3,11 +3,11 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include "dbg.h"
-#include "leds.h"
 #include "btn.h"
 #include "anim.h"
 #include "audio.h"
 #include "pwr.h"
+#include "imu.h"
 
 /* private data */
 struct {
@@ -49,11 +49,12 @@ int main(void) {
     CLKCTRL.MCLKCTRLB = 0x00;
 
     cli();
+    pwr_init();
     dbg_init();
     btn_init();
     anim_init();
+    imu_init();
     // audio_init(runPWMFreq);
-    pwr_init();
     sei();
     printf("booted!\r\n");
 
