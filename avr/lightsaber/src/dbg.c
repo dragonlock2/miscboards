@@ -34,7 +34,6 @@ static int dbg_putc(char c, FILE *f) {
 
 /* public functions */
 void dbg_init() {
-    // TX (PC3)
     TX_PORT.DIRSET = TX_PIN;
     TX_PORT.OUTSET = TX_PIN;
 

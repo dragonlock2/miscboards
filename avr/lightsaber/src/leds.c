@@ -27,7 +27,6 @@ static inline void leds_write_byte(uint8_t b) {
 
 /* public functions */
 void leds_init() {
-    /* top (PC1), bot (PC0) */
     LED_PORT.DIRSET = LED_MASK;
     LED_PORT.OUTCLR = LED_MASK;
 }

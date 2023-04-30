@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include <util/delay.h>
 #include "pwr.h"
 
 /* private defines */
@@ -9,4 +10,5 @@
 void pwr_init() {
     PWR_PORT.DIRSET = PWR_PIN;
     PWR_PORT.OUTSET = PWR_PIN;
+    _delay_ms(10);
 }

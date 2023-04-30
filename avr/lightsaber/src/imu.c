@@ -4,6 +4,9 @@
 #include <util/delay.h>
 #include "imu.h"
 
+/* private defines */
+#define LSM9DS1_ADDR (0x6b)
+
 /* private helpers */
 static bool i2c_write(uint8_t addr, const uint8_t *data, size_t len) {
     bool ret = false;
@@ -54,6 +57,18 @@ static bool i2c_read(uint8_t addr, uint8_t *data, size_t len) {
     return true;
 }
 
+static inline void lsm9ds1_write_reg(uint8_t reg, uint8_t data) {
+    uint8_t buffer[2] = { reg, data };
+    i2c_write(LSM9DS1_ADDR, buffer, 2);
+}
+
+static inline uint8_t lsm9ds1_read_reg(uint8_t reg) {
+    uint8_t data = reg;
+    i2c_write(LSM9DS1_ADDR, &data, 1);
+    i2c_read(LSM9DS1_ADDR, &data, 1);
+    return data;
+}
+
 /* public functions */
 void imu_init() {
     PORTB.DIRSET = PIN0_bm | PIN1_bm;
@@ -62,7 +77,15 @@ void imu_init() {
     TWI0.MCTRLA  = TWI_TIMEOUT_DISABLED_gc | TWI_ENABLE_bm;
     TWI0.MCTRLB  = TWI_FLUSH_bm;
     TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;
-    _delay_ms(1);
+    _delay_ms(10);
 
-    // TODO lsm9ds1 setup
+    lsm9ds1_write_reg(0x1F, 0b00111000); // enable accel XYZ
+    lsm9ds1_write_reg(0x20, 0b10100000); // accel 476Hz, 2g range
+    lsm9ds1_write_reg(0x21, 0b11000101); // ODR/9 filter
+}
+
+void imu_read(imu_data_S *data) {
+    uint8_t reg = 0x28;
+    i2c_write(LSM9DS1_ADDR, &reg, 1);
+    i2c_read(LSM9DS1_ADDR, (uint8_t*) data, 6);
 }

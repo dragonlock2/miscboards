@@ -58,6 +58,14 @@ int main(void) {
     sei();
     printf("booted!\r\n");
 
+    // TODO remove
+    while (1) {
+        imu_data_S a;
+        imu_read(&a);
+        printf("%d %d %d\r\n", a.x, a.y, a.z);
+        _delay_ms(20);
+    }
+
     while (1) {
         while (!main_data.tick);
         run50Hz();
