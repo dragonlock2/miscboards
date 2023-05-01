@@ -124,7 +124,7 @@ void audio_init(audio_ticker_F ticker) {
     // install callback
     audio_data.ticker = ticker;
 
-    // setup TCA0
+    // setup TCA0 for WO2
     TCA0.SINGLE.CTRLA   = TCA_SINGLE_CLKSEL_DIV2_gc | TCA_SINGLE_ENABLE_bm;
     TCA0.SINGLE.CTRLB   = TCA_SINGLE_WGMODE_SINGLESLOPE_gc | TCA_SINGLE_CMP2EN_bm;
     TCA0.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;

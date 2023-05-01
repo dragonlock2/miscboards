@@ -1,6 +1,7 @@
 import jabi
 import sys
 import time
+import json
 import wave
 import samplerate
 import numpy as np
@@ -148,6 +149,11 @@ struct header {
 Each font_addr is an address pointing to the following struct.
 
 struct font {
+    uint8_t  r;
+    uint8_t  g;
+    uint8_t  b;
+    uint8_t  fast : 4; // multiplier for speed up
+    uint8_t  slow : 4; // divider to slow down
     uint32_t boot;
     uint32_t hum;
     uint32_t off;
@@ -173,18 +179,18 @@ class LightFS:
             self.fs = self._get(hdr, 0, 4)
             self.fonts = []
             while (f := self._get(hdr, 4+len(self.fonts)*4, 4)) != 0xFFFFFFFF:
-                font = self.flash.read(f, 96)
+                font = self.flash.read(f, 100)
                 d = {
-                    'boot': [self._get(font, 0,  4)],
-                    'hum' : [self._get(font, 4,  4)],
-                    'off' : [self._get(font, 8,  4)],
-                    'on'  : [self._get(font, 12, 4)],
+                    'boot': [self._get(font, 4,  4)],
+                    'hum' : [self._get(font, 8,  4)],
+                    'off' : [self._get(font, 12, 4)],
+                    'on'  : [self._get(font, 16, 4)],
                     'swing' : [],
                     'clash' : [],
                 }
-                while (a := self._get(font, 16+len(d['swing'])*4, 4)) != 0xFFFFFFFF:
+                while (a := self._get(font, 20+len(d['swing'])*4, 4)) != 0xFFFFFFFF:
                     d['swing'].append(a)
-                while (a := self._get(font, 56+len(d['clash'])*4, 4)) != 0xFFFFFFFF:
+                while (a := self._get(font, 60+len(d['clash'])*4, 4)) != 0xFFFFFFFF:
                     d['clash'].append(a)
                 self.fonts.append(d)
 
@@ -194,7 +200,13 @@ class LightFS:
         fonts = []
         for p in src.iterdir():
             if p.is_dir():
+                cfg = json.load(open(p / 'config.json'))
                 fonts.append({
+                    'r'    : cfg['r'],
+                    'g'    : cfg['g'],
+                    'b'    : cfg['b'],
+                    'fast' : cfg['fast'],
+                    'slow' : cfg['slow'],
                     'boot' : self._resample(p / 'boot.wav'),
                     'hum'  : self._resample(p / 'hum.wav'),
                     'off'  : self._resample(p / 'off.wav'),
@@ -206,28 +218,34 @@ class LightFS:
         # linker
         self.mem = []
         hdr_addr = self._alloc(36)
-        self._set(hdr_addr, self.fs.to_bytes(4, 'big'))
+        self._set(hdr_addr+0, self.fs.to_bytes(4, 'big'))
         for i, f in enumerate(fonts):
             f['swing'] = f['swing'][:10]
             f['clash'] = f['clash'][:10]
-            font_addr = self._alloc(96)
+            font_addr = self._alloc(100)
+
             self._set(hdr_addr+4+i*4, font_addr.to_bytes(4, 'big'))
+
+            self._set(font_addr+0, f['r'].to_bytes(1, 'big'))
+            self._set(font_addr+1, f['g'].to_bytes(1, 'big'))
+            self._set(font_addr+2, f['b'].to_bytes(1, 'big'))
+            self._set(font_addr+3, (f['fast'] | (f['slow'] << 4)).to_bytes(1, 'big'))
 
             for j, t in enumerate(['boot', 'hum', 'off', 'on']):
                 a = self._alloc(4+len(f[t]))
-                self._set(font_addr+j*4, a.to_bytes(4, 'big'))
+                self._set(font_addr+4+j*4, a.to_bytes(4, 'big'))
                 self._set(a, len(f[t]).to_bytes(4, 'big'))
                 self._set(a+4, f[t])
 
             for j, d in enumerate(f['swing']):
                 a = self._alloc(4+len(d))
-                self._set(font_addr+16+j*4, a.to_bytes(4, 'big'))
+                self._set(font_addr+20+j*4, a.to_bytes(4, 'big'))
                 self._set(a, len(d).to_bytes(4, 'big'))
                 self._set(a+4, d)
 
             for j, d in enumerate(f['clash']):
                 a = self._alloc(4+len(d))
-                self._set(font_addr+56+j*4, a.to_bytes(4, 'big'))
+                self._set(font_addr+60+j*4, a.to_bytes(4, 'big'))
                 self._set(a, len(d).to_bytes(4, 'big'))
                 self._set(a+4, d)
 
