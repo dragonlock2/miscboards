@@ -54,7 +54,7 @@ int main(void) {
     btn_init();
     anim_init();
     imu_init();
-    // audio_init(runPWMFreq);
+    audio_init(runPWMFreq);
     sei();
     printf("booted!\r\n");
 

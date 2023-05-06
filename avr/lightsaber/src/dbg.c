@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay_basic.h>
 #include "dbg.h"
 
@@ -13,6 +14,7 @@
 
 /* private helpers */
 static int dbg_putc(char c, FILE *f) {
+    cli();
     // start bit
     TX_PORT.OUTCLR = TX_PIN;
     _delay_loop_1(BIT_TIME);
@@ -29,6 +31,7 @@ static int dbg_putc(char c, FILE *f) {
     // stop bit
     TX_PORT.OUTSET = TX_PIN;
     _delay_loop_1(BIT_TIME);
+    sei();
     return 0;
 }
 

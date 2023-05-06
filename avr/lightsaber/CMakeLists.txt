@@ -28,7 +28,6 @@ add_compile_options(
     -std=gnu18
     -Wall
     -Werror
-    -Wno-error=unused-function # TODO remove
     -O2
     -g
     -funsigned-char
