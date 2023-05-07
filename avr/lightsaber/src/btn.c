@@ -16,7 +16,7 @@ struct {
 /* public functions */
 void btn_init() {
     BTN_PORT.DIRCLR = BTN_PIN;
-    BTN_CTRL = 0x88; // INVEN=1, PULLUPEN=1
+    BTN_CTRL = PORT_PULLUPEN_bm | PORT_INVEN_bm;
 }
 
 void btn_run50Hz() {
