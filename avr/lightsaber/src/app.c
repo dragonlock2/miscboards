@@ -16,16 +16,16 @@ static struct {
 } app_data;
 
 /* private helpers */
-static void app_sleep() {
+static inline void app_sleep() {
     font_sleep();
-    btn_sleep();
     pwr_sleep();
+    btn_sleep();
 
+    // draws ~0.6uA in sleep
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_mode();
 
     pwr_wake();
-    btn_wake();
     font_wake();
     imu_wake();
 }
@@ -50,15 +50,12 @@ int main() {
     sei();
     printf("booted!\r\n");
 
-    // TODO try sleeping and measure current, then wake and make sure everything works
-    app_sleep();
-    printf("hello!\r\n");
-
     while (1) {
         while (!app_data.tick);
 
         btn_run();
         anim_step();
+        // TODO full app
 
         app_data.tick = false;
     }

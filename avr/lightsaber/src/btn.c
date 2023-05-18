@@ -1,10 +1,13 @@
+#include <stdio.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include "btn.h"
 
 /* private defines */
 #define BTN_PORT (PORTA)
 #define BTN_PIN  (PIN5_bm)
 #define BTN_CTRL (PORTA.PIN5CTRL)
+#define BTN_VECT PORTA_PORT_vect
 
 #define BTN_HOLD (150) // ~3s @ 50Hz
 
@@ -15,6 +18,11 @@ static struct {
     uint16_t hold_ctr;
 } btn_data;
 
+/* private helpers */
+ISR(BTN_VECT) {
+    BTN_CTRL &= ~PORT_ISC_gm;
+}
+
 /* public functions */
 void btn_init() {
     BTN_PORT.DIRCLR = BTN_PIN;
@@ -23,10 +31,6 @@ void btn_init() {
 
 void btn_sleep() {
     BTN_CTRL |= PORT_ISC_LEVEL_gc;
-}
-
-void btn_wake() {
-    BTN_CTRL &= ~PORT_ISC_gm;
 }
 
 void btn_run() {

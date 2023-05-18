@@ -5,7 +5,6 @@
 
 void btn_init();
 void btn_sleep();
-void btn_wake();
 void btn_run();
 
 bool btn_pressed();
