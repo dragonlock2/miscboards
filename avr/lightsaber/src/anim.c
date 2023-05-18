@@ -1,63 +1,75 @@
-#include "anims/off.h"
+#include "anims/solid.h"
 #include "anims/extend.h"
 #include "leds.h"
 #include "anim.h"
 
 /* private defines */
-typedef void (*anim_reset_F)(void *data, uint8_t r, uint8_t g, uint8_t b, uint8_t len, uint8_t upscale);
-typedef void (*anim_step_F)(void *data);
-typedef void (*anim_get_F)(void *data, uint8_t idx, uint8_t *r, uint8_t *g, uint8_t *b);
+typedef void (*anim_reset_t)(void *data, uint8_t r, uint8_t g, uint8_t b, uint8_t upscale);
+typedef void (*anim_step_t)(void *data);
+typedef void (*anim_get_t)(void *data, uint8_t idx, uint8_t *r, uint8_t *g, uint8_t *b);
+typedef bool (*anim_done_t)(void *data);
 
 typedef struct {
-    anim_reset_F reset;
-    anim_step_F  step;
-    anim_get_F   get;
-} anim_cfg_S;
+    anim_reset_t reset;
+    anim_step_t  step;
+    anim_get_t   get;
+    anim_done_t  done;
+} anim_cfg_t;
 
-const anim_cfg_S anim_cfgs[] = {
-    [ANIM_TYPE_OFF] = {
-        .reset = (anim_reset_F) off_reset,
-        .step = (anim_step_F) off_step,
-        .get = (anim_get_F) off_get,
+static const anim_cfg_t anim_cfgs[] = {
+    [ANIM_TYPE_SOLID] = {
+        .reset = solid_reset,
+        .step  = solid_step,
+        .get   = solid_get,
+        .done  = solid_done,
     },
     [ANIM_TYPE_EXTEND] = {
-        .reset = (anim_reset_F) extend_reset,
-        .step = (anim_step_F) extend_step,
-        .get = (anim_get_F) extend_get,
+        .reset = extend_reset,
+        .step  = extend_step,
+        .get   = extend_get,
+        .done  = extend_done,
     },
     [ANIM_TYPE_RETRACT] = {
-        .reset = (anim_reset_F) extend_reset,
-        .step = (anim_step_F) extend_step,
-        .get = (anim_get_F) retract_get,
-    }
+        .reset = extend_reset,
+        .step  = extend_step,
+        .get   = retract_get,
+        .done  = extend_done,
+    },
 };
 
 /* private data */
-typedef struct {
-    anim_type_E type;
+static struct {
+    anim_type_t type;
+    uint8_t speedup;
     union {
-        off_data_S off;
-        extend_data_S extend;
+        solid_data_t  solid;
+        extend_data_t extend;
     } data;
-} anim_data_S;
-static anim_data_S anim_data;
+} anim_data;
 
 /* public functions */
 void anim_init() {
     leds_init();
-    anim_set(ANIM_TYPE_OFF, 0, 0, 0, 0);
+    anim_set(ANIM_TYPE_SOLID, 0, 0, 0, 1, 1);
 }
 
-void anim_set(anim_type_E type, uint8_t r, uint8_t g, uint8_t b, uint8_t upscale) {
+void anim_set(anim_type_t type, uint8_t r, uint8_t g, uint8_t b, uint8_t upscale, uint8_t speedup) {
     anim_data.type = type;
-    anim_cfgs[type].reset(&anim_data.data, r, g, b, ANIM_STRIP_LEN, upscale);
+    anim_data.speedup = speedup;
+    anim_cfgs[type].reset(&anim_data.data, r, g, b, upscale);
 }
 
 void anim_step() {
-    uint8_t i, r, g, b;
-    for (i = 0; i < ANIM_STRIP_LEN; i++) {
+    uint8_t r, g, b;
+    for (uint8_t i = 0; i < ANIM_STRIP_LEN; i++) {
         anim_cfgs[anim_data.type].get(&anim_data.data, i, &r, &g, &b);
         leds_write(r, g, b);
     }
-    anim_cfgs[anim_data.type].step(&anim_data.data);
+    for (uint8_t i = 0; i < anim_data.speedup; i++) {
+        anim_cfgs[anim_data.type].step(&anim_data.data);
+    }
+}
+
+bool anim_done() {
+    return anim_cfgs[anim_data.type].done(&anim_data.data);
 }

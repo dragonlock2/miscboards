@@ -4,8 +4,12 @@
 #include <stdbool.h>
 
 void btn_init();
-void btn_run50Hz();
-bool btn_rising();
-bool btn_falling();
+void btn_sleep();
+void btn_wake();
+void btn_run();
+
+bool btn_pressed();
+bool btn_hold();
+bool btn_short_pressed();
 
 #endif // BTN_H

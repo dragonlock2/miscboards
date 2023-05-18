@@ -8,12 +8,12 @@
 
 #define VBAT_PORT (PORTA)
 #define VBAT_PIN  (PIN7_bm)
+#define VBAT_CTRL (PORTA.PIN7CTRL)
 #define VBAT_CHAN (ADC_MUXPOS_AIN7_gc)
 
 /* public functions */
 void pwr_init() {
     PWR_PORT.DIRSET = PWR_PIN;
-    PWR_PORT.OUTSET = PWR_PIN;
 
     VREF.CTRLA    = VREF_ADC0REFSEL_2V5_gc;
     ADC0.CTRLB    = ADC_SAMPNUM_ACC1_gc;
@@ -25,6 +25,17 @@ void pwr_init() {
     ADC0.CALIB    = ADC_DUTYCYC_DUTY25_gc;
     ADC0.CTRLA    = ADC_ENABLE_bm;
 
+    pwr_wake();
+}
+
+void pwr_sleep() {
+    PWR_PORT.OUTCLR = PWR_PIN;
+    VBAT_CTRL = PORT_PULLUPEN_bm;
+}
+
+void pwr_wake() {
+    VBAT_CTRL = 0x00;
+    PWR_PORT.OUTSET = PWR_PIN;
     _delay_ms(10);
 }
 

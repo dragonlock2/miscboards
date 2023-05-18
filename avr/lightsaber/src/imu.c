@@ -78,7 +78,10 @@ void imu_init() {
     TWI0.MCTRLB  = TWI_FLUSH_bm;
     TWI0.MSTATUS = TWI_BUSSTATE_IDLE_gc;
     _delay_ms(10);
+    imu_wake();
+}
 
+void imu_wake() {
     lsm9ds1_write_reg(0x1F, 0b00111000); // enable accel XYZ
     lsm9ds1_write_reg(0x20, 0b10100000); // accel 476Hz, 2g range
     lsm9ds1_write_reg(0x21, 0b11000101); // ODR/9 filter

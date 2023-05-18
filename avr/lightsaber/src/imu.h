@@ -8,6 +8,7 @@ typedef struct {
 } imu_data_S;
 
 void imu_init();
+void imu_wake();
 void imu_read(imu_data_S *data);
 
 #endif // IMU_H

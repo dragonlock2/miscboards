@@ -6,30 +6,44 @@
 #define BTN_PIN  (PIN5_bm)
 #define BTN_CTRL (PORTA.PIN5CTRL)
 
+#define BTN_HOLD (150) // ~3s @ 50Hz
+
 /* private data */
-struct {
-    bool prev;
-    bool rising;
-    bool falling;
+static struct {
+    bool     prev;
+    bool     short_press;
+    uint16_t hold_ctr;
 } btn_data;
 
 /* public functions */
 void btn_init() {
     BTN_PORT.DIRCLR = BTN_PIN;
-    BTN_CTRL = PORT_PULLUPEN_bm | PORT_INVEN_bm;
+    BTN_CTRL = PORT_PULLUPEN_bm;
 }
 
-void btn_run50Hz() {
-    bool curr = BTN_PORT.IN & BTN_PIN;
-    btn_data.rising  = curr  && !btn_data.prev;
-    btn_data.falling = !curr && btn_data.prev;
-    btn_data.prev    = curr;
+void btn_sleep() {
+    BTN_CTRL |= PORT_ISC_LEVEL_gc;
 }
 
-bool btn_rising() {
-    return btn_data.rising;
+void btn_wake() {
+    BTN_CTRL &= ~PORT_ISC_gm;
 }
 
-bool btn_falling() {
-    return btn_data.falling;
+void btn_run() {
+    bool curr = !(BTN_PORT.IN & BTN_PIN);
+    btn_data.short_press = btn_data.prev && !curr && (btn_data.hold_ctr < BTN_HOLD);
+    btn_data.hold_ctr = curr ? btn_data.hold_ctr + 1 : 0;
+    btn_data.prev = curr;
+}
+
+bool btn_pressed() {
+    return btn_data.prev;
+}
+
+bool btn_hold() {
+    return btn_data.hold_ctr >= BTN_HOLD;
+}
+
+bool btn_short_pressed() {
+    return btn_data.short_press;
 }
