@@ -50,9 +50,11 @@ static struct {
     uint32_t swing[10];
     uint32_t clash[10];
 
-    // TODO update
     bool new;
+    bool chain_hum;
     uint32_t addr;
+
+    bool done;
     uint32_t len;
 } font_data;
 
@@ -114,22 +116,29 @@ static inline void audio_disable() {
 ISR(TCA0_OVF_vect) {
     TCA0.SINGLE.INTFLAGS = 0x01; // clear OVF
 
-    // TODO add loop support
+    uint16_t duty = PWM_REST;
     if (font_data.new) {
-        TCA0.SINGLE.CMP1BUF = PWM_REST;
         audio_enable();
         flash_end_read();
         flash_start_read(font_data.addr);
-        font_data.len = flash_read_word();
-        font_data.new = false;
+        font_data.len  = flash_read_word();
+        font_data.new  = false;
+        font_data.done = false;
     } else if (font_data.len) {
-        TCA0.SINGLE.CMP1BUF = PWM_LUT[spi_read()];
         font_data.len--;
+        duty = PWM_LUT[spi_read()];
+    } else if (font_data.chain_hum) {
+        flash_end_read();
+        flash_start_read(font_data.hum);
+        font_data.len  = flash_read_word();
+        font_data.done = true;
+        duty = PWM_LUT[spi_read_blocking()];
     } else {
-        TCA0.SINGLE.CMP1BUF = PWM_REST;
         audio_disable();
         flash_end_read();
+        font_data.done = true;
     }
+    TCA0.SINGLE.CMP1BUF = duty;
 
     font_data.ticker_ctr++;
     if (font_data.ticker_ctr >= font_data.ticker_per) {
@@ -161,11 +170,11 @@ void font_init(void (*callback)(), uint16_t freq) {
     font_data.ticker     = callback;
     font_data.ticker_ctr = 0;
     font_data.ticker_per = PWM_FREQ / freq;
+    srand(69);
     font_wake();
 }
 
 void font_sleep() {
-    while (font_playing());
     TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
     PORTA.DIRCLR = PIN1_bm | PIN3_bm;
     PORTB.DIRCLR = PIN4_bm;
@@ -232,10 +241,40 @@ uint8_t font_upscale() { return font_data.slow; }
 uint8_t font_speedup() { return font_data.fast; }
 
 void font_play(font_type_t type) {
-    // TODO also need LUT for next audio
+    switch (type) {
+        case FONT_TYPE_BOOT:
+            font_data.addr      = font_data.boot;
+            font_data.chain_hum = false;
+            break;
+
+        case FONT_TYPE_OFF:
+            font_data.addr      = font_data.off;
+            font_data.chain_hum = false;
+            break;
+
+        case FONT_TYPE_ON:
+            font_data.addr      = font_data.on;
+            font_data.chain_hum = true;
+            break;
+
+        case FONT_TYPE_SWING:
+            font_data.addr      = font_data.swing[rand() % font_data.num_swing];
+            font_data.chain_hum = true;
+            break;
+
+        case FONT_TYPE_CLASH:
+            font_data.addr      = font_data.clash[rand() % font_data.num_clash];
+            font_data.chain_hum = true;
+            break;
+
+        default:
+            font_data.addr      = font_data.boot;
+            font_data.chain_hum = false;
+            break;
+    }
+    font_data.new = true;
 }
 
-bool font_playing() {
-    // TODO
-    return false;
+bool font_done() {
+    return font_data.done;
 }

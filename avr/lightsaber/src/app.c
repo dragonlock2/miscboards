@@ -53,10 +53,6 @@ int main() {
     sei();
     printf("booted!\r\n");
 
-    // TODO test everything first (after sleep/wake) (font)
-    app_sleep();
-    printf("hello again! %d %d %d %d %d\r\n", font_r(), font_g(), font_b(), font_upscale(), font_speedup());
-
     while (1) {
         while (!app_data.tick);
 

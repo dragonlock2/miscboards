@@ -25,6 +25,6 @@ uint8_t font_upscale();
 uint8_t font_speedup();
 
 void font_play(font_type_t type);
-bool font_playing();
+bool font_done();
 
 #endif // FONT_H
