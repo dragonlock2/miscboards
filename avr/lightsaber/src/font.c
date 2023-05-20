@@ -1,7 +1,9 @@
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 #include "font.h"
 
 /* private data */
@@ -164,6 +166,7 @@ void font_init(void (*callback)(), uint16_t freq) {
 
 void font_sleep() {
     while (font_playing());
+    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
     PORTA.DIRCLR = PIN1_bm | PIN3_bm;
     PORTB.DIRCLR = PIN4_bm;
 }
@@ -181,10 +184,13 @@ void font_wake() {
         font_data.font_addr[i] = flash_read_word();
         if (font_data.font_addr[i] == 0xFFFFFFFF) {
             font_data.num_fonts = i;
+            break;
         }
     }
     flash_end_read();
     font_select(0);
+
+    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
 }
 
 void font_select(uint8_t i) {
@@ -205,12 +211,14 @@ void font_select(uint8_t i) {
         font_data.swing[i] = flash_read_word();
         if (font_data.swing[i] == 0xFFFFFFFF) {
             font_data.num_swing = i;
+            break;
         }
     }
     for (int i = 0; i < 10; i++) {
         font_data.clash[i] = flash_read_word();
         if (font_data.clash[i] == 0xFFFFFFFF) {
             font_data.num_clash = i;
+            break;
         }
     }
     flash_end_read();

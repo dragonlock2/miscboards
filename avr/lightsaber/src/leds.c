@@ -31,6 +31,14 @@ void leds_init() {
     LED_PORT.OUTCLR = LED_MASK;
 }
 
+void leds_sleep() {
+    LED_PORT.DIRCLR = LED_MASK;
+}
+
+void leds_wake() {
+    LED_PORT.DIRSET = LED_MASK;
+}
+
 void leds_write(uint8_t r, uint8_t g, uint8_t b) {
     leds_write_byte(g);
     leds_write_byte(r);

@@ -7,6 +7,7 @@
 #include "btn.h"
 #include "dbg.h"
 #include "font.h"
+#include "leds.h"
 #include "imu.h"
 #include "pwr.h"
 
@@ -18,6 +19,7 @@ static struct {
 /* private helpers */
 static inline void app_sleep() {
     font_sleep();
+    leds_sleep();
     pwr_sleep();
     btn_sleep();
 
@@ -26,6 +28,7 @@ static inline void app_sleep() {
     sleep_mode();
 
     pwr_wake();
+    leds_wake();
     font_wake();
     imu_wake();
 }
@@ -49,6 +52,10 @@ int main() {
     font_init(app_ticker, 50); // Hz
     sei();
     printf("booted!\r\n");
+
+    // TODO test everything first (after sleep/wake) (font)
+    app_sleep();
+    printf("hello again! %d %d %d %d %d\r\n", font_r(), font_g(), font_b(), font_upscale(), font_speedup());
 
     while (1) {
         while (!app_data.tick);

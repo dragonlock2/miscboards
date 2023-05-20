@@ -9,7 +9,7 @@
 #define BTN_CTRL (PORTA.PIN5CTRL)
 #define BTN_VECT PORTA_PORT_vect
 
-#define BTN_HOLD (150) // ~3s @ 50Hz
+#define BTN_HOLD (100) // ~2s @ 50Hz
 
 /* private data */
 static struct {
