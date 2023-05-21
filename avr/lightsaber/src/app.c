@@ -42,7 +42,6 @@ static inline void app_sleep() {
 
     btn_wake();
     pwr_wake();
-    leds_wake();
     font_wake();
     imu_wake();
 }
@@ -71,6 +70,12 @@ static inline void app_run() {
 
         case APP_STATE_IDLE: {
             uint16_t vbat = pwr_vbat();
+            if (vbat < 3500) {
+                anim_set(ANIM_TYPE_SOLID, 25, 0, 0, 1, 1);
+            } else if (vbat > 4000) {
+                anim_set(ANIM_TYPE_SOLID, 0, 0, 0, 1, 1);
+            }
+
             if (btn_short_pressed()) {
                 font_play(FONT_TYPE_ON);
                 anim_set(ANIM_TYPE_EXTEND, font_r(), font_g(), font_b(), font_upscale(), font_speedup());
@@ -82,11 +87,6 @@ static inline void app_run() {
                 if (app_data.sleep_ctr > 500) { // ~10s
                     app_data.state = APP_STATE_SLEEP;
                 }
-            }
-            if (vbat < 3500) {
-                anim_set(ANIM_TYPE_SOLID, 25, 0, 0, 1, 1);
-            } else if (vbat > 4000) {
-                anim_set(ANIM_TYPE_SOLID, 0, 0, 0, 1, 1);
             }
             break;
         }
