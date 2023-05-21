@@ -27,7 +27,6 @@ static struct {
 
     app_state_t state;
     uint16_t sleep_ctr;
-    uint8_t swing_ctr;
 } app_data;
 
 /* private helpers */
@@ -96,25 +95,18 @@ static inline void app_run() {
                 int32_t x = a.x, y = a.y, z = a.z;
                 int32_t g = x*x + y*y + z*z;
 
-                if (g > 25000000) {
+                if (g > 50000000) {
                     font_play(FONT_TYPE_CLASH);
                     app_data.state = APP_STATE_ON_EFFECT;
-                } else if (g > 17000000) {
-                    if (app_data.swing_ctr > 4) {
-                        font_play(FONT_TYPE_SWING);
-                        app_data.state = APP_STATE_ON_EFFECT;
-                    } else {
-                        app_data.swing_ctr++;
-                    }
-                } else {
-                    app_data.swing_ctr = 0;
+                } else if (g > 30000000) {
+                    font_play(FONT_TYPE_SWING);
+                    app_data.state = APP_STATE_ON_EFFECT;
                 }
             }
             break;
 
         case APP_STATE_ON_EFFECT:
             if (anim_done() && font_done()) {
-                app_data.swing_ctr = 0;
                 app_data.state = APP_STATE_ON;
             }
             break;
