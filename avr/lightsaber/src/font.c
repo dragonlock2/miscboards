@@ -117,6 +117,7 @@ static inline void audio_disable() {
 ISR(TCA0_OVF_vect) {
     TCA0.SINGLE.INTFLAGS = 0x01; // clear OVF
 
+    // TODO blend audio to reduce popping
     uint16_t duty = PWM_REST;
     if (font_data.new) {
         audio_enable();
@@ -207,6 +208,7 @@ void font_wake() {
 
 void font_select(uint8_t i) {
     TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+    font_data.font_idx = i;
     flash_start_read(font_data.font_addr[i]);
     font_data.r    = flash_read_byte();
     font_data.g    = flash_read_byte();

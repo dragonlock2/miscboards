@@ -190,8 +190,12 @@ class LightFS:
                 }
                 while (a := self._get(font, 20+len(d['swing'])*4, 4)) != 0xFFFFFFFF:
                     d['swing'].append(a)
+                    if len(d['swing']) >= 10:
+                        break
                 while (a := self._get(font, 60+len(d['clash'])*4, 4)) != 0xFFFFFFFF:
                     d['clash'].append(a)
+                    if len(d['clash']) >= 10:
+                        break
                 self.fonts.append(d)
 
     # high-level functions
