@@ -20,7 +20,7 @@ static struct {
 
 /* private helpers */
 ISR(BTN_VECT) {
-    BTN_CTRL &= ~PORT_ISC_gm;
+    BTN_PORT.INTFLAGS = BTN_PIN;
 }
 
 /* public functions */
@@ -31,6 +31,10 @@ void btn_init() {
 
 void btn_sleep() {
     BTN_CTRL |= PORT_ISC_LEVEL_gc;
+}
+
+void btn_wake() {
+    BTN_CTRL &= ~PORT_ISC_gm;
 }
 
 void btn_run() {

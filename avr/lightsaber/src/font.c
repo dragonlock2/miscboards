@@ -37,6 +37,7 @@ static struct {
 
     uint32_t font_addr[8];
     uint8_t num_fonts;
+    uint8_t font_idx;
 
     uint8_t r, g, b;
     uint8_t fast, slow;
@@ -197,12 +198,15 @@ void font_wake() {
         }
     }
     flash_end_read();
-    font_select(0);
 
-    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+    if (font_data.font_idx >= font_data.num_fonts) {
+        font_data.font_idx = 0;
+    }
+    font_select(font_data.font_idx);
 }
 
 void font_select(uint8_t i) {
+    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
     flash_start_read(font_data.font_addr[i]);
     font_data.r    = flash_read_byte();
     font_data.g    = flash_read_byte();
@@ -231,9 +235,11 @@ void font_select(uint8_t i) {
         }
     }
     flash_end_read();
+    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
 }
 
 uint8_t font_num()     { return font_data.num_fonts; }
+uint8_t font_idx()     { return font_data.font_idx;  }
 uint8_t font_r()       { return font_data.r; }
 uint8_t font_g()       { return font_data.g; }
 uint8_t font_b()       { return font_data.b; }

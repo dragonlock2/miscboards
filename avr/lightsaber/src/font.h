@@ -17,6 +17,7 @@ void font_wake();
 
 void font_select(uint8_t i);
 uint8_t font_num();
+uint8_t font_idx();
 
 uint8_t font_r();
 uint8_t font_g();

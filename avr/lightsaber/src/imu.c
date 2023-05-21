@@ -83,8 +83,8 @@ void imu_init() {
 
 void imu_wake() {
     lsm9ds1_write_reg(0x1F, 0b00111000); // enable accel XYZ
-    lsm9ds1_write_reg(0x20, 0b10100000); // accel 476Hz, 2g range
-    lsm9ds1_write_reg(0x21, 0b11000101); // ODR/9 filter
+    lsm9ds1_write_reg(0x20, 0b01111000); // accel 119Hz, 8g range
+    lsm9ds1_write_reg(0x21, 0b00000000); // no digital filter
 }
 
 void imu_read(imu_data_S *data) {
