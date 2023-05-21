@@ -69,13 +69,18 @@ static inline void app_run() {
             }
             break;
 
-        case APP_STATE_IDLE:
+        case APP_STATE_IDLE: {
+            uint16_t vbat = pwr_vbat();
             if (btn_short_pressed()) {
                 font_play(FONT_TYPE_ON);
                 anim_set(ANIM_TYPE_EXTEND, font_r(), font_g(), font_b(), font_upscale(), font_speedup());
                 app_data.state = APP_STATE_ON_EFFECT;
             } else if (btn_hold()) {
                 app_data.state = APP_STATE_FONT_CHOICE;
+            } else if (vbat < 3500) {
+                anim_set(ANIM_TYPE_SOLID, 25, 0, 0, 1, 1);
+            } else if (vbat > 4000) {
+                anim_set(ANIM_TYPE_SOLID, 0, 0, 0, 1, 1);
             } else {
                 app_data.sleep_ctr++;
                 if (app_data.sleep_ctr > 500) { // ~10s
@@ -83,6 +88,7 @@ static inline void app_run() {
                 }
             }
             break;
+        }
 
         case APP_STATE_ON:
             if (btn_short_pressed()) {
