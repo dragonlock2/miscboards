@@ -1,3 +1,3 @@
 # miscboards
 
-Adding version control to projects from all those IDEs I use
+Adding version control to projects that aren't big enough to need a dedicated repo.
