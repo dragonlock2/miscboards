@@ -4,3 +4,6 @@
 [submodule "pic/cmake-microchip"]
 	path = microchip/pic/cmake-microchip
 	url = https://github.com/Elemecca/cmake-microchip.git
+[submodule "wch/SDK/ch32v003"]
+	path = wch/SDK/ch32v003
+	url = https://github.com/openwch/ch32v003.git
