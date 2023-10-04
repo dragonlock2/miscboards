@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.20.0)
-set(CMAKE_TOOLCHAIN_FILE ../SDK/ch32v003.cmake)
+
+set(MCU ch32v003) # should only need to change this
+set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(blinky C ASM)
+
+add_definitions(
+    -D${MCU}
+)
 
 add_compile_options(
     -std=gnu18
@@ -21,7 +27,8 @@ add_link_options(
     -flto
 )
 
+add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
     src/main.c
 )
-target_link_libraries(${PROJECT_NAME}.elf ch32v003)
+target_link_libraries(${PROJECT_NAME}.elf SDK)

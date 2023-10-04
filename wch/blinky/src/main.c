@@ -30,6 +30,8 @@ int main() {
         Delay_Ms(250);
         GPIO_WriteBit(GPIOD, GPIO_Pin_0, (i == 0) ? (i = Bit_SET) : (i = Bit_RESET));
     }
+
+    // TODO working printf
 }
 
 // TODO put in custom startup code
