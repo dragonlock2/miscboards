@@ -9,8 +9,15 @@
  * malloc?
  * stl?
  * exceptions?
+ * fast interrupts mret
  */
 #include "debug.h"
+
+#ifndef ch32v003
+#error "micro not supported"
+#endif
+
+static volatile uint8_t i = 0;
 
 int main() {
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
@@ -25,15 +32,10 @@ int main() {
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
-    uint8_t i = 0;
     while (1) {
-        Delay_Ms(250);
+        Delay_Ms(500);
         GPIO_WriteBit(GPIOD, GPIO_Pin_0, (i == 0) ? (i = Bit_SET) : (i = Bit_RESET));
     }
 
     // TODO working printf
 }
-
-// TODO put in custom startup code
-void _fini(){}
-void _init(){}

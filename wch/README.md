@@ -4,9 +4,14 @@ These projects are tested on macOS, although it can definitely be modified to wo
 
 ## setup
 
-Download the latest [toolchain](http://www.mounriver.com/download) and extract OpenOCD and GCC into `SDK/toolchain`. The CMake toolchain is set up to look in `SDK/toolchain/openocd/bin` and `SDK/toolchain/gcc/bin`.
+Install a RISC-V toolchain (with RV32E support).
 
-TODO use updated toolchain
+```
+npm install --location=global xpm@latest
+xpm install --global @xpack-dev-tools/riscv-none-elf-gcc@latest --verbose
+```
+
+Download the latest [toolchain](http://www.mounriver.com/download) and extract the contents of `bin/` for OpenOCD into `SDK/openocd`.
 
 ## build
 

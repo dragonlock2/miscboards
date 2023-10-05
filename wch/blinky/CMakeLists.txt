@@ -16,11 +16,12 @@ add_compile_options(
     -g3
     -ffunction-sections
     -fdata-sections
+    -ffat-lto-objects
     -flto
 )
 
 add_link_options(
-    -Wl,--print-memory-usage
+    # -Wl,--print-memory-usage # TODO update linker script
     -Wl,--gc-sections
     -Os
     -g3
@@ -32,3 +33,6 @@ add_executable(${PROJECT_NAME}.elf
     src/main.c
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)
+
+# TODO remove once linker script fixed
+add_custom_target(size ALL ${CMAKE_SIZE} ${PROJECT_NAME}.elf DEPENDS ${PROJECT_NAME}.elf)
