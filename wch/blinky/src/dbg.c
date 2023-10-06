@@ -2,6 +2,11 @@
 #include "ch32v00x_rcc.h"
 #include "ch32v00x_usart.h"
 
+__attribute__((constructor(101)))
+static void clock_init(void) {
+    SetSysClockTo_48MHZ_HSI();
+}
+
 __attribute__((constructor))
 static void dbg_init(void) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1, ENABLE);

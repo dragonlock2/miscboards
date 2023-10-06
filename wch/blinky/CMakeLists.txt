@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(MCU ch32v003) # should only need to change this
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
-project(blinky C ASM)
+project(blinky C CXX ASM)
 
 add_definitions(
     -D${MCU}
