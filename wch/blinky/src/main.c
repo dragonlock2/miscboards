@@ -1,6 +1,6 @@
 /**
  * C support
- * libc init arrays
+ * printf, uart
  * test systick interrupt
  * C++ support
  * constructors!

@@ -32,6 +32,7 @@ add_link_options(
     -mabi=ilp32e
     -mcmodel=medany
     -Wl,-script=${LINKER_SCRIPT}
+    -Wl,--no-warn-rwx-segments
     -nostartfiles
     --specs=nano.specs
     --specs=nosys.specs

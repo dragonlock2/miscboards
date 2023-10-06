@@ -11,6 +11,7 @@ add_definitions(
 add_compile_options(
     -std=gnu18
     -Wall
+    -Wextra
     -Werror
     -Os
     -g3
