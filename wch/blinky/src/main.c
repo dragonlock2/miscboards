@@ -1,7 +1,6 @@
 /**
  * C support
- * setup bss section
- * setup data section
+ * libc init arrays
  * test systick interrupt
  * C++ support
  * constructors!
@@ -11,31 +10,6 @@
  * exceptions?
  * fast interrupts mret
  */
-#include "debug.h"
-
-#ifndef ch32v003
-#error "micro not supported"
-#endif
-
-static volatile uint8_t i = 0;
-
-int main() {
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-    SystemCoreClockUpdate();
-    Delay_Init();
-
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    while (1) {
-        Delay_Ms(500);
-        GPIO_WriteBit(GPIOD, GPIO_Pin_0, (i == 0) ? (i = Bit_SET) : (i = Bit_RESET));
-    }
-
-    // TODO working printf
+int main(void) {
+    return 0;
 }

@@ -21,7 +21,7 @@ add_compile_options(
 )
 
 add_link_options(
-    # -Wl,--print-memory-usage # TODO update linker script
+    -Wl,--print-memory-usage
     -Wl,--gc-sections
     -Os
     -g3
@@ -33,6 +33,3 @@ add_executable(${PROJECT_NAME}.elf
     src/main.c
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)
-
-# TODO remove once linker script fixed
-add_custom_target(size ALL ${CMAKE_SIZE} ${PROJECT_NAME}.elf DEPENDS ${PROJECT_NAME}.elf)

@@ -1,0 +1,4 @@
+#ifndef CH32V00X_CONF_H
+#define CH32V00X_CONF_H
+
+#endif // CH32V00X_CONF_H
