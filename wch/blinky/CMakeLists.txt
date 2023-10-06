@@ -32,5 +32,6 @@ add_link_options(
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
     src/main.c
+    src/dbg.c
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)
