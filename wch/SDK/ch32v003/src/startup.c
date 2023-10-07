@@ -58,7 +58,7 @@ void (*vectors[39])(void) __attribute__((used)) = {
     default_handler, // TIM2_IRQn
 };
 
-__attribute__((used, naked, section(".reset_handler")))
+__attribute__((used, naked, optimize("O1"), section(".reset_handler")))
 void reset_handler(void) {
     asm volatile (
         ".option push             \n"

@@ -5,8 +5,8 @@ uint32_t SystemCoreClock = 8000000; // default
 
 void SetSysClockTo_48MHZ_HSI(void) {
     // TODO understand and rewrite
+    // 8MHz -> 24MHz (divider) -> 48MHz w/ PLL? set all clocks?
 
-    RCC->CTLR |= (uint32_t)0x00000001;
     RCC->CFGR0 &= (uint32_t)0xFCFF0000;
     RCC->CTLR &= (uint32_t)0xFEF6FFFF;
     RCC->CTLR &= (uint32_t)0xFFFBFFFF;

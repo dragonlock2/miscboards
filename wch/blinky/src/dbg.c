@@ -11,14 +11,14 @@ __attribute__((constructor))
 static void dbg_init(void) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_USART1, ENABLE);
 
-    GPIO_InitTypeDef GPIO_InitStructure = {
+    GPIO_InitTypeDef dbg = {
         .GPIO_Pin   = GPIO_Pin_5,
         .GPIO_Speed = GPIO_Speed_50MHz,
         .GPIO_Mode  = GPIO_Mode_AF_PP,
     };
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
+    GPIO_Init(GPIOD, &dbg);
 
-    USART_InitTypeDef USART_InitStructure = {
+    USART_InitTypeDef usart = {
         .USART_BaudRate            = 115200,
         .USART_WordLength          = USART_WordLength_8b,
         .USART_StopBits            = USART_StopBits_1,
@@ -26,7 +26,7 @@ static void dbg_init(void) {
         .USART_HardwareFlowControl = USART_HardwareFlowControl_None,
         .USART_Mode                = USART_Mode_Tx,
     };
-    USART_Init(USART1, &USART_InitStructure);
+    USART_Init(USART1, &usart);
     USART_Cmd(USART1, ENABLE);
 }
 
