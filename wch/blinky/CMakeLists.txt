@@ -14,6 +14,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
+    -pedantic
     -Os
     -g3
     -ffunction-sections

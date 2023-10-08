@@ -25,6 +25,7 @@ add_compile_options(
     -march=rv32ec_zicsr
     -mabi=ilp32e
     -mcmodel=medany
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 )
 
 add_link_options(

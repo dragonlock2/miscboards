@@ -1,5 +1,4 @@
 /**
- * C++ constructors/destructors
  * new? malloc
  * stl?
  * exceptions?

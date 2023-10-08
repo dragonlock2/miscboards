@@ -1,3 +1,5 @@
+#include <signal.h>
+#include <unistd.h>
 #include <ch32v00x.h>
 #include <ch32v00x_gpio.h>
 #include <ch32v00x_rcc.h>
@@ -34,7 +36,7 @@ static void dbg_init(void) {
 extern "C" {
 
 __attribute__((used))
-int _write(int fd, char *buf, int size) {
+int _write(int fd, char* buf, int size) {
     (void) fd;
     for (int i = 0; i < size; i++) {
         while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
@@ -47,10 +49,12 @@ int _write(int fd, char *buf, int size) {
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <sys/stat.h>
 __attribute__((used)) int _close(int fd) { return -1; }
-__attribute__((used)) int _fstat(int file, struct stat *st) { st->st_mode = S_IFCHR; return 0; }
+__attribute__((used)) int _fstat(int file, struct stat* st) { st->st_mode = S_IFCHR; return 0; }
 __attribute__((used)) int _isatty(int file) { return 1; }
 __attribute__((used)) int _lseek(int file, int ptr, int dir) { return 0; }
-__attribute__((used)) int _read (int file, char * ptr, int len) { return 0; }
+__attribute__((used)) int _read (int file, char* ptr, int len) { return 0; }
+__attribute__((used)) int _kill(pid_t pid, int sig) { return -1; }
+__attribute__((used)) pid_t _getpid(void) { return 0; }
 #pragma GCC diagnostic pop
 
 }
