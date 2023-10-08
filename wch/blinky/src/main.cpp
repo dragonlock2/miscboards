@@ -19,7 +19,7 @@ static void ticker(void) {
     flag = true;
 }
 
-int main(void) {
+extern "C" int main(void) {
     SysTick_Start(SystemCoreClock / 2, ticker); // 0.5Hz
     __enable_irq();
 

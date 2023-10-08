@@ -9,7 +9,8 @@ add_definitions(
 )
 
 add_compile_options(
-    -std=gnu18
+    $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++23>
     -Wall
     -Wextra
     -Werror
@@ -31,8 +32,8 @@ add_link_options(
 
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
-    src/main.c
-    src/dbg.c
-    src/led.c
+    src/main.cpp
+    src/dbg.cpp
+    src/led.cpp
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)

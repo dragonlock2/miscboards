@@ -24,12 +24,14 @@ static void dbg_init(void) {
         .USART_WordLength          = USART_WordLength_8b,
         .USART_StopBits            = USART_StopBits_1,
         .USART_Parity              = USART_Parity_No,
-        .USART_HardwareFlowControl = USART_HardwareFlowControl_None,
         .USART_Mode                = USART_Mode_Tx,
+        .USART_HardwareFlowControl = USART_HardwareFlowControl_None,
     };
     USART_Init(USART1, &usart);
     USART_Cmd(USART1, ENABLE);
 }
+
+extern "C" {
 
 __attribute__((used))
 int _write(int fd, char *buf, int size) {
@@ -50,3 +52,5 @@ __attribute__((used)) int _isatty(int file) { return 1; }
 __attribute__((used)) int _lseek(int file, int ptr, int dir) { return 0; }
 __attribute__((used)) int _read (int file, char * ptr, int len) { return 0; }
 #pragma GCC diagnostic pop
+
+}

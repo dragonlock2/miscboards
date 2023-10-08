@@ -24,5 +24,5 @@ static void led_init(void) {
 /* public functions */
 void led_toggle(void) {
     bool i = GPIO_ReadOutputDataBit(LED_PORT, LED_PIN);
-    GPIO_WriteBit(LED_PORT, LED_PIN, !i);
+    GPIO_WriteBit(LED_PORT, LED_PIN, (BitAction) !i);
 }
