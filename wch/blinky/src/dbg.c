@@ -1,6 +1,7 @@
-#include "ch32v00x_gpio.h"
-#include "ch32v00x_rcc.h"
-#include "ch32v00x_usart.h"
+#include <ch32v00x.h>
+#include <ch32v00x_gpio.h>
+#include <ch32v00x_rcc.h>
+#include <ch32v00x_usart.h>
 
 __attribute__((constructor(101)))
 static void clock_init(void) {

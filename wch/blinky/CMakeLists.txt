@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(MCU ch32v003) # should only need to change this
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
-project(blinky C CXX ASM)
+project(blinky C CXX)
 
 add_definitions(
     -D${MCU}
@@ -33,5 +33,6 @@ add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
     src/main.c
     src/dbg.c
+    src/led.c
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)

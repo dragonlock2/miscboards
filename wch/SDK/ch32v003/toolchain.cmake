@@ -39,13 +39,13 @@ add_link_options(
 )
 
 # generate hex
-if (NOT TARGET hex)
+if (NOT TARGET ${PROJECT_NAME}.hex)
     add_custom_target(${PROJECT_NAME}.hex ALL ${CMAKE_OBJCOPY} -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_NAME}.hex")
 endif()
 
 # generate objdump
-if (NOT TARGET dump)
+if (NOT TARGET ${PROJECT_NAME}.txt)
     add_custom_target(${PROJECT_NAME}.txt ALL ${CMAKE_OBJDUMP} -d -j .text -j .data ${PROJECT_NAME}.elf > ${PROJECT_NAME}.txt DEPENDS ${PROJECT_NAME}.elf)
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${PROJECT_NAME}.txt")
 endif()
