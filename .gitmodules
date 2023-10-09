@@ -7,3 +7,6 @@
 [submodule "wch/SDK/ch32v003"]
 	path = wch/SDK/ch32v003/ch32v003
 	url = https://github.com/openwch/ch32v003.git
+[submodule "wch/SDK/ch32v20x/ch32v20x"]
+	path = wch/SDK/ch32v20x/ch32v20x
+	url = https://github.com/openwch/ch32v20x.git

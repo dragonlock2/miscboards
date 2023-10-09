@@ -1,28 +1,29 @@
-/**
- * test exceptions
- */
+// TODO test multiplier instructions
+// TODO test exceptions (no newlib nano?)
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <ch32v00x.h>
 #include "led.h"
+#include "ticker.h"
+
+#if defined(ch32v003)
+#include <ch32v00x.h>
+#elif defined(ch32v20x)
+#include <ch32v20x.h>
+#endif
 
 static volatile bool flag = false;
-
-__attribute__((interrupt))
 static void ticker(void) {
-    SysTick->SR = 0;
     flag = true;
 }
 
 extern "C" int main(void) {
-    SysTick_Start(SystemCoreClock / 2, ticker); // 0.5Hz
+    ticker_start(SystemCoreClock / 2, ticker); // 0.5Hz
     __enable_irq();
 
-    uint32_t id[3];
-    UniqueID(id);
-    printf("booted! unique id: 0x%08lx%08lx%08lx\r\n", id[0], id[1], id[2]);
+    uint32_t id[3]; UniqueID(id);
+    printf("booted! flash size: %dKiB, unique id: 0x%08lx%08lx%08lx\r\n", FlashSize(), id[0], id[1], id[2]);
 
     int8_t i = 69;
     while (true) {

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-set(MCU ch32v003) # should only need to change this
+set(MCU ch32v20x) # specify SDK
+
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(blinky C CXX)
 
@@ -14,7 +15,6 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
-    -pedantic
     -Os
     -g3
     -ffunction-sections
@@ -35,10 +35,16 @@ add_link_options(
     -flto
 )
 
+include_directories(
+    src/
+    src/${MCU}
+)
+
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
     src/main.cpp
-    src/dbg.cpp
-    src/led.cpp
+    src/${MCU}/dbg.cpp
+    src/${MCU}/led.cpp
+    src/${MCU}/ticker.cpp
 )
 target_link_libraries(${PROJECT_NAME}.elf SDK)

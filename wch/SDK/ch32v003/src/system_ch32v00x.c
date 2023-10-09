@@ -10,10 +10,12 @@ void SetSysClockTo_24MHZ_HSI(void) {
     RCC->CTLR |= RCC_HSION;
     while ((RCC->CTLR & RCC_HSIRDY) == 0);
 
-    // switch to HSI, no div
+    // switch to HSI
     RCC->CFGR0 = (RCC->CFGR0 & ~RCC_SW) | RCC_SW_HSI;
-    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_HPRE) | RCC_HPRE_DIV1;
     while ((RCC->CFGR0 & RCC_SWS) != RCC_SWS_HSI);
+
+    // AHB prescaler
+    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_HPRE) | RCC_HPRE_DIV1;
 
     // set flash 0 wait state (0-24MHz)
     FLASH->ACTLR = (FLASH->ACTLR & ~FLASH_ACTLR_LATENCY) | FLASH_ACTLR_LATENCY_0;
