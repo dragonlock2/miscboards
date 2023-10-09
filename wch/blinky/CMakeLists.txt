@@ -21,6 +21,10 @@ add_compile_options(
     -fdata-sections
     -ffat-lto-objects
     -flto
+
+    # save some flash
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 )
 
 add_link_options(

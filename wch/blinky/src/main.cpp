@@ -1,7 +1,5 @@
 /**
- * new? malloc
- * stl?
- * exceptions?
+ * test exceptions
  */
 
 #include <stdbool.h>
