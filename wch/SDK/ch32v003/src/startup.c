@@ -8,6 +8,8 @@ extern uint8_t _bss;
 extern uint8_t _ebss;
 extern uint8_t _eram;
 
+extern void __exception_init(void);
+extern void __exception_deinit(void);
 extern void __libc_init_array(void);
 extern void __libc_fini_array(void);
 extern int main(void);
@@ -83,8 +85,11 @@ void reset_handler(void) {
         : : "r" (vectors) : "t0", "t1"
     );
 
+    __exception_init();
     __libc_init_array();
     main();
     __libc_fini_array();
+    __exception_deinit();
+
     while (1);
 }
