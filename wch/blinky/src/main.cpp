@@ -1,17 +1,7 @@
-// TODO test multiplier instructions
-// TODO test exceptions (no newlib nano?)
-
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include "led.h"
 #include "ticker.h"
-
-#if defined(ch32v003)
-#include <ch32v00x.h>
-#elif defined(ch32v20x)
-#include <ch32v20x.h>
-#endif
 
 static volatile bool flag = false;
 static void ticker(void) {

@@ -33,6 +33,8 @@ add_link_options(
     -Os
     -g3
     -flto
+    --specs=nano.specs # disable if use exceptions
+    --specs=nosys.specs
 )
 
 include_directories(
@@ -43,6 +45,7 @@ include_directories(
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
 add_executable(${PROJECT_NAME}.elf
     src/main.cpp
+    src/exception.cpp
     src/${MCU}/dbg.cpp
     src/${MCU}/led.cpp
     src/${MCU}/ticker.cpp

@@ -12,8 +12,6 @@ extern void __libc_init_array(void);
 extern void __libc_fini_array(void);
 extern int main(void);
 
-__attribute__((weak)) void _init(void) {}
-__attribute__((weak)) void _fini(void) {}
 __attribute__((interrupt)) static void default_handler(void) { while (1); }
 
 void (*vectors[39])(void) __attribute__((used)) = {
@@ -85,10 +83,8 @@ void reset_handler(void) {
         : : "r" (vectors) : "t0", "t1"
     );
 
-    _init();
     __libc_init_array();
     main();
     __libc_fini_array();
-    _fini();
     while (1);
 }

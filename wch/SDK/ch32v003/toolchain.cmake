@@ -35,8 +35,6 @@ add_link_options(
     -Wl,-script=${LINKER_SCRIPT}
     -Wl,--no-warn-rwx-segments
     -nostartfiles
-    --specs=nano.specs
-    --specs=nosys.specs
 )
 
 # generate hex
