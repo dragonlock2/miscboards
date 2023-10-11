@@ -14,8 +14,8 @@ set(CMAKE_SIZE         ${GCC_DIR}/riscv-none-elf-size)
 set(CMAKE_OBJCOPY      ${GCC_DIR}/riscv-none-elf-objcopy)
 set(CMAKE_OBJDUMP      ${GCC_DIR}/riscv-none-elf-objdump)
 
-set(OPENOCD_BIN ${CMAKE_CURRENT_LIST_DIR}/../openocd/openocd)
-set(OPENOCD_CFG ${CMAKE_CURRENT_LIST_DIR}/../openocd/wch-riscv.cfg)
+set(OPENOCD_BIN ${CMAKE_CURRENT_LIST_DIR}/../riscv-openocd/src/openocd)
+set(OPENOCD_CFG ${CMAKE_CURRENT_LIST_DIR}/../wch-riscv.cfg)
 
 set(WCH_SDK_DIR   ${CMAKE_CURRENT_LIST_DIR}/ch32v003/EVT/EXAM/SRC)
 set(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/linker.ld)

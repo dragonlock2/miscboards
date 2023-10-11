@@ -4,14 +4,23 @@ These projects are tested on macOS, although it can definitely be modified to wo
 
 ## setup
 
-Install a RISC-V toolchain (with RV32E support).
+Build Clang/LLVM with RISC-V support. Feel free to place it wherever you like, but `toolchain.cmake` will search in `~/opt` so it may need modification.
 
 ```
-npm install --location=global xpm@latest
-xpm install --global @xpack-dev-tools/riscv-none-elf-gcc@latest --verbose
+cd ~/opt
+# TODO do and test, remove exception hack?
 ```
 
-Download the latest [toolchain](http://www.mounriver.com/download) and extract the contents of `bin/` for OpenOCD into `SDK/openocd`.
+Build OpenOCD with WCH-LinkE support. I've attached the archive sent by MounRiver on `10/11/2023`.
+
+```
+cd SDK
+tar xvf riscv-openocd.tar.xz
+cd riscv-openocd
+./bootstrap
+CFLAGS=-Wno-error=implicit-function-declaration ./configure --disable-werror --enable-wlinke --disable-ch347
+make
+```
 
 ## build
 
