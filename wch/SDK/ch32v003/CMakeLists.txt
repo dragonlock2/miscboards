@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.20.0)
 
 add_library(SDK
     ${CMAKE_CURRENT_LIST_DIR}/src/startup.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/exception.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/system_ch32v00x.c
     ${WCH_SDK_DIR}/Peripheral/src/ch32v00x_dbgmcu.c
     ${WCH_SDK_DIR}/Peripheral/src/ch32v00x_gpio.c

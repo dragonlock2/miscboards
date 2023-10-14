@@ -7,9 +7,14 @@ set(CMAKE_C_COMPILER   ${GCC_DIR}/riscv64-unknown-elf-gcc)
 set(CMAKE_CXX_COMPILER ${GCC_DIR}/riscv64-unknown-elf-g++)
 set(CMAKE_ASM_COMPILER ${GCC_DIR}/riscv64-unknown-elf-gcc)
 set(CMAKE_AR           ${GCC_DIR}/riscv64-unknown-elf-ar)
+set(CMAKE_RANLIB       ${GCC_DIR}/riscv64-unknown-elf-ranlib)
 set(CMAKE_SIZE         ${GCC_DIR}/riscv64-unknown-elf-size)
 set(CMAKE_OBJCOPY      ${GCC_DIR}/riscv64-unknown-elf-objcopy)
 set(CMAKE_OBJDUMP      ${GCC_DIR}/riscv64-unknown-elf-objdump)
+
+# not enough RAM to run check :P
+set(CMAKE_C_COMPILER_WORKS   1)
+set(CMAKE_CXX_COMPILER_WORKS 1)
 
 set(OPENOCD_BIN ${CMAKE_CURRENT_LIST_DIR}/../riscv-openocd/src/openocd)
 set(OPENOCD_CFG ${CMAKE_CURRENT_LIST_DIR}/../wch-riscv.cfg)
@@ -31,7 +36,6 @@ add_link_options(
     -mcmodel=medany
     -Wl,-script=${LINKER_SCRIPT}
     -Wl,--no-warn-rwx-segments
-    -nostartfiles
 )
 
 # generate hex

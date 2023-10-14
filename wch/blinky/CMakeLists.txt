@@ -33,7 +33,7 @@ add_link_options(
     -Os
     -g3
     -flto
-    --specs=nano.specs # disable if use exceptions
+    --specs=nano.specs
     --specs=nosys.specs
 )
 

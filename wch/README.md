@@ -4,12 +4,15 @@ These projects are tested on macOS, although it'll probably work elsewhere.
 
 ## setup
 
-Build the [RISC-V GCC toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain). You'll need to modify `toolchain.cmake` as needed. Make sure to run the following in a case sensitive volume.
+Build the [RISC-V GCC toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain). Make sure to run the following in a case sensitive volume.
 
 ```
 git clone https://github.com/riscv/riscv-gnu-toolchain
 cd riscv-gnu-toolchain
-./configure --prefix=/path/to/miscboards/wch/SDK/riscv-toolchain --disable-gdb --with-cmodel=medany --with-multilib-generator="rv32ec-ilp32e--;rv32imac-ilp32--"
+./configure --prefix=/path/to/miscboards/wch/SDK/riscv-toolchain \
+    --disable-gdb \
+    --with-cmodel=medany \
+    --with-multilib-generator="rv32ec-ilp32e--;rv32imac-ilp32--"
 make
 ```
 

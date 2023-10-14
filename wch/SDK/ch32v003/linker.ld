@@ -15,9 +15,7 @@ SECTIONS {
     } > ROM
 
     .eh_frame : ALIGN(4) {
-        __eh_frame_start = .;
         KEEP(*(.eh_frame*));
-        LONG(0);
     } > ROM
 
     .preinit_array : ALIGN(4) {
@@ -51,12 +49,14 @@ SECTIONS {
     _data_rom = LOADADDR(.data);
 
     .bss (NOLOAD) : ALIGN(4) {
+        __bss_start = .;
         _bss = .;
         *(.bss*);
         *(.sbss*);
         *(.sbss2*);
         *(COMMON*);
         _ebss = .;
+        _end = .;
         end = .;
     } > RAM
 
