@@ -11,6 +11,13 @@ SECTIONS {
         *(.text*);
         *(.rodata*);
         *(.srodata*);
+        *(.gcc_except_table*);
+    } > ROM
+
+    .eh_frame : ALIGN(4) {
+        __eh_frame_start = .;
+        KEEP(*(.eh_frame*));
+        LONG(0);
     } > ROM
 
     .preinit_array : ALIGN(4) {
@@ -39,12 +46,6 @@ SECTIONS {
         *(.data*);
         *(.sdata*);
         *(.sdata2*);
-        *(.gcc_except_table*);
-
-        __eh_frame_start = .;
-        KEEP(*(.eh_frame*));
-        LONG(0);
-
         _edata = .;
     } > RAM AT > ROM
     _data_rom = LOADADDR(.data);

@@ -1,14 +1,16 @@
 # wch
 
-These projects are tested on macOS, although it can definitely be modified to work elsewhere.
+These projects are tested on macOS, although it'll probably work elsewhere.
 
 ## setup
 
-Build Clang/LLVM with RISC-V support. Feel free to place it wherever you like, but `toolchain.cmake` will search in `~/opt` so it may need modification.
+Build the [RISC-V GCC toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain). You'll need to modify `toolchain.cmake` as needed. Make sure to run the following in a case sensitive volume.
 
 ```
-cd ~/opt
-# TODO do and test, remove exception hack?
+git clone https://github.com/riscv/riscv-gnu-toolchain
+cd riscv-gnu-toolchain
+./configure --prefix=/path/to/miscboards/wch/SDK/riscv-toolchain --disable-gdb --with-cmodel=medany --with-multilib-generator="rv32ec-ilp32e--;rv32imac-ilp32--"
+make
 ```
 
 Build OpenOCD with WCH-LinkE support. I've attached the archive sent by MounRiver on `10/11/2023`.

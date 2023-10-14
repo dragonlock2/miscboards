@@ -1,18 +1,15 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-# auto find the correct version
-file(GLOB TOOLCHAIN_DIRS LIST_DIRECTORIES true "$ENV{HOME}/Library/xPacks/@xpack-dev-tools/riscv-none-elf-gcc/*")
-list(GET TOOLCHAIN_DIRS 0 TOOLCHAIN_DIR)
-set(GCC_DIR ${TOOLCHAIN_DIR}/.content/bin)
+set(GCC_DIR ${CMAKE_CURRENT_LIST_DIR}/../riscv-toolchain/bin)
 
 set(CMAKE_SYSTEM_NAME  Generic)
-set(CMAKE_C_COMPILER   ${GCC_DIR}/riscv-none-elf-gcc)
-set(CMAKE_CXX_COMPILER ${GCC_DIR}/riscv-none-elf-g++)
-set(CMAKE_ASM_COMPILER ${GCC_DIR}/riscv-none-elf-gcc)
-set(CMAKE_AR           ${GCC_DIR}/riscv-none-elf-ar)
-set(CMAKE_SIZE         ${GCC_DIR}/riscv-none-elf-size)
-set(CMAKE_OBJCOPY      ${GCC_DIR}/riscv-none-elf-objcopy)
-set(CMAKE_OBJDUMP      ${GCC_DIR}/riscv-none-elf-objdump)
+set(CMAKE_C_COMPILER   ${GCC_DIR}/riscv64-unknown-elf-gcc)
+set(CMAKE_CXX_COMPILER ${GCC_DIR}/riscv64-unknown-elf-g++)
+set(CMAKE_ASM_COMPILER ${GCC_DIR}/riscv64-unknown-elf-gcc)
+set(CMAKE_AR           ${GCC_DIR}/riscv64-unknown-elf-ar)
+set(CMAKE_SIZE         ${GCC_DIR}/riscv64-unknown-elf-size)
+set(CMAKE_OBJCOPY      ${GCC_DIR}/riscv64-unknown-elf-objcopy)
+set(CMAKE_OBJDUMP      ${GCC_DIR}/riscv64-unknown-elf-objdump)
 
 set(OPENOCD_BIN ${CMAKE_CURRENT_LIST_DIR}/../riscv-openocd/src/openocd)
 set(OPENOCD_CFG ${CMAKE_CURRENT_LIST_DIR}/../wch-riscv.cfg)
