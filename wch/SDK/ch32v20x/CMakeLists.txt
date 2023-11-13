@@ -1,14 +1,10 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+file(GLOB PERIPHERAL_SRCS ${WCH_SDK_DIR}/Peripheral/src/*.c)
 add_library(SDK
     ${CMAKE_CURRENT_LIST_DIR}/src/startup.c
     ${CMAKE_CURRENT_LIST_DIR}/src/system_ch32v20x.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_dbgmcu.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_flash.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_gpio.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_misc.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_rcc.c
-    ${WCH_SDK_DIR}/Peripheral/src/ch32v20x_usart.c
+    ${PERIPHERAL_SRCS}
 )
 set_target_properties(SDK PROPERTIES LINKER_LANGUAGE C)
 

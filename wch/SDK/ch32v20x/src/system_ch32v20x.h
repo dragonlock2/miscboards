@@ -7,6 +7,7 @@ extern uint32_t SystemCoreClock;
 
 void SetSysClockTo8_HSI(void);
 void SetSysClockTo144_HSI(void);
+void SetSysClockTo144_HSE(void);
 
 static inline void NVIC_SetVector(IRQn_Type type, void (*cb)(void)) {
     extern void (*vectors[])(void);

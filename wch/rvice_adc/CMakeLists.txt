@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-set(MCU ch32v003) # specify SDK
+set(MCU ch32v20x) # specify SDK
 
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
-project(blinky C CXX)
+project(rvice_adc C CXX)
 
 add_definitions(
     -D${MCU}

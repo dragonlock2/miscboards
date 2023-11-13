@@ -52,3 +52,32 @@ void SetSysClockTo144_HSI(void) {
 
     SystemCoreClock = 144000000;
 }
+
+void SetSysClockTo144_HSE(void) {
+    SetSysClockTo8_HSI();
+
+    // slower flash clock (>=60MHz)
+    FLASH_Unlock_Fast();
+    FLASH->CTLR &= ~(1 << 25); // SCKMOD=0
+    FLASH_Lock_Fast();
+
+    // enable HSE
+    RCC->CTLR |= RCC_HSEON;
+    while ((RCC->CTLR & RCC_HSERDY) == 0);
+
+    // configure PLL
+    RCC->CTLR  &= ~RCC_PLLON;
+    RCC->CFGR0 &= ~(RCC_PLLSRC | RCC_PLLXTPRE);
+    RCC->CFGR0 |= RCC_PLLSRC;
+    RCC->CFGR0  = (RCC->CFGR0 & ~RCC_PLLMULL) | RCC_PLLMULL18; // assume 8MHz crystal
+
+    // enable PLL
+    RCC->CTLR |= RCC_PLLON;
+    while ((RCC->CTLR & RCC_PLLRDY) == 0);
+
+    // switch to PLL
+    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_SW) | RCC_SW_PLL;
+    while ((RCC->CFGR0 & RCC_SWS) != RCC_SWS_PLL);
+
+    SystemCoreClock = 144000000;
+}
