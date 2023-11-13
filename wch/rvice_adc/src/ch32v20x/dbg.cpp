@@ -59,11 +59,12 @@ int _write(int fd, char *buf, int len) {
 __attribute__((used))
 int _read (int fd, char *ptr, int len) {
     if (fd == stdin->_file && len) {
-        if (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == SET) {
-            ptr[0] = USART_ReceiveData(USART1);
-            return 1;
+        // guarantee length, note fread is buffered internally
+        for (int i = 0; i < len; i++) {
+            while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET);
+            ptr[i] = USART_ReceiveData(USART1);
         }
-        // 0 is EOF, so return -1
+        return len;
     }
     return -1;
 }
