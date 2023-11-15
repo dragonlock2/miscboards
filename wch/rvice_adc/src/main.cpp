@@ -66,9 +66,7 @@ extern "C" int main(void) {
         flag = false;
     }
 
-    // TODO use f4pga, make blinky
-    // TODO test 2 basic spis, do a byte delay
-
+    // TODO test 2 basic spis, do a basic byte delay
     // TODO rewrite in cpp fashion, templates!
     // TODO add freertos
 }
