@@ -10,3 +10,6 @@
 [submodule "wch/SDK/ch32v20x/ch32v20x"]
 	path = wch/SDK/ch32v20x/ch32v20x
 	url = https://github.com/openwch/ch32v20x.git
+[submodule "wch/rvice_adc/FreeRTOS-Kernel"]
+	path = wch/rvice_adc/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git

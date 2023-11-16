@@ -3,6 +3,7 @@
 
 #include <cstdbool>
 
+void btn_init(void);
 bool btn_read(void);
 
 #endif // BTN_H

@@ -5,8 +5,8 @@ set(MCU ch32v003) # specify SDK
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(blinky C CXX)
 
-add_definitions(
-    -D${MCU}
+add_compile_definitions(
+    ${MCU}
 )
 
 add_compile_options(

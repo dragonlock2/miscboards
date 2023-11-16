@@ -3,8 +3,7 @@
 #include "btn.h"
 
 /* public functions */
-__attribute__((constructor))
-static void btn_init(void) {
+void btn_init(void) {
     GPIO_InitTypeDef cfg = {
         .GPIO_Pin   = GPIO_Pin_9,
         .GPIO_Speed = GPIO_Speed_50MHz,

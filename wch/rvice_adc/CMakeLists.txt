@@ -3,10 +3,10 @@ cmake_minimum_required(VERSION 3.20.0)
 set(MCU ch32v20x) # specify SDK
 
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
-project(rvice_adc C CXX)
+project(rvice_adc ASM C CXX)
 
-add_definitions(
-    -D${MCU}
+add_compile_definitions(
+    ${MCU}
 )
 
 add_compile_options(
@@ -38,13 +38,22 @@ add_link_options(
 )
 
 include_directories(
-    src/
-    src/${MCU}
+    src
+    platform/${MCU}
+    FreeRTOS-Kernel/include
+    FreeRTOS-Kernel/portable/GCC/RISC-V
+    FreeRTOS-Kernel/portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions
 )
 
 file(GLOB SRCS
+    src/*.c
     src/*.cpp
-    src/${MCU}/*.cpp
+    platform/${MCU}/*.c
+    platform/${MCU}/*.cpp
+    FreeRTOS-Kernel/*.c
+    FreeRTOS-Kernel/portable/MemMang/heap_4.c
+    FreeRTOS-Kernel/portable/GCC/RISC-V/port.c
+    FreeRTOS-Kernel/portable/GCC/RISC-V/portASM.S
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)

@@ -63,4 +63,5 @@ SECTIONS {
 
     _ram  = ORIGIN(RAM);
     _eram = ORIGIN(RAM) + LENGTH(RAM);
+    __freertos_irq_stack_top = _eram;
 }

@@ -5,6 +5,7 @@
 #include <cstdbool>
 #include <cstdint>
 
+void fpga_init(void);
 void fpga_off(void);
 void fpga_on(void);
 bool fpga_booted(void);
