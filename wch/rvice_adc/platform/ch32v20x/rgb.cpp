@@ -3,7 +3,7 @@
 #include "rgb.h"
 
 /* public functions */
-extern "C" void rgb_init(void) {
+void rgb_init(void) {
     GPIO_InitTypeDef cfg = {
         .GPIO_Pin   = 0,
         .GPIO_Speed = GPIO_Speed_50MHz,

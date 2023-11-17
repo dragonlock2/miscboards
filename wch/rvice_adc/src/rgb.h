@@ -3,6 +3,7 @@
 
 #include <cstdbool>
 
+void rgb_init(void);
 void rgb_write(bool r, bool g, bool b);
 
 #endif // RGB_H

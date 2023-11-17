@@ -15,7 +15,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
-    -Os
+    -O2
     -g3
     -ffunction-sections
     -fdata-sections
@@ -30,7 +30,7 @@ add_compile_options(
 add_link_options(
     -Wl,--print-memory-usage
     -Wl,--gc-sections
-    -Os
+    -O2
     -g3
     -flto
     --specs=nano.specs
@@ -40,20 +40,20 @@ add_link_options(
 include_directories(
     src
     platform/${MCU}
-    FreeRTOS-Kernel/include
-    FreeRTOS-Kernel/portable/GCC/RISC-V
-    FreeRTOS-Kernel/portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions
+    platform/${MCU}/rtos
+    ../SDK/FreeRTOS-Kernel/include
+    ../SDK/FreeRTOS-Kernel/portable/GCC # hacky workaround to help redefine portYIELD()
+    ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions
 )
 
 file(GLOB SRCS
-    src/*.c
     src/*.cpp
-    platform/${MCU}/*.c
     platform/${MCU}/*.cpp
-    FreeRTOS-Kernel/*.c
-    FreeRTOS-Kernel/portable/MemMang/heap_4.c
-    FreeRTOS-Kernel/portable/GCC/RISC-V/port.c
-    FreeRTOS-Kernel/portable/GCC/RISC-V/portASM.S
+    platform/${MCU}/rtos/*.c
+    ../SDK/FreeRTOS-Kernel/*.c
+    ../SDK/FreeRTOS-Kernel/portable/MemMang/heap_4.c
+    ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/port.c
+    ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/portASM.S
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)

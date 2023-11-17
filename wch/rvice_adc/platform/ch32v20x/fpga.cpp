@@ -77,10 +77,11 @@ static void flash_init(void) {
 void fpga_init(void) {
     GPIO_INIT(GPIOB, GPIO_Pin_0, GPIO_Mode_Out_OD);      // creset
     GPIO_INIT(GPIOB, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // cdone
-    fpga_on();
 
     GPIO_INIT(GPIOA, GPIO_Pin_8, GPIO_Mode_AF_PP); // clk
     RCC->CFGR0 = (RCC->CFGR0 & ~RCC_CFGR0_MCO) | RCC_CFGR0_MCO_HSE;
+
+    fpga_on();
 }
 
 void fpga_off(void) {

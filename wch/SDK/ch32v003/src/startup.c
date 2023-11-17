@@ -15,22 +15,22 @@ extern int main(void);
 __attribute__((interrupt)) static void default_handler(void) { while (1); }
 
 void (*vectors[39])(void) __attribute__((used)) = {
-    NULL,
-    NULL,
+    default_handler,
+    default_handler,
     default_handler, // NonMaskableInt_IRQn
     default_handler, // EXC_IRQn
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    default_handler,
+    default_handler,
+    default_handler,
+    default_handler,
+    default_handler,
+    default_handler,
+    default_handler,
+    default_handler,
     default_handler, // SysTicK_IRQn
-    NULL,
+    default_handler,
     default_handler, // Software_IRQn
-    NULL,
+    default_handler,
     default_handler, // WWDG_IRQn
     default_handler, // PVD_IRQn
     default_handler, // FLASH_IRQn

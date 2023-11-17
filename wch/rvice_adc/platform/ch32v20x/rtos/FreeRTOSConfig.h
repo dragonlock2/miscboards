@@ -9,12 +9,12 @@
 
 // adapted from https://www.freertos.org/a00110.html
 #define configUSE_PREEMPTION                      (1)
-#define configUSE_PORT_OPTIMISED_TASK_SELECTION   (0)
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION   (1)
 #define configUSE_TICKLESS_IDLE                   (0)
 #define configCPU_CLOCK_HZ                        (144000000)
 #define configTICK_RATE_HZ                        (1000)
 #define configMAX_PRIORITIES                      (4)
-#define configMINIMAL_STACK_SIZE                  (128) // 512-bytes
+#define configMINIMAL_STACK_SIZE                  (256) // 1024-bytes
 #define configMAX_TASK_NAME_LEN                   (16)
 #define configTICK_TYPE_WIDTH_IN_BITS             (TICK_TYPE_WIDTH_32_BITS)
 #define configIDLE_SHOULD_YIELD                   (1)

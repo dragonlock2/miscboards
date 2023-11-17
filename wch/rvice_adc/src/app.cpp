@@ -6,15 +6,16 @@
 #include "rgb.h"
 
 extern "C" void app_main(void *args) {
-    (void) args;
     btn_init();
     fpga_init();
-    printf("booted!\r\n");
+    rgb_init();
+    printf("booted! %p\r\n", args);
 
     TickType_t wait = xTaskGetTickCount();
     bool i = false;
     while (true) {
-        printf("%ld\r\n", wait);
+        // TODO unknown interrupt 6 called?? time varies
+        printf("ticks: %ld\r\n", xTaskGetTickCount());
         rgb_write(i, 0, fpga_booted());
         i = !i;
 

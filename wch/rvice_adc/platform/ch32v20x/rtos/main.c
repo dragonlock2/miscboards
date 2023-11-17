@@ -5,10 +5,8 @@
 
 extern void freertos_risc_v_trap_handler(void);
 extern void dbg_init(void);
-extern void rgb_init(void);
 extern void app_main(void *args);
 
-__attribute__((interrupt))
 static void timer_handler(void) {
     SysTick->SR = 0;
     portYIELD_FROM_ISR(xTaskIncrementTick());
@@ -16,7 +14,7 @@ static void timer_handler(void) {
 
 void freertos_risc_v_application_exception_handler(uint32_t mcause) {
     extern void (*vectors[])(void);
-    vectors[mcause & 0x7FFFFFFF]();
+    vectors[mcause]();
 }
 
 void freertos_risc_v_application_interrupt_handler(uint32_t mcause) {
@@ -25,12 +23,18 @@ void freertos_risc_v_application_interrupt_handler(uint32_t mcause) {
 }
 
 void vPortSetupTimerInterrupt(void) {
+    // setup timer handler
     NVIC_SetVector(SysTicK_IRQn, timer_handler);
     NVIC_EnableIRQ(SysTicK_IRQn);
     SysTick->SR   = 0;
     SysTick->CMP  = SystemCoreClock / configTICK_RATE_HZ - 1;
     SysTick->CNT  = 0;
     SysTick->CTLR = 0x0000000F;
+
+    // enable portYield()
+    // ecall preempts even if interrupts disabled, must use software request
+    NVIC_SetVector(Software_IRQn, vTaskSwitchContext);
+    NVIC_EnableIRQ(Software_IRQn);
 }
 
 void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
@@ -50,8 +54,6 @@ void free(void *ptr) {
     vPortFree(ptr);
 }
 
-static void dummy(void) {}
-
 int main(void) {
     // hook in FreeRTOS handler
     static void (*trap_handler)(void) __attribute__((aligned(4))) = freertos_risc_v_trap_handler;
@@ -64,11 +66,6 @@ int main(void) {
         : : "r" (&trap_handler) : "t0", "t1"
     );
 
-    // TODO ecall gets called twice? stuck task switching
-    // timer_handler never gets called more than a few times, probs stuck in isr?
-    // that's probs why they pend a software irq
-    NVIC_SetVector(Ecall_M_Mode_IRQn, dummy);
-
     // configure clocks
     SetSysClockTo144_HSE();
     configASSERT(SystemCoreClock == configCPU_CLOCK_HZ);
@@ -78,9 +75,8 @@ int main(void) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,  ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,  ENABLE);
 
-    // init debugging early
+    // init print
     dbg_init();
-    rgb_init();
 
     // create app task
     xTaskCreate(
