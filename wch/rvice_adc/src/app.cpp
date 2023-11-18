@@ -22,11 +22,8 @@ extern "C" void app_main(void *args) {
         vTaskDelayUntil(&wait, 500 / portTICK_PERIOD_MS);
         portNOP(); // optimization barrier
 
-        // TODO enabling preemption breaks it!
-            // idle task tends to break w/ -O2, but probs bc it does stuff
-                // results in load/store access defaults in uxListRemove()
-            // doesn't even switch back to task w/ -Og
-                // xNextTaskUnblockTime set to 0xffffffff
+        // TODO test cooperative tasks, one high priority that blocks for awhile and one that busy loops
+        // TODO test preemption, have busy task that gets preempted by higher priority
     }
 
     // TODO rewrite in cpp fashion esp for inits, templates!
