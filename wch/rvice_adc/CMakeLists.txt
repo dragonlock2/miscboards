@@ -42,7 +42,7 @@ include_directories(
     platform/${MCU}
     platform/${MCU}/rtos
     ../SDK/FreeRTOS-Kernel/include
-    ../SDK/FreeRTOS-Kernel/portable/GCC # hacky workaround to help redefine portYIELD()
+    ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V
     ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions
 )
 

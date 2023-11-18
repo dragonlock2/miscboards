@@ -23,18 +23,12 @@ void freertos_risc_v_application_interrupt_handler(uint32_t mcause) {
 }
 
 void vPortSetupTimerInterrupt(void) {
-    // setup timer handler
     NVIC_SetVector(SysTicK_IRQn, timer_handler);
     NVIC_EnableIRQ(SysTicK_IRQn);
     SysTick->SR   = 0;
     SysTick->CMP  = SystemCoreClock / configTICK_RATE_HZ - 1;
     SysTick->CNT  = 0;
     SysTick->CTLR = 0x0000000F;
-
-    // enable portYield()
-    // ecall preempts even if interrupts disabled, must use software request
-    NVIC_SetVector(Software_IRQn, vTaskSwitchContext);
-    NVIC_EnableIRQ(Software_IRQn);
 }
 
 void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
@@ -65,7 +59,14 @@ void _free_r(struct _reent *r, void *ptr) {
 }
 
 int main(void) {
-    // hook in FreeRTOS handler
+    // disable interrupt nesting, FreeRTOS lacks support
+    asm volatile (
+        "li t0, 0x0     \n"
+        "csrw 0x804, t0 \n" // INTSYSCR
+        : : : "t0"
+    );
+
+    // hook in FreeRTOS interrupt/exception handler
     static void (*trap_handler)(void) __attribute__((aligned(4))) = freertos_risc_v_trap_handler;
     asm volatile (
         "mv t0, %0         \n"
@@ -76,8 +77,6 @@ int main(void) {
         : : "r" (&trap_handler) : "t0", "t1"
     );
 
-    // TODO enable interrupts that can bypass FreeRTOS handler
-
     // configure clocks
     SetSysClockTo144_HSE();
     configASSERT(SystemCoreClock == configCPU_CLOCK_HZ);
@@ -87,18 +86,11 @@ int main(void) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,  ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,  ENABLE);
 
-    // init print
+    // init debug print
     dbg_init();
 
-    // create app task
-    xTaskCreate(
-        app_main,
-        "app_main",
-        configMINIMAL_STACK_SIZE,
-        NULL,
-        configMAX_PRIORITIES - 1,
-        NULL
-    );
+    // create low-priority app task
+    xTaskCreate(app_main, "app_main", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     vTaskStartScheduler();
     while (1);

@@ -20,11 +20,9 @@ extern "C" void app_main(void *args) {
         i = !i;
 
         vTaskDelayUntil(&wait, 500 / portTICK_PERIOD_MS);
-        portNOP(); // optimization barrier
-
-        // TODO test cooperative tasks, one high priority that blocks for awhile and one that busy loops
-        // TODO test preemption, have busy task that gets preempted by higher priority
     }
+
+    vTaskDelete(NULL);
 
     // TODO rewrite in cpp fashion esp for inits, templates!
     // TODO tinyusb? need to get usb bulk transfers working
