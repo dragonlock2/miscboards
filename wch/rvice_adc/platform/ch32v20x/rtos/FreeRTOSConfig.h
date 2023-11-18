@@ -8,7 +8,7 @@
 #define configMTIMECMP_BASE_ADDRESS (0)
 
 // adapted from https://www.freertos.org/a00110.html
-#define configUSE_PREEMPTION                      (1)
+#define configUSE_PREEMPTION                      (0) // TODO fix and re-enable
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION   (1)
 #define configUSE_TICKLESS_IDLE                   (0)
 #define configCPU_CLOCK_HZ                        (144000000)
@@ -25,8 +25,8 @@
 #define configUSE_COUNTING_SEMAPHORES             (0)
 #define configQUEUE_REGISTRY_SIZE                 (8)
 #define configUSE_QUEUE_SETS                      (0)
-#define configUSE_TIME_SLICING                    (0)
-#define configUSE_NEWLIB_REENTRANT                (0)
+#define configUSE_TIME_SLICING                    (1)
+#define configUSE_NEWLIB_REENTRANT                (1)
 #define configENABLE_BACKWARD_COMPATIBILITY       (0)
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS   (4)
 #define configUSE_MINI_LIST_ITEM                  (0)

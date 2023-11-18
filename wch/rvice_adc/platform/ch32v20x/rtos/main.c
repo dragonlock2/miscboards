@@ -54,6 +54,16 @@ void free(void *ptr) {
     vPortFree(ptr);
 }
 
+void *_malloc_r(struct _reent *r, size_t size) {
+    (void) r;
+    return malloc(size);
+}
+
+void _free_r(struct _reent *r, void *ptr) {
+    (void) r;
+    return free(ptr);
+}
+
 int main(void) {
     // hook in FreeRTOS handler
     static void (*trap_handler)(void) __attribute__((aligned(4))) = freertos_risc_v_trap_handler;
@@ -65,6 +75,8 @@ int main(void) {
         "csrw mtvec, t0    \n"
         : : "r" (&trap_handler) : "t0", "t1"
     );
+
+    // TODO enable interrupts that can bypass FreeRTOS handler
 
     // configure clocks
     SetSysClockTo144_HSE();
