@@ -1,10 +1,8 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <ch32v20x.h>
-#include <ch32v20x_rcc.h>
 
 extern void freertos_risc_v_trap_handler(void);
-extern void dbg_init(void);
 extern void app_main(void *args);
 
 static void timer_handler(void) {
@@ -77,20 +75,8 @@ int main(void) {
         : : "r" (&trap_handler) : "t0", "t1"
     );
 
-    // configure clocks
-    SetSysClockTo144_HSE();
-    configASSERT(SystemCoreClock == configCPU_CLOCK_HZ);
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,  ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,  ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,  ENABLE);
-
-    // init debug print
-    dbg_init();
-
-    // create low-priority app task
-    xTaskCreate(app_main, "app_main", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    // create app task
+    xTaskCreate(app_main, "app_main", configMINIMAL_STACK_SIZE, NULL, configAPP_MAIN_PRIORITY, NULL);
 
     vTaskStartScheduler();
     while (1);

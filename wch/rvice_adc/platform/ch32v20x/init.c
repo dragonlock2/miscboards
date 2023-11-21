@@ -1,8 +1,22 @@
+#include <FreeRTOS.h>
 #include <stdio.h>
 #include <ch32v20x.h>
 #include <ch32v20x_gpio.h>
+#include <ch32v20x_rcc.h>
 #include <ch32v20x_usart.h>
 
+__attribute__((constructor(101)))
+void clock_init(void) {
+    SetSysClockTo144_HSE();
+    configASSERT(SystemCoreClock == configCPU_CLOCK_HZ);
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,  ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,  ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC,  ENABLE);
+}
+
+__attribute__((constructor(102)))
 void dbg_init(void) {
     GPIO_InitTypeDef tx = {
         .GPIO_Pin   = GPIO_Pin_9,

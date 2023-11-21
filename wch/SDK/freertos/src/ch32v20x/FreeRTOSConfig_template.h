@@ -1,6 +1,3 @@
-#ifndef FREERTOS_CONFIG_H
-#define FREERTOS_CONFIG_H
-
 #include <stdio.h>
 #include <ch32v20x.h>
 
@@ -84,5 +81,3 @@
 #define INCLUDE_xTaskAbortDelay              (0)
 #define INCLUDE_xTaskGetHandle               (0)
 #define INCLUDE_xTaskResumeFromISR           (1)
-
-#endif // FREERTOS_CONFIG_H

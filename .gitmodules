@@ -11,8 +11,8 @@
 	path = wch/SDK/ch32v20x/ch32v20x
 	url = https://github.com/openwch/ch32v20x.git
 [submodule "wch/rvice_adc/FreeRTOS-Kernel"]
-	path = wch/SDK/FreeRTOS-Kernel
+	path = wch/SDK/freertos/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
 [submodule "wch/SDK/tinyusb"]
-	path = wch/SDK/tinyusb
+	path = wch/SDK/tinyusb/tinyusb
 	url = git@github.com:dragonlock2/tinyusb.git
