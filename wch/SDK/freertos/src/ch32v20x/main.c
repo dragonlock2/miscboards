@@ -38,6 +38,13 @@ void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
     *pulIdleTaskStackSize   = configMINIMAL_STACK_SIZE;
 }
 
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
+    (void) xTask;
+    printf("%s overflow\r\n", pcTaskName);
+    __disable_irq();
+    while (1);
+}
+
 void *malloc(size_t size) {
     return pvPortMalloc(size);
 }

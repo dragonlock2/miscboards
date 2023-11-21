@@ -126,7 +126,7 @@ static bool rpc_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, u
                     break;
 
                 case rpc_id::FLASH_ERASE:
-                    if (fpga_erase(data.pkt.addr, data.pkt.len)) {
+                    if (fpga_erase(data.pkt.addr)) {
                         ret = rpc_ret::SUCCESS;
                     }
                     break;

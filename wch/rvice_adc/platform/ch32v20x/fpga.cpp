@@ -104,30 +104,30 @@ bool fpga_booted(void) {
     return static_cast<bool>(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1));
 }
 
-bool fpga_erase(uint32_t addr, size_t len) {
+bool fpga_erase(uint32_t addr) {
     if (addr % 4096 != 0) { return false; }
-    for (size_t a = addr; a < (addr + len); a += 4096) {
-        // unlock
-        const uint8_t data1[1] = {0x06};
-        spi_write(data1, sizeof(data1));
 
-        // erase
-        const uint8_t data2[4] = {
-            0x20,
-            static_cast<uint8_t>((a >> 16) & 0xFF),
-            static_cast<uint8_t>((a >> 8)  & 0xFF),
-            static_cast<uint8_t>((a >> 0)  & 0xFF),
-        };
-        spi_write(data2, sizeof(data2));
+    // unlock
+    const uint8_t data1[1] = {0x06};
+    spi_write(data1, sizeof(data1));
 
-        // wait
-        uint8_t data3[2];
-        do {
-            data3[0] = 0x05;
-            data3[1] = 0xFF;
-            spi_transceive(data3, sizeof(data3));
-        } while (data3[1] & 0x01);
-    }
+    // erase
+    const uint8_t data2[4] = {
+        0x20,
+        static_cast<uint8_t>((addr >> 16) & 0xFF),
+        static_cast<uint8_t>((addr >> 8)  & 0xFF),
+        static_cast<uint8_t>((addr >> 0)  & 0xFF),
+    };
+    spi_write(data2, sizeof(data2));
+
+    // wait
+    uint8_t data3[2];
+    do {
+        data3[0] = 0x05;
+        data3[1] = 0xFF;
+        spi_transceive(data3, sizeof(data3));
+    } while (data3[1] & 0x01);
+
     return true;
 }
 

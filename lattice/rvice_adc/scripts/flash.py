@@ -1,8 +1,10 @@
 import struct
 import sys
+import time
 import usb
 
-PAGE_SIZE = 256
+SECTOR_SIZE = 4096
+PAGE_SIZE   = 256
 
 class Flash:
     def __init__(self, vid=0x0069, pid=0x0421):
@@ -18,7 +20,10 @@ class Flash:
         self._cmd(1)
 
     def erase(self, addr, size):
-        self._cmd(2, addr=addr, size=size)
+        while size > 0:
+            self._cmd(2, addr=addr)
+            addr += SECTOR_SIZE
+            size -= SECTOR_SIZE
 
     def write(self, addr, data):
         while data:
