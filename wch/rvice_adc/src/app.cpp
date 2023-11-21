@@ -29,7 +29,7 @@ extern "C" void app_main(void *args) {
 
     vTaskDelete(NULL);
 
+    // TODO fix usb rarely causes lockup, ep2drv corrupted
     // TODO rewrite in cpp fashion esp for inits, templates!
-    // TODO bulk transfer protocol to flash fpga
     // TODO test 2 basic spis, do a basic byte delay
 }

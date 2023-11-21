@@ -1,6 +1,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <FreeRTOS.h>
+#include <task.h>
 #include <ch32v20x.h>
 #include <ch32v20x_gpio.h>
 #include "fpga.h"
@@ -37,6 +39,7 @@ static void spi_deinit(void) {
 
 static void spi_transceive(uint8_t *data, size_t len, bool release=true) {
     // mode 0, msb first
+    taskENTER_CRITICAL();
     GPIO_WriteBit(GPIOA, GPIO_Pin_2, Bit_RESET);
     for (size_t i = 0; i < len; i++) {
         uint8_t out = data[i], in = 0;
@@ -51,6 +54,7 @@ static void spi_transceive(uint8_t *data, size_t len, bool release=true) {
         data[i] = in;
     }
     if (release) {
+        taskEXIT_CRITICAL();
         GPIO_WriteBit(GPIOA, GPIO_Pin_2, Bit_SET);
     }
 }
@@ -70,7 +74,7 @@ static void flash_init(void) {
     // fpga puts flash to sleep, wake it up
     const uint8_t wake = 0xAB;
     spi_write(&wake, 1);
-    for (int i = 0; i < 500; i++) { asm ("nop"); } // >3us
+    for (int i = 0; i < 1000; i++) { asm ("nop"); } // >3us
 }
 
 /* public functions */
@@ -100,8 +104,8 @@ bool fpga_booted(void) {
     return static_cast<bool>(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1));
 }
 
-void fpga_erase(uint32_t addr, size_t len) {
-    if (addr % 4096 != 0) { return; }
+bool fpga_erase(uint32_t addr, size_t len) {
+    if (addr % 4096 != 0) { return false; }
     for (size_t a = addr; a < (addr + len); a += 4096) {
         // unlock
         const uint8_t data1[1] = {0x06};
@@ -124,10 +128,11 @@ void fpga_erase(uint32_t addr, size_t len) {
             spi_transceive(data3, sizeof(data3));
         } while (data3[1] & 0x01);
     }
+    return true;
 }
 
-void fpga_write(uint32_t addr, const uint8_t data[256]) {
-    if (addr % 256 != 0) { return; }
+bool fpga_write(uint32_t addr, const std::array<uint8_t, 256> &data) {
+    if (addr % 256 != 0) { return false; }
 
     // unlock
     const uint8_t data1[1] = {0x06};
@@ -141,7 +146,7 @@ void fpga_write(uint32_t addr, const uint8_t data[256]) {
         static_cast<uint8_t>((addr >> 0)  & 0xFF),
     };
     spi_write(cmd, sizeof(cmd), false);
-    spi_write(data, 256);
+    spi_write(data.data(), 256);
 
     // wait
     uint8_t data3[2];
@@ -150,9 +155,11 @@ void fpga_write(uint32_t addr, const uint8_t data[256]) {
         data3[1] = 0xFF;
         spi_transceive(data3, sizeof(data3));
     } while (data3[1] & 0x01);
+
+    return true;
 }
 
-void fpga_read(uint32_t addr, uint8_t data[256]) {
+bool fpga_read(uint32_t addr, std::array<uint8_t, 256> &data) {
     const uint8_t cmd[4] = {
         0x03,
         static_cast<uint8_t>((addr >> 16) & 0xFF),
@@ -160,5 +167,6 @@ void fpga_read(uint32_t addr, uint8_t data[256]) {
         static_cast<uint8_t>((addr >> 0)  & 0xFF),
     };
     spi_write(cmd, sizeof(cmd), false);
-    spi_read(data, 256);
+    spi_read(data.data(), 256);
+    return true;
 }
