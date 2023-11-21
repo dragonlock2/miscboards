@@ -44,6 +44,7 @@ include_directories(
     ../SDK/FreeRTOS-Kernel/include
     ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V
     ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions
+    ../SDK/tinyusb/src
 )
 
 file(GLOB SRCS
@@ -54,6 +55,11 @@ file(GLOB SRCS
     ../SDK/FreeRTOS-Kernel/portable/MemMang/heap_4.c
     ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/port.c
     ../SDK/FreeRTOS-Kernel/portable/GCC/RISC-V/portASM.S
+    ../SDK/tinyusb/src/*.c
+    ../SDK/tinyusb/src/class/**/*.c
+    ../SDK/tinyusb/src/common/*.c
+    ../SDK/tinyusb/src/device/*.c
+    ../SDK/tinyusb/src/portable/wch/${MCU}/*.c
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
