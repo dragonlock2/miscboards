@@ -7,23 +7,21 @@
 #include <ch32v20x_gpio.h>
 #include "fpga.h"
 
-/* private defines */
-#define GPIO_INIT(port, pin, mode)          \
-    {                                       \
-        GPIO_InitTypeDef cfg = {            \
-            .GPIO_Pin   = pin,              \
-            .GPIO_Speed = GPIO_Speed_50MHz, \
-            .GPIO_Mode  = mode,             \
-        };                                  \
-        GPIO_Init(port, &cfg);              \
-    }
-
 /* private helpers */
+static void gpio_init(GPIO_TypeDef* port, uint16_t pin, GPIOMode_TypeDef mode) {
+    GPIO_InitTypeDef cfg = {
+        .GPIO_Pin   = pin,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+        .GPIO_Mode  = mode,
+    };
+    GPIO_Init(port, &cfg);
+}
+
 static void spi_init(void) {
-    GPIO_INIT(GPIOA, GPIO_Pin_1, GPIO_Mode_Out_PP);      // mosi
-    GPIO_INIT(GPIOA, GPIO_Pin_3, GPIO_Mode_IN_FLOATING); // miso
-    GPIO_INIT(GPIOA, GPIO_Pin_0, GPIO_Mode_Out_PP);      // sck
-    GPIO_INIT(GPIOA, GPIO_Pin_2, GPIO_Mode_Out_PP);      // cs
+    gpio_init(GPIOA, GPIO_Pin_1, GPIO_Mode_Out_PP);      // mosi
+    gpio_init(GPIOA, GPIO_Pin_3, GPIO_Mode_IN_FLOATING); // miso
+    gpio_init(GPIOA, GPIO_Pin_0, GPIO_Mode_Out_PP);      // sck
+    gpio_init(GPIOA, GPIO_Pin_2, GPIO_Mode_Out_PP);      // cs
 
     // mode 0 idle levels
     GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_RESET); // sck
@@ -31,19 +29,20 @@ static void spi_init(void) {
 }
 
 static void spi_deinit(void) {
-    GPIO_INIT(GPIOA, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // mosi
-    GPIO_INIT(GPIOA, GPIO_Pin_3, GPIO_Mode_IN_FLOATING); // miso
-    GPIO_INIT(GPIOA, GPIO_Pin_0, GPIO_Mode_IN_FLOATING); // sck
-    GPIO_INIT(GPIOA, GPIO_Pin_2, GPIO_Mode_IN_FLOATING); // cs
+    gpio_init(GPIOA, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // mosi
+    gpio_init(GPIOA, GPIO_Pin_3, GPIO_Mode_IN_FLOATING); // miso
+    gpio_init(GPIOA, GPIO_Pin_0, GPIO_Mode_IN_FLOATING); // sck
+    gpio_init(GPIOA, GPIO_Pin_2, GPIO_Mode_IN_FLOATING); // cs
 }
 
-static void spi_transceive(uint8_t *data, size_t len, bool release=true) {
+template <std::size_t N>
+static void spi_transceive(std::array<uint8_t, N>& data, bool release=true) {
     // mode 0, msb first
     taskENTER_CRITICAL();
     GPIO_WriteBit(GPIOA, GPIO_Pin_2, Bit_RESET);
-    for (size_t i = 0; i < len; i++) {
-        uint8_t out = data[i], in = 0;
-        for (int j = 0; j < 8; j++) {
+    for (uint8_t& out: data) {
+        uint8_t in = 0;
+        for (int i = 0; i < 8; i++) {
             GPIO_WriteBit(GPIOA, GPIO_Pin_1, static_cast<BitAction>(out & 0x80));
             out <<= 1;
             GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_SET);
@@ -51,7 +50,7 @@ static void spi_transceive(uint8_t *data, size_t len, bool release=true) {
             in |= GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_3);
             GPIO_WriteBit(GPIOA, GPIO_Pin_0, Bit_RESET);
         }
-        data[i] = in;
+        out = in;
     }
     if (release) {
         taskEXIT_CRITICAL();
@@ -59,30 +58,30 @@ static void spi_transceive(uint8_t *data, size_t len, bool release=true) {
     }
 }
 
-static inline void spi_write(const uint8_t *data, size_t len, bool release=true) {
-    uint8_t tmp[len];
-    memcpy(tmp, data, len);
-    spi_transceive(tmp, len, release);
+template <std::size_t N>
+static void spi_write(const std::array<uint8_t, N>& data, bool release=true) {
+    std::array<uint8_t, N> tmp = data;
+    spi_transceive(tmp, release);
 }
 
-static inline void spi_read(uint8_t *data, size_t len, bool release=true) {
-    memset(data, 0xFF, len);
-    spi_transceive(data, len, release);
+template <std::size_t N>
+static void spi_read(std::array<uint8_t, N>& data, bool release=true) {
+    data.fill(0xFF);
+    spi_transceive(data, release);
 }
 
 static void flash_init(void) {
     // fpga puts flash to sleep, wake it up
-    const uint8_t wake = 0xAB;
-    spi_write(&wake, 1);
+    spi_write(std::array<uint8_t, 1> { 0xAB });
     for (int i = 0; i < 1000; i++) { asm ("nop"); } // >3us
 }
 
 /* public functions */
 void fpga_init(void) {
-    GPIO_INIT(GPIOB, GPIO_Pin_0, GPIO_Mode_Out_OD);      // creset
-    GPIO_INIT(GPIOB, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // cdone
+    gpio_init(GPIOB, GPIO_Pin_0, GPIO_Mode_Out_OD);      // creset
+    gpio_init(GPIOB, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // cdone
 
-    GPIO_INIT(GPIOA, GPIO_Pin_8, GPIO_Mode_AF_PP); // clk
+    gpio_init(GPIOA, GPIO_Pin_8, GPIO_Mode_AF_PP); // clk
     RCC->CFGR0 = (RCC->CFGR0 & ~RCC_CFGR0_MCO) | RCC_CFGR0_MCO_HSE;
 
     fpga_on();
@@ -108,25 +107,22 @@ bool fpga_erase(uint32_t addr) {
     if (addr % 4096 != 0) { return false; }
 
     // unlock
-    const uint8_t data1[1] = {0x06};
-    spi_write(data1, sizeof(data1));
+    spi_write(std::array<uint8_t, 1> { 0x06 });
 
     // erase
-    const uint8_t data2[4] = {
+    spi_write(std::array<uint8_t, 4> {
         0x20,
         static_cast<uint8_t>((addr >> 16) & 0xFF),
         static_cast<uint8_t>((addr >> 8)  & 0xFF),
         static_cast<uint8_t>((addr >> 0)  & 0xFF),
-    };
-    spi_write(data2, sizeof(data2));
+    });
 
     // wait
-    uint8_t data3[2];
+    std::array<uint8_t, 2> wait;
     do {
-        data3[0] = 0x05;
-        data3[1] = 0xFF;
-        spi_transceive(data3, sizeof(data3));
-    } while (data3[1] & 0x01);
+        wait = { 0x05, 0xFF };
+        spi_transceive(wait);
+    } while (wait[1] & 0x01);
 
     return true;
 }
@@ -135,38 +131,34 @@ bool fpga_write(uint32_t addr, const std::array<uint8_t, 256> &data) {
     if (addr % 256 != 0) { return false; }
 
     // unlock
-    const uint8_t data1[1] = {0x06};
-    spi_write(data1, sizeof(data1));
+    spi_write(std::array<uint8_t, 1> { 0x06 });
 
     // write
-    const uint8_t cmd[4] = {
+    spi_write(std::array<uint8_t, 4> {
         0x02,
         static_cast<uint8_t>((addr >> 16) & 0xFF),
         static_cast<uint8_t>((addr >> 8)  & 0xFF),
         static_cast<uint8_t>((addr >> 0)  & 0xFF),
-    };
-    spi_write(cmd, sizeof(cmd), false);
-    spi_write(data.data(), 256);
+    }, false);
+    spi_write(data);
 
     // wait
-    uint8_t data3[2];
+    std::array<uint8_t, 2> wait;
     do {
-        data3[0] = 0x05;
-        data3[1] = 0xFF;
-        spi_transceive(data3, sizeof(data3));
-    } while (data3[1] & 0x01);
+        wait = { 0x05, 0xFF };
+        spi_transceive(wait);
+    } while (wait[1] & 0x01);
 
     return true;
 }
 
 bool fpga_read(uint32_t addr, std::array<uint8_t, 256> &data) {
-    const uint8_t cmd[4] = {
+    spi_write(std::array<uint8_t, 4> {
         0x03,
         static_cast<uint8_t>((addr >> 16) & 0xFF),
         static_cast<uint8_t>((addr >> 8)  & 0xFF),
         static_cast<uint8_t>((addr >> 0)  & 0xFF),
-    };
-    spi_write(cmd, sizeof(cmd), false);
-    spi_read(data.data(), 256);
+    }, false);
+    spi_read(data);
     return true;
 }

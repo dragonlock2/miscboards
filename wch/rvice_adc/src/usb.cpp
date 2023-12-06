@@ -90,10 +90,10 @@ static void rpc_reset(uint8_t rhport) {
     rpc_init();
 }
 
-static uint16_t rpc_open(uint8_t rhport, tusb_desc_interface_t const *desc_intf, uint16_t max_len) {
+static uint16_t rpc_open(uint8_t rhport, tusb_desc_interface_t const* desc_intf, uint16_t max_len) {
     TU_VERIFY(desc_intf->bInterfaceClass == TUSB_CLASS_VENDOR_SPECIFIC, 0);
-    const uint8_t *p_desc = tu_desc_next(desc_intf);
-    const uint8_t *desc_end = p_desc + max_len;
+    const uint8_t* p_desc = tu_desc_next(desc_intf);
+    const uint8_t* desc_end = p_desc + max_len;
     if (desc_intf->bNumEndpoints) {
         while (tu_desc_type(p_desc) != TUSB_DESC_ENDPOINT && p_desc < desc_end) {
             p_desc = tu_desc_next(p_desc);
@@ -155,7 +155,7 @@ static bool rpc_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, u
 }
 
 /* public functions */
-void usb_task(void *args) {
+void usb_task(void* args) {
     (void) args;
     tusb_init();
     while (1) {
@@ -164,16 +164,16 @@ void usb_task(void *args) {
     vTaskDelete(NULL);
 }
 
-uint8_t const *tud_descriptor_device_cb(void) {
+uint8_t const* tud_descriptor_device_cb(void) {
     return (uint8_t const*) &desc_device;
 }
 
-uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
+uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void) index; // only 1 config descriptor
     return desc_configuration;
 }
 
-uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
+uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     static uint16_t str[127]; // UTF-16
     (void) langid;
 
@@ -185,7 +185,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         memcpy(&str[1], desc_strings[index], strlen(desc_strings[index]));
         count = 1;
     } else {
-        const char *s = desc_strings[index];
+        const char* s = desc_strings[index];
         for (size_t i = 0; i < strlen(s); i++) {
             str[1 + i] = s[i]; // ASCII to UTF-16
         }
@@ -195,7 +195,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return str;
 }
 
-usbd_class_driver_t const *usbd_app_driver_get_cb(uint8_t *driver_count) {
+usbd_class_driver_t const* usbd_app_driver_get_cb(uint8_t* driver_count) {
     static const usbd_class_driver_t app_drivers[] = {
         {
             .init             = rpc_init,

@@ -21,7 +21,7 @@ extern "C" void app_main(void *args) {
         printf("ticks: %ld\r\n", xTaskGetTickCount());
 
         static bool i;
-        rgb_write(i, 0, fpga_booted());
+        rgb_write(i, btn_read(), fpga_booted());
         i = !i;
 
         vTaskDelayUntil(&wait, 500 / portTICK_PERIOD_MS);
@@ -29,6 +29,6 @@ extern "C" void app_main(void *args) {
 
     vTaskDelete(NULL);
 
-    // TODO rewrite in cpp fashion esp for inits, templates!
+    // TODO prep tinyusb for PR
     // TODO test 2 basic spis, do a basic byte delay
 }

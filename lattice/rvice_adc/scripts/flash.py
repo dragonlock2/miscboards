@@ -58,11 +58,13 @@ if __name__ == '__main__':
 
     if len(sys.argv) == 2:
         with open(sys.argv[1], 'rb') as r:
+            t = time.time()
             d = r.read()
             print(f'writing length {len(d)} file')
             f.erase(0, len(d))
             f.write(0, d)
-            print("match?", f.read(0, len(d)) == d)
+            print('match?', f.read(0, len(d)) == d)
             f.on()
+            print(f'took {time.time() - t:3f}s')
     else:
         print('pass in a file!')

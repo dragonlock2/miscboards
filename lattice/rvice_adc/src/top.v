@@ -10,7 +10,7 @@ reg [31:0] ctr = 0;
 
 always @(posedge clk) begin
     if (ctr == (FREQ * 1 / 2) - 1) begin
-        shift = {shift[0], shift[2:1]};
+        shift = {shift[1:0], shift[2]};
         ctr = 0;
     end else
         ctr = ctr + 1;
