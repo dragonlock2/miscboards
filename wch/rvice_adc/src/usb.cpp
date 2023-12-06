@@ -154,9 +154,14 @@ static bool rpc_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, u
     return true;
 }
 
+static void usb_handler(void) {
+    tud_int_handler(0);
+}
+
 /* public functions */
 void usb_task(void* args) {
     (void) args;
+    NVIC_SetVector(USBHD_IRQn, usb_handler);
     tusb_init();
     while (1) {
         tud_task();

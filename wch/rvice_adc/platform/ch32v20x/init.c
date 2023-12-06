@@ -10,6 +10,14 @@ void clock_init(void) {
     SetSysClockTo144_HSE();
     configASSERT(SystemCoreClock == configCPU_CLOCK_HZ);
 
+    switch (SystemCoreClock) {
+        case 48000000:  RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_Div1); break;
+        case 96000000:  RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_Div2); break;
+        case 144000000: RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_Div3); break;
+        default: __disable_irq(); while (1); break;
+    }
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_OTG_FS, ENABLE);
+
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,  ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,  ENABLE);

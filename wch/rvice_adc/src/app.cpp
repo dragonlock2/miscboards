@@ -29,6 +29,5 @@ extern "C" void app_main(void *args) {
 
     vTaskDelete(NULL);
 
-    // TODO prep tinyusb for PR
     // TODO test 2 basic spis, do a basic byte delay
 }
