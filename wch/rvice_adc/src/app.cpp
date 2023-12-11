@@ -29,5 +29,8 @@ extern "C" void app_main(void *args) {
 
     vTaskDelete(NULL);
 
+    // TODO audio streaming, 8 channels, 16-bit, 48kHz
     // TODO test 2 basic spis, do a basic byte delay
+    // TODO spi with dma, basic stream, tbh it's so slow might be able to do polling
+    // TODO adc stream
 }

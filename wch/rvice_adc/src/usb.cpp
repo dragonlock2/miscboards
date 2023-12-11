@@ -7,10 +7,17 @@
 
 /* private constants */
 enum class usb_string_desc {
-    LANGID        = 0x00,
-    MANUFACTURER  = 0x01,
-    PRODUCT       = 0x02,
-    SERIAL_NUMBER = 0x03,
+    LANGID,
+    MANUFACTURER,
+    PRODUCT,
+    SERIAL_NUMBER,
+    COUNT
+};
+
+enum class usb_itf_num {
+    VENDOR,
+    AUDIO_CONTROL,
+    AUDIO_STREAMING,
     COUNT
 };
 
@@ -18,9 +25,9 @@ static const tusb_desc_device_t desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = 0x0110, // USB 1.1 (not high speed)
-    .bDeviceClass       = TUSB_CLASS_VENDOR_SPECIFIC,
-    .bDeviceSubClass    = 0x00,
-    .bDeviceProtocol    = 0x00,
+    .bDeviceClass       = TUSB_CLASS_MISC,
+    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor           = 0x0069,
     .idProduct          = 0x0421, // 0x0420 used by JABI
@@ -31,29 +38,39 @@ static const tusb_desc_device_t desc_device = {
     .bNumConfigurations = 0x01,
 };
 
+#define TUD_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO_FUNC_1_DESC_LEN + TUD_VENDOR_DESC_LEN)
+#define TUD_VENDOR_EPNUM (1)
+#define TUD_AUDIO_EPNUM  (2)
+
 static const uint8_t desc_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 1, 0, (TUD_CONFIG_DESC_LEN + TUD_VENDOR_DESC_LEN), TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 500), // 500mA
-    TUD_VENDOR_DESCRIPTOR(0, 0, 0x01, 0x81, CFG_TUD_ENDPOINT0_SIZE), // ep1
+    TUD_CONFIG_DESCRIPTOR(1, static_cast<uint8_t>(usb_itf_num::COUNT), 0, TUD_CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100), // mA
+    TUD_VENDOR_DESCRIPTOR(static_cast<uint8_t>(usb_itf_num::VENDOR), 0, TUD_VENDOR_EPNUM, TUSB_DIR_IN_MASK | TUD_VENDOR_EPNUM, 64),
+    TUD_AUDIO_MIC_EIGHT_CH_DESCRIPTOR(static_cast<uint8_t>(usb_itf_num::AUDIO_CONTROL), 0,
+        CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX, CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX * 8,
+        TUSB_DIR_IN_MASK | TUD_AUDIO_EPNUM, CFG_TUD_AUDIO_EP_SZ_IN),
 };
 
 static char const* desc_strings[] = { // keep <= 127 chars due to encoding
     [static_cast<size_t>(usb_string_desc::LANGID)]        = (const char[]) { 0x09, 0x04 }, // supported language is English (0x0409)
     [static_cast<size_t>(usb_string_desc::MANUFACTURER)]  = "dragonlock2",
     [static_cast<size_t>(usb_string_desc::PRODUCT)]       = "rvice_adc",
-    [static_cast<size_t>(usb_string_desc::SERIAL_NUMBER)] = "null",
+    [static_cast<size_t>(usb_string_desc::SERIAL_NUMBER)] = "not null",
 };
 
+namespace rpc {
+
+/* private constants */
 enum class rpc_id {
-    FPGA_OFF = 0,
-    FPGA_ON = 1,
-    FLASH_ERASE = 2,
-    FLASH_WRITE = 3,
-    FLASH_READ = 4,
+    FPGA_OFF,
+    FPGA_ON,
+    FLASH_ERASE,
+    FLASH_WRITE,
+    FLASH_READ,
 };
 
 enum class rpc_ret {
-    SUCCESS = 0,
-    FAIL = 1,
+    SUCCESS,
+    FAIL,
 };
 
 /* private data */
@@ -73,24 +90,24 @@ static struct {
 static_assert(sizeof(data.pkt) == (12 + PAGE_SIZE)); // extremely lazy rpc :P
 
 /* private helpers */
-static void rpc_start_receive(uint8_t rhport) {
+static void start_receive(uint8_t rhport) {
     usbd_edpt_xfer(rhport, data.ep_out, reinterpret_cast<uint8_t*>(&data.pkt), sizeof(data.pkt));
 }
 
-static void rpc_start_send(uint8_t rhport) {
+static void start_send(uint8_t rhport) {
     usbd_edpt_xfer(rhport, data.ep_in, reinterpret_cast<uint8_t*>(&data.pkt), sizeof(data.pkt));
 }
 
-static void rpc_init(void) {
+static void init(void) {
     memset(&data.pkt, 0, sizeof(data.pkt));
 }
 
-static void rpc_reset(uint8_t rhport) {
+static void reset(uint8_t rhport) {
     (void) rhport;
-    rpc_init();
+    init();
 }
 
-static uint16_t rpc_open(uint8_t rhport, tusb_desc_interface_t const* desc_intf, uint16_t max_len) {
+static uint16_t open(uint8_t rhport, tusb_desc_interface_t const* desc_intf, uint16_t max_len) {
     TU_VERIFY(desc_intf->bInterfaceClass == TUSB_CLASS_VENDOR_SPECIFIC, 0);
     const uint8_t* p_desc = tu_desc_next(desc_intf);
     const uint8_t* desc_end = p_desc + max_len;
@@ -105,12 +122,12 @@ static uint16_t rpc_open(uint8_t rhport, tusb_desc_interface_t const* desc_intf,
         usbd_edpt_claim(rhport, data.ep_out);
         usbd_edpt_claim(rhport, data.ep_in);
 
-        rpc_start_receive(rhport);
+        start_receive(rhport);
     }
     return (uintptr_t) p_desc - (uintptr_t) desc_intf;
 }
 
-static bool rpc_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes) {
+static bool xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes) {
     if (ep_addr == data.ep_out) {
         if (result == XFER_RESULT_SUCCESS && xferred_bytes == sizeof(data.pkt)) {
             rpc_ret ret = rpc_ret::FAIL; // careful it's unioned
@@ -144,15 +161,136 @@ static bool rpc_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, u
                     break;
             }
             data.pkt.ret = ret;
-            rpc_start_send(rhport);
+            start_send(rhport);
         } else {
-            rpc_start_receive(rhport);
+            start_receive(rhport);
         }
     } else if (ep_addr == data.ep_in) {
-        rpc_start_receive(rhport);
+        start_receive(rhport);
     }
     return true;
 }
+
+};
+
+namespace audio {
+
+/* private data */
+static struct {
+    uint32_t sample_freq;
+    uint8_t  clk_valid;
+    bool     mute[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
+    uint16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
+    audio_control_range_4_n_t(1) sample_freq_range;
+} data;
+
+/* public functions */
+extern "C" bool tud_audio_set_req_entity_cb(uint8_t rhport, tusb_control_request_t const* p_request, uint8_t* pBuff) {
+    (void) rhport;
+    TU_VERIFY(p_request->bRequest == AUDIO_CS_REQ_CUR);
+    
+    const uint8_t channelNum = TU_U16_LOW(p_request->wValue);
+    const uint8_t ctrlSel    = TU_U16_HIGH(p_request->wValue);
+    const uint8_t entityID   = TU_U16_HIGH(p_request->wIndex);
+
+    if (entityID == 2) {
+        switch (ctrlSel) {
+            case AUDIO_FU_CTRL_MUTE:
+                TU_VERIFY(p_request->wLength == sizeof(audio_control_cur_1_t));
+                data.mute[channelNum] = reinterpret_cast<audio_control_cur_1_t*>(pBuff)->bCur;
+                return true;
+                break;
+
+            case AUDIO_FU_CTRL_VOLUME:
+                TU_VERIFY(p_request->wLength == sizeof(audio_control_cur_2_t));
+                data.volume[channelNum] = (uint16_t) ((audio_control_cur_2_t*) pBuff)->bCur;
+                return true;
+                break;
+        }
+    }
+    return false;
+}
+
+extern "C" bool tud_audio_get_req_entity_cb(uint8_t rhport, tusb_control_request_t const* p_request) {
+    const uint8_t channelNum = TU_U16_LOW(p_request->wValue);
+    const uint8_t ctrlSel    = TU_U16_HIGH(p_request->wValue);
+    const uint8_t entityID   = TU_U16_HIGH(p_request->wIndex);
+
+    if (entityID == 1) {
+        switch (ctrlSel) {
+            case AUDIO_TE_CTRL_CONNECTOR: {
+                audio_desc_channel_cluster_t ret = { // dummy values
+                    .bNrChannels     = 1,
+                    .bmChannelConfig = AUDIO_CHANNEL_CONFIG_NON_PREDEFINED,
+                    .iChannelNames   = 0,
+                };
+                return tud_audio_buffer_and_schedule_control_xfer(rhport, p_request,
+                    static_cast<void*>(&ret), sizeof(ret));
+                break;
+            }
+        }
+    } else if (entityID == 2) { // mute/volume status
+        switch (ctrlSel) {
+            case AUDIO_FU_CTRL_MUTE:
+                return tud_control_xfer(rhport, p_request, &data.mute[channelNum], 1);
+                break;
+
+            case AUDIO_FU_CTRL_VOLUME:
+                switch (p_request->bRequest) {
+                    case AUDIO_CS_REQ_CUR:
+                        return tud_control_xfer(rhport, p_request,
+                            &data.volume[channelNum], sizeof(data.volume[channelNum]));
+                        break;
+
+                    case AUDIO_CS_REQ_RANGE: {
+                        audio_control_range_2_n_t(1) ret = {
+                            .wNumSubRanges = 1,
+                            .subrange = {{
+                                .bMin = -90, // dB
+                                .bMax = 90,  // dB
+                                .bRes = 1,   // dB
+                            }},
+                        };
+                        return tud_audio_buffer_and_schedule_control_xfer(rhport, p_request,
+                            reinterpret_cast<void*>(&ret), sizeof(ret));
+                        break;
+                    }
+                }
+                break;
+        }
+    } else if (entityID == 4) { // sample frequency status
+        switch (ctrlSel) {
+            case AUDIO_CS_CTRL_SAM_FREQ:
+                switch (p_request->bRequest) {
+                    case AUDIO_CS_REQ_CUR:
+                        return tud_control_xfer(rhport, p_request,
+                            &data.sample_freq, sizeof(data.sample_freq));
+                        break;
+
+                    case AUDIO_CS_REQ_RANGE:
+                        return tud_control_xfer(rhport, p_request,
+                            &data.sample_freq_range, sizeof(data.sample_freq_range));
+                        break;
+                }
+                break;
+
+            case AUDIO_CS_CTRL_CLK_VALID:
+                return tud_control_xfer(rhport, p_request, &data.clk_valid, sizeof(data.clk_valid));
+                break;
+        }
+    }
+    return false;
+}
+
+extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting) {
+    (void) rhport;
+    (void) itf;
+    (void) ep_in;
+    (void) cur_alt_setting;
+    return tud_audio_clear_ep_in_ff();
+}
+
+};
 
 static void usb_handler(void) {
     tud_int_handler(0);
@@ -163,6 +301,15 @@ void usb_task(void* args) {
     (void) args;
     NVIC_SetVector(USBHD_IRQn, usb_handler);
     tusb_init();
+
+    // audio defaults
+    audio::data.sample_freq = CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE;
+    audio::data.clk_valid   = 1;
+    audio::data.sample_freq_range.wNumSubRanges    = 1;
+    audio::data.sample_freq_range.subrange[0].bMin = audio::data.sample_freq;
+    audio::data.sample_freq_range.subrange[0].bMax = audio::data.sample_freq;
+    audio::data.sample_freq_range.subrange[0].bRes = 0;
+
     while (1) {
         tud_task();
     }
@@ -203,11 +350,11 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 usbd_class_driver_t const* usbd_app_driver_get_cb(uint8_t* driver_count) {
     static const usbd_class_driver_t app_drivers[] = {
         {
-            .init             = rpc_init,
-            .reset            = rpc_reset,
-            .open             = rpc_open,
+            .init             = rpc::init,
+            .reset            = rpc::reset,
+            .open             = rpc::open,
             .control_xfer_cb  = NULL,
-            .xfer_cb          = rpc_xfer_cb,
+            .xfer_cb          = rpc::xfer_cb,
             .sof              = NULL,
         },
     };

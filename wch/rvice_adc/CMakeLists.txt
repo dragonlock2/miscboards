@@ -22,6 +22,9 @@ add_compile_options(
     -ffat-lto-objects
     -flto
 
+    # tinyusb
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-deprecated-enum-enum-conversion>
+
     # save some flash
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
