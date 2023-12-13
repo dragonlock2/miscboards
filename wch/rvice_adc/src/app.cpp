@@ -18,8 +18,6 @@ extern "C" void app_main(void *args) {
 
     TickType_t wait = xTaskGetTickCount();
     while (true) {
-        printf("ticks: %ld\r\n", xTaskGetTickCount());
-
         static bool i;
         rgb_write(i, btn_read(), fpga_booted());
         i = !i;

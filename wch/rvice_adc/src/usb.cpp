@@ -182,6 +182,10 @@ static struct {
     bool     mute[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
     uint16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
     audio_control_range_4_n_t(1) sample_freq_range;
+
+    // TODO update
+    uint16_t test_buffer_audio[(CFG_TUD_AUDIO_EP_SZ_IN - 2) / 2];
+    uint16_t startVal;
 } data;
 
 /* public functions */
@@ -287,7 +291,26 @@ extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8
     (void) itf;
     (void) ep_in;
     (void) cur_alt_setting;
-    return tud_audio_clear_ep_in_ff();
+
+    // TODO update
+    tud_audio_write((uint8_t*) data.test_buffer_audio, CFG_TUD_AUDIO_EP_SZ_IN - 2);
+
+    return true;
+}
+
+extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_copied, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting) {
+    (void) rhport;
+    (void) n_bytes_copied;
+    (void) itf;
+    (void) ep_in;
+    (void) cur_alt_setting;
+
+    // TODO update
+    for (size_t cnt = 0; cnt < (CFG_TUD_AUDIO_EP_SZ_IN - 2) / 2; cnt++) {
+        data.test_buffer_audio[cnt] = data.startVal++;
+    }
+
+    return true;
 }
 
 };

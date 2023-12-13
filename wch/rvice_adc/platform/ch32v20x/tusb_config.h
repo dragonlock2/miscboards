@@ -80,7 +80,7 @@
 #define CFG_TUD_AUDIO_EP_IN_FLOW_CONTROL            (1)
 
 #define CFG_TUD_AUDIO_FUNC_1_EP_IN_SZ_MAX           (CFG_TUD_AUDIO_EP_SZ_IN)
-#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ        (2 * CFG_TUD_AUDIO_EP_SZ_IN) // fifo size
+#define CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ        (4 * CFG_TUD_AUDIO_EP_SZ_IN) // fifo size
 #define CFG_TUD_AUDIO_EP_SZ_IN                      TUD_AUDIO_EP_SIZE(CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE, \
                                                         CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX, CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX)
 
