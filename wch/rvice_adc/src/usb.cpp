@@ -40,7 +40,7 @@ static const tusb_desc_device_t desc_device = {
 
 #define TUD_CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO_FUNC_1_DESC_LEN + TUD_VENDOR_DESC_LEN)
 #define TUD_VENDOR_EPNUM (1)
-#define TUD_AUDIO_EPNUM  (2)
+#define TUD_AUDIO_EPNUM  (3) // only ep3 supports 1023 byte packets
 
 static const uint8_t desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, static_cast<uint8_t>(usb_itf_num::COUNT), 0, TUD_CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100), // mA
@@ -184,7 +184,7 @@ static struct {
     audio_control_range_4_n_t(1) sample_freq_range;
 
     // TODO update
-    uint16_t test_buffer_audio[(CFG_TUD_AUDIO_EP_SZ_IN - 2) / 2];
+    uint16_t test_buffer_audio[CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000 * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX];
     uint16_t startVal;
 } data;
 
@@ -293,7 +293,7 @@ extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8
     (void) cur_alt_setting;
 
     // TODO update
-    tud_audio_write((uint8_t*) data.test_buffer_audio, CFG_TUD_AUDIO_EP_SZ_IN - 2);
+    tud_audio_write((uint8_t*) data.test_buffer_audio, sizeof(data.test_buffer_audio));
 
     return true;
 }
@@ -306,7 +306,7 @@ extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_
     (void) cur_alt_setting;
 
     // TODO update
-    for (size_t cnt = 0; cnt < (CFG_TUD_AUDIO_EP_SZ_IN - 2) / 2; cnt++) {
+    for (size_t cnt = 0; cnt < (CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000 * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX); cnt++) {
         data.test_buffer_audio[cnt] = data.startVal++;
     }
 
