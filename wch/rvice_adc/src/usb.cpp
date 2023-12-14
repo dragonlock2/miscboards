@@ -182,10 +182,6 @@ static struct {
     bool     mute[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
     uint16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1];
     audio_control_range_4_n_t(1) sample_freq_range;
-
-    // TODO update
-    uint16_t test_buffer_audio[CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000 * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX];
-    uint16_t startVal;
 } data;
 
 /* public functions */
@@ -286,30 +282,10 @@ extern "C" bool tud_audio_get_req_entity_cb(uint8_t rhport, tusb_control_request
     return false;
 }
 
-extern "C" bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting) {
+extern "C" bool tud_audio_set_itf_cb(uint8_t rhport, tusb_control_request_t const* p_request) {
     (void) rhport;
-    (void) itf;
-    (void) ep_in;
-    (void) cur_alt_setting;
-
-    // TODO update
-    tud_audio_write((uint8_t*) data.test_buffer_audio, sizeof(data.test_buffer_audio));
-
-    return true;
-}
-
-extern "C" bool tud_audio_tx_done_post_load_cb(uint8_t rhport, uint16_t n_bytes_copied, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting) {
-    (void) rhport;
-    (void) n_bytes_copied;
-    (void) itf;
-    (void) ep_in;
-    (void) cur_alt_setting;
-
-    // TODO update
-    for (size_t cnt = 0; cnt < (CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000 * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX); cnt++) {
-        data.test_buffer_audio[cnt] = data.startVal++;
-    }
-
+    (void) p_request;
+    tud_audio_clear_ep_in_ff(); // clear stale data
     return true;
 }
 
@@ -322,8 +298,6 @@ static void usb_handler(void) {
 /* public functions */
 void usb_task(void* args) {
     (void) args;
-    NVIC_SetVector(USBHD_IRQn, usb_handler);
-    tusb_init();
 
     // audio defaults
     audio::data.sample_freq = CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE;
@@ -333,10 +307,18 @@ void usb_task(void* args) {
     audio::data.sample_freq_range.subrange[0].bMax = audio::data.sample_freq;
     audio::data.sample_freq_range.subrange[0].bRes = 0;
 
-    while (1) {
+    while (true) {
         tud_task();
     }
     vTaskDelete(NULL);
+}
+
+void usb_init(void) {
+    NVIC_SetVector(USBHD_IRQn, usb_handler);
+    tusb_init();
+
+    xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, NULL,
+        configMAX_PRIORITIES - 1, NULL);
 }
 
 uint8_t const* tud_descriptor_device_cb(void) {

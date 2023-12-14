@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     fs  = 48000 # Hz
-    dur = 0.1 # s
+    dur = 0.5 # s
 
     rec = sd.rec(int(fs * dur), samplerate=fs, channels=8, dtype='int16', device='rvice_adc')
     sd.wait()
