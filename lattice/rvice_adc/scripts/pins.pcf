@@ -1,4 +1,14 @@
-set_io clk    44
-set_io led[0] 39
-set_io led[1] 40
-set_io led[2] 41
+set_io raw_clk 44
+set_io led[0]  39
+set_io led[1]  40
+set_io led[2]  41
+
+set_io mosi1 9
+set_io miso1 10
+set_io sck1  11
+set_io cs1   12
+
+set_io mosi2 45
+set_io miso2 46
+set_io sck2  47
+set_io cs2   48

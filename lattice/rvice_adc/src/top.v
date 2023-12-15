@@ -1,7 +1,23 @@
 module top (
-    input clk,
-    output [2:0] led
+    input raw_clk,
+    output [2:0] led,
+
+    input mosi1,
+    output miso1,
+    input sck1,
+    input cs1,
+
+    input mosi2,
+    output miso2,
+    input sck2,
+    input cs2,
 );
+
+wire clk = raw_clk; // TODO PLL at 36MHz
+
+// TODO update
+assign miso1 = mosi1;
+assign miso2 = mosi2;
 
 localparam FREQ = 8_000_000;
 

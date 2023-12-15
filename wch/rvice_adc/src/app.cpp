@@ -27,7 +27,6 @@ extern "C" void app_main(void *args) {
     }
     vTaskDelete(NULL);
 
-    // TODO test 2 basic spis, do a basic byte delay
-    // TODO spi with dma, basic stream
+    // TODO basic rtl to test spi
     // TODO adc stream
 }
