@@ -7,8 +7,3 @@ set_io mosi1 9
 set_io miso1 10
 set_io sck1  11
 set_io cs1   12
-
-set_io mosi2 45
-set_io miso2 46
-set_io sck2  47
-set_io cs2   48

@@ -2,25 +2,37 @@ module top (
     input raw_clk,
     output [2:0] led,
 
-    input mosi1,
+    input  mosi1,
     output miso1,
-    input sck1,
-    input cs1,
-
-    input mosi2,
-    output miso2,
-    input sck2,
-    input cs2,
+    input  sck1,
+    output cs1,
 );
-
-wire clk = raw_clk; // TODO PLL at 36MHz
-
-// TODO update
-assign miso1 = mosi1;
-assign miso2 = mosi2;
 
 localparam FREQ = 8_000_000;
 
+wire clk = raw_clk; // TODO PLL at 36MHz? 24MHz?
+
+// TODO use hardened SPI IP
+// TODO assert signal when >=1ms of samples, flush entire fifo if full just in case
+    // signal also resyncs bits
+// TODO use block RAM to make 8 FIFOs
+assign miso1 = mosi1;
+
+// temporary 1kHz cs signal
+reg cs = 0;
+reg [31:0] ctr2 = 0;
+
+always @(posedge clk) begin
+    if (ctr2 == (FREQ / 2000) - 1) begin
+        cs = ~cs;
+        ctr2 = 0;
+    end else
+        ctr2 = ctr2 + 1;
+end
+
+assign cs1 = cs;
+
+// RGB testing
 reg [2:0] shift = 3'b100;
 reg [31:0] ctr = 0;
 

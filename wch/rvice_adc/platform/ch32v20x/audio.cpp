@@ -2,6 +2,7 @@
 #include <tusb.h>
 #include <ch32v20x.h>
 #include <ch32v20x_dma.h>
+#include <ch32v20x_exti.h>
 #include <ch32v20x_gpio.h>
 #include <ch32v20x_spi.h>
 #include "fpga.h"
@@ -11,6 +12,7 @@
 static constexpr size_t SAMPLES_PER_MS = CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000 * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX;
 
 static struct {
+    TaskHandle_t audio_handle;
     bool ping;
     int16_t dummy;
     int16_t buffer[2][SAMPLES_PER_MS];
@@ -26,13 +28,7 @@ static void gpio_init(GPIO_TypeDef* port, uint16_t pin, GPIOMode_TypeDef mode) {
     GPIO_Init(port, &cfg);
 }
 
-static void dma_start(bool check) {
-    // fault if not done
-    if (check) {
-        configASSERT(DMA_GetFlagStatus(DMA1_FLAG_TC2) == SET);
-        configASSERT(DMA_GetFlagStatus(DMA1_FLAG_TC3) == SET);
-    }
-
+static void dma_start(void) {
     // init dma
     DMA_InitTypeDef tx_cfg = {
         .DMA_PeripheralBaseAddr = reinterpret_cast<uint32_t>(&SPI1->DATAR),
@@ -72,22 +68,21 @@ static void dma_start(bool check) {
     DMA_Cmd(DMA1_Channel3, ENABLE);
 }
 
+static void gpio_handler(void) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    EXTI_ClearFlag(EXTI_Line4);
+    vTaskNotifyGiveIndexedFromISR(data.audio_handle, 0, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
 /* public functions */
 void audio_task(void* args) {
     (void) args;
-    TickType_t wait = xTaskGetTickCount();
     while (true) {
-        // start next transfer
-        GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_RESET);
-        dma_start(fpga_booted());
-
-        // push finished buffer to fifo
+        ulTaskNotifyTakeIndexed(0, pdTRUE, portMAX_DELAY); // wait for signal for enough samples
+        dma_start();
         tud_audio_write(reinterpret_cast<uint8_t*>(data.buffer[!data.ping]), sizeof(data.buffer[0]));
-
-        // wait 1ms (FPGA clocked by MCU, should be perfectly in sync)
         data.ping = !data.ping;
-        GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_SET);
-        vTaskDelayUntil(&wait, pdMS_TO_TICKS(1));
     }
     vTaskDelete(NULL);
 }
@@ -97,7 +92,7 @@ void audio_init(void) {
     gpio_init(GPIOA, GPIO_Pin_7, GPIO_Mode_AF_PP);       // mosi1
     gpio_init(GPIOA, GPIO_Pin_6, GPIO_Mode_IN_FLOATING); // miso1
     gpio_init(GPIOA, GPIO_Pin_5, GPIO_Mode_AF_PP);       // sck1
-    gpio_init(GPIOA, GPIO_Pin_4, GPIO_Mode_Out_PP);      // cs1
+    gpio_init(GPIOA, GPIO_Pin_4, GPIO_Mode_IPD);         // cs1
 
     // init spi
     SPI_InitTypeDef spi_cfg = {
@@ -115,13 +110,19 @@ void audio_init(void) {
 	SPI_Cmd(SPI1, ENABLE);
     SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx, ENABLE);
     SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Rx, ENABLE);
-    GPIO_WriteBit(GPIOA, GPIO_Pin_4, Bit_SET);
 
-    // start first dma transfer
-    data.dummy = 0x6942;
-    dma_start(false);
-    vTaskDelay(1);
+    // init gpio interrupt
+    EXTI_InitTypeDef ext_cfg = {
+        .EXTI_Line    = EXTI_Line4,
+        .EXTI_Mode    = EXTI_Mode_Interrupt,
+        .EXTI_Trigger = EXTI_Trigger_Rising,
+        .EXTI_LineCmd = ENABLE,
+    };
+    EXTI_Init(&ext_cfg);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource4);
+    NVIC_SetVector(EXTI4_IRQn, gpio_handler);
+    NVIC_EnableIRQ(EXTI4_IRQn);
 
     xTaskCreate(audio_task, "audio_task", configMINIMAL_STACK_SIZE, NULL,
-        configMAX_PRIORITIES - 2, NULL);
+        configMAX_PRIORITIES - 2, &data.audio_handle);
 }
