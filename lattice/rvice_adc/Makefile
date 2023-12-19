@@ -9,4 +9,6 @@ PINS        := $(PROJECT_DIR)/scripts/pins.pcf
 SRCS        := $(shell find $(PROJECT_DIR)/src -type f -name '*.v')
 FLASHER     := python scripts/flash.py
 
+# yosys incorrectly shows limits for iCE5LP4K instead of iCE5LP1K
+
 include ../boilerplate.mk

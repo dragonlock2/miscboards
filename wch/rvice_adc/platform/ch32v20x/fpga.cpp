@@ -82,7 +82,7 @@ void fpga_init(void) {
     gpio_init(GPIOB, GPIO_Pin_1, GPIO_Mode_IN_FLOATING); // cdone
 
     gpio_init(GPIOA, GPIO_Pin_8, GPIO_Mode_AF_PP); // clk
-    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_CFGR0_MCO) | RCC_CFGR0_MCO_HSE;
+    RCC->CFGR0 = (RCC->CFGR0 & ~RCC_CFGR0_MCO) | RCC_CFGR0_MCO_PLL;
 
     fpga_on();
 }
