@@ -13,9 +13,9 @@ static constexpr size_t SAMPLES_PER_MS = CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE / 1000
 
 static struct {
     TaskHandle_t audio_handle;
-    bool ping;
+    bool started;
     int16_t dummy;
-    int16_t buffer[2][SAMPLES_PER_MS];
+    std::array<int16_t, SAMPLES_PER_MS> buffer;
 } data;
 
 /* private helpers */
@@ -29,6 +29,17 @@ static void gpio_init(GPIO_TypeDef* port, uint16_t pin, GPIOMode_TypeDef mode) {
 }
 
 static void dma_start(void) {
+    /* Check for overrun, can happen from flashing SPI flash since it's bitbanged in a critical section.
+     * Stopping current DMA transfer is better, but has issues with leaving one word in the pipeline.
+     */
+    if (data.started) {
+        if (DMA_GetFlagStatus(DMA1_FLAG_TC2) == RESET || DMA_GetFlagStatus(DMA1_FLAG_TC2) == RESET) {
+            return;
+        }
+    } else {
+        data.started = true;
+    }
+
     // init dma
     DMA_InitTypeDef tx_cfg = {
         .DMA_PeripheralBaseAddr = reinterpret_cast<uint32_t>(&SPI1->DATAR),
@@ -48,7 +59,7 @@ static void dma_start(void) {
 
     DMA_InitTypeDef rx_cfg = {
         .DMA_PeripheralBaseAddr = reinterpret_cast<uint32_t>(&SPI1->DATAR),
-        .DMA_MemoryBaseAddr     = reinterpret_cast<uint32_t>(&data.buffer[data.ping][0]),
+        .DMA_MemoryBaseAddr     = reinterpret_cast<uint32_t>(data.buffer.data()),
         .DMA_DIR                = DMA_DIR_PeripheralSRC,
         .DMA_BufferSize         = SAMPLES_PER_MS,
         .DMA_PeripheralInc      = DMA_PeripheralInc_Disable,
@@ -80,9 +91,8 @@ void audio_task(void* args) {
     (void) args;
     while (true) {
         ulTaskNotifyTakeIndexed(0, pdTRUE, portMAX_DELAY); // wait for signal for enough samples
+        tud_audio_write(reinterpret_cast<uint8_t*>(data.buffer.data()), sizeof(data.buffer));
         dma_start();
-        tud_audio_write(reinterpret_cast<uint8_t*>(data.buffer[!data.ping]), sizeof(data.buffer[0]));
-        data.ping = !data.ping;
     }
     vTaskDelete(NULL);
 }
@@ -103,7 +113,7 @@ void audio_init(void) {
         .SPI_CPHA              = SPI_CPHA_1Edge,
         .SPI_NSS               = SPI_NSS_Soft,
         .SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16, // 9MHz
-        .SPI_FirstBit          = SPI_FirstBit_MSB,
+        .SPI_FirstBit          = SPI_FirstBit_LSB,
         .SPI_CRCPolynomial     = 0,
     };
     SPI_Init(SPI1, &spi_cfg);
@@ -122,6 +132,8 @@ void audio_init(void) {
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource4);
     NVIC_SetVector(EXTI4_IRQn, gpio_handler);
     NVIC_EnableIRQ(EXTI4_IRQn);
+
+    data.started = false;
 
     xTaskCreate(audio_task, "audio_task", configMINIMAL_STACK_SIZE, NULL,
         configMAX_PRIORITIES - 2, &data.audio_handle);

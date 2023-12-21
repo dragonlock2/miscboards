@@ -26,7 +26,4 @@ extern "C" void app_main(void *args) {
         vTaskDelayUntil(&wait, pdMS_TO_TICKS(500));
     }
     vTaskDelete(NULL);
-
-    // TODO basic rtl to test spi
-    // TODO adc stream
 }
