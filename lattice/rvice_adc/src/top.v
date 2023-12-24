@@ -10,10 +10,13 @@ module top (
 
 localparam CLK_FREQ        = 36_000_000;
 localparam SAMPLE_RATE     = 48_000;
+localparam FLUSH_RATE      = 1_000;
 localparam NUM_CHANNELS    = 8;
 localparam BITS_PER_SAMPLE = 16;
 
-localparam SAMPLE_WIDTH = NUM_CHANNELS * BITS_PER_SAMPLE;
+localparam FLUSH_CTR_MAX   = SAMPLE_RATE / FLUSH_RATE - 1;
+localparam FLUSH_CTR_WIDTH = $clog2(SAMPLE_RATE / FLUSH_RATE);
+localparam SAMPLE_WIDTH    = NUM_CHANNELS * BITS_PER_SAMPLE;
 
 /* clock gen */
 wire lock, rst, clk;
@@ -52,42 +55,80 @@ spi #(
     .sck(sck1),
 );
 
-// TODO use block RAM to make 8-wide FIFO
-// TODO assert resync when >=1ms of samples, flush entire fifo if full just in case
-// TODO read from adc
-wire [SAMPLE_WIDTH-1:0] test0 = {16'd80, 16'd70, 16'd60, 16'd50, 16'd40, 16'd30, 16'd20, 16'd10};
-wire [SAMPLE_WIDTH-1:0] test1 = {-16'd80, -16'd70, -16'd60, -16'd50, -16'd40, -16'd30, -16'd20, -16'd10};
-register_r_ce #(.N(SAMPLE_WIDTH)) test_reg ( .d(spi_data == test0 ? test1 : test0), .q(spi_data), .ce(spi_ready), .rst(rst), .clk(clk), );
+/* fifo */
+wire [SAMPLE_WIDTH-1:0] sample_data;
+wire sample_valid, sample_error;
 
-// temporary 1kHz cs signal
-wire [31:0] ctr2, ctr2_next;
+basic_fifo #(
+    .WIDTH(SAMPLE_WIDTH),
+) sample_fifo (
+    .rst(rst),
+    .clk(clk),
+    .in(sample_data),
+    .in_valid(sample_valid),
+    .out(spi_data),
+    .out_ready(spi_ready),
+    .error(sample_error),
+);
 
-register_r #(.N(32)) ctr2_reg ( .d(ctr2_next), .q(ctr2), .rst(rst), .clk(clk), );
+/* adc */
+// TODO stream samples into fifo
 
-assign ctr2_next = ctr2 == (CLK_FREQ / 1000 - 1) ? 0 : ctr2 + 1;
+// assert cs when 1ms of samples pushed
+wire [FLUSH_CTR_WIDTH-1:0] flush_ctr, flush_ctr_next;
+wire flush_ctr_done, flush_ctr_ce;
+register_r_ce #(.N(FLUSH_CTR_WIDTH)) flush_ctr_reg ( .d(flush_ctr_next), .q(flush_ctr), .ce(flush_ctr_ce), .rst(rst), .clk(clk), );
 
-assign resync = ctr2 == 0;
-assign cs1    = ctr2 == 1; // one cycle delay not strictly necessary
+assign flush_ctr_done = flush_ctr == FLUSH_CTR_MAX;
+assign flush_ctr_next = flush_ctr_done ? 0 : (flush_ctr + 1);
+assign flush_ctr_ce   = sample_valid;
 
-// RGB testing
-reg [2:0] shift = 3'b001;
-reg [31:0] ctr = 0;
+wire resync_next;
+register_r resync_reg ( .d(resync_next), .q(resync), .rst(rst), .clk(clk), );
 
-always @(posedge clk) begin
-    if (ctr == (CLK_FREQ * 1 / 2) - 1) begin
-        shift = {shift[1:0], shift[2]};
-        ctr = 0;
-    end else
-        ctr = ctr + 1;
-end
+assign resync_next = flush_ctr_done && flush_ctr_ce;
+assign cs1 = resync;
+
+/* rgb status indicator */
+wire [7:0] err_ctr, err_ctr_next;
+wire err_ctr_ce;
+register_r_ce #(.N(8), .INIT(10)) err_ctr_reg ( .d(err_ctr_next), .q(err_ctr), .ce(err_ctr_ce), .rst(rst), .clk(clk), );
+assign err_ctr_next = err_ctr + 1;
+assign err_ctr_ce   = sample_error;
+
+wire [31:0] rgb_ctr, rgb_ctr_next;
+register_r #(.N(32)) rgb_ctr_reg ( .d(rgb_ctr_next), .q(rgb_ctr), .rst(rst), .clk(clk), );
+assign rgb_ctr_next = rgb_ctr == (CLK_FREQ / 2 - 1) ? 0 : (rgb_ctr + 1);
+
+wire [2:0] rgb_shift, rgb_shift_next;
+wire rgb_shift_ce;
+register_r_ce #(.N(3), .INIT(3'b100)) rgb_shift_reg ( .d(rgb_shift_next), .q(rgb_shift), .ce(rgb_shift_ce), .rst(rst), .clk(clk), );
+assign rgb_shift_next = { rgb_shift[1:0], rgb_shift[2] };
+assign rgb_shift_ce   = rgb_ctr == 0;
 
 RGB rgb_pwm (
     .rst(rst),
     .clk(clk),
-    .r(shift[0] ? 10 : 0),
-    .g(shift[1] ? 10 : 0),
-    .b(shift[2] ? 10 : 0),
+    .r(rgb_shift[0] ? err_ctr : 0),
+    .g(rgb_shift[1] ? err_ctr : 0),
+    .b(rgb_shift[2] ? err_ctr : 0),
     .rgb(rgb),
 );
+
+
+// TODO remove
+wire [31:0] audio_ctr, audio_ctr_next;
+register_r #(.N(32)) audio_ctr_reg ( .d(audio_ctr_next), .q(audio_ctr), .rst(rst), .clk(clk), );
+assign audio_ctr_next = audio_ctr == (CLK_FREQ / SAMPLE_RATE - 1) ? 0 : (audio_ctr + 1);
+
+assign sample_valid = audio_ctr == 0;
+
+wire [SAMPLE_WIDTH-1:0] sample_data_next;
+register_r_ce #(.N(SAMPLE_WIDTH)) sample_reg ( .d(sample_data_next), .q(sample_data), .ce(sample_valid), .rst(rst), .clk(clk), );
+
+genvar i;
+generate for (i = 0; i < NUM_CHANNELS; i = i + 1) begin
+    assign sample_data_next[(16*i + 15):(16*i)] = sample_data[(16*i + 15):(16*i)] + (2*i);
+end endgenerate
 
 endmodule

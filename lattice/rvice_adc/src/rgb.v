@@ -1,5 +1,5 @@
 module RGB #(
-    parameter PERIOD = 1000,
+    parameter PERIOD = 256,
     parameter WIDTH  = $clog2(PERIOD),
 ) (
     input rst, clk,
