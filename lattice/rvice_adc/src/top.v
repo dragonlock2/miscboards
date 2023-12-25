@@ -6,6 +6,10 @@ module top (
     output miso1,
     input  sck1,
     output cs1,
+
+    input [7:0] sdo,
+    output clkout,
+    output cnv,
 );
 
 localparam CLK_FREQ        = 36_000_000;
@@ -72,7 +76,18 @@ basic_fifo #(
 );
 
 /* adc */
-// TODO stream samples into fifo
+adc #(
+    .CLK_FREQ(CLK_FREQ),
+    .SAMPLE_RATE(SAMPLE_RATE),
+) adc_mod (
+    .rst(rst),
+    .clk(clk),
+    .data(sample_data),
+    .data_valid(sample_valid),
+    .sdo(sdo),
+    .clkout(clkout),
+    .cnv(cnv),
+);
 
 // assert cs when 1ms of samples pushed
 wire [FLUSH_CTR_WIDTH-1:0] flush_ctr, flush_ctr_next;
@@ -92,7 +107,7 @@ assign cs1 = resync;
 /* rgb status indicator */
 wire [7:0] err_ctr, err_ctr_next;
 wire err_ctr_ce;
-register_r_ce #(.N(8), .INIT(10)) err_ctr_reg ( .d(err_ctr_next), .q(err_ctr), .ce(err_ctr_ce), .rst(rst), .clk(clk), );
+register_r_ce #(.N(8), .INIT(1)) err_ctr_reg ( .d(err_ctr_next), .q(err_ctr), .ce(err_ctr_ce), .rst(rst), .clk(clk), );
 assign err_ctr_next = err_ctr + 1;
 assign err_ctr_ce   = sample_error;
 
@@ -114,21 +129,5 @@ RGB rgb_pwm (
     .b(rgb_shift[2] ? err_ctr : 0),
     .rgb(rgb),
 );
-
-
-// TODO remove
-wire [31:0] audio_ctr, audio_ctr_next;
-register_r #(.N(32)) audio_ctr_reg ( .d(audio_ctr_next), .q(audio_ctr), .rst(rst), .clk(clk), );
-assign audio_ctr_next = audio_ctr == (CLK_FREQ / SAMPLE_RATE - 1) ? 0 : (audio_ctr + 1);
-
-assign sample_valid = audio_ctr == 0;
-
-wire [SAMPLE_WIDTH-1:0] sample_data_next;
-register_r_ce #(.N(SAMPLE_WIDTH)) sample_reg ( .d(sample_data_next), .q(sample_data), .ce(sample_valid), .rst(rst), .clk(clk), );
-
-genvar i;
-generate for (i = 0; i < NUM_CHANNELS; i = i + 1) begin
-    assign sample_data_next[(16*i + 15):(16*i)] = sample_data[(16*i + 15):(16*i)] + (2*i);
-end endgenerate
 
 endmodule

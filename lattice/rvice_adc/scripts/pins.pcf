@@ -7,3 +7,14 @@ set_io mosi1  9
 set_io miso1  10
 set_io sck1   11
 set_io cs1    12
+
+set_io sdo[7] 25
+set_io sdo[6] 26
+set_io sdo[5] 27
+set_io sdo[4] 28
+set_io sdo[3] 31
+set_io sdo[2] 32
+set_io sdo[1] 34
+set_io sdo[0] 36
+set_io clkout 37
+set_io cnv    38
