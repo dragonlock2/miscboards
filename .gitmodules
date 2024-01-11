@@ -16,3 +16,6 @@
 [submodule "wch/SDK/tinyusb"]
 	path = wch/SDK/tinyusb/tinyusb
 	url = git@github.com:dragonlock2/tinyusb.git
+[submodule "wch/SDK/ch32x035/ch32x035"]
+	path = wch/SDK/ch32x035/ch32x035
+	url = https://github.com/openwch/ch32x035.git
