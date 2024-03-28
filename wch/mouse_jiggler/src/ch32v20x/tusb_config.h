@@ -1,7 +1,6 @@
 #ifndef TUSB_CONFIG_H
 #define TUSB_CONFIG_H
 
-#define CFG_TUSB_MCU           (OPT_MCU_CH32V20X)
 #define CFG_TUSB_OS            (OPT_OS_FREERTOS)
 
 #define CFG_TUSB_RHPORT0_MODE  (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
@@ -13,5 +12,13 @@
 #define CFG_TUD_MSC            (0)
 #define CFG_TUD_MIDI           (0)
 #define CFG_TUD_VENDOR         (0)
+
+#if defined(TINYUSB_DRIVER_USBFS)
+#define CFG_TUSB_MCU (OPT_MCU_CH32V20X)
+#elif defined(TINYUSB_DRIVER_USBD)
+// workaround to use STM32 USB driver
+#define CFG_TUSB_MCU (OPT_MCU_STM32F1)
+#define STM32F103xB
+#endif
 
 #endif // TUSB_CONFIG_H

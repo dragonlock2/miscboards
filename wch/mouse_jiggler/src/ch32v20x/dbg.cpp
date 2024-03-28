@@ -18,8 +18,8 @@ static void clock_init(void) {
         default: __disable_irq(); while (1); break;
     }
 
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_OTG_FS, ENABLE);
-
+    RCC_AHBPeriphClockCmd (RCC_AHBPeriph_OTG_FS,  ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB,    ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,  ENABLE);
 }

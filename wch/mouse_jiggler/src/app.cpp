@@ -71,7 +71,10 @@ static void usb_task(void*) {
 extern "C" void app_main(void*) {
     data.lock = xSemaphoreCreateBinaryStatic(&data.lock_buffer);
     xSemaphoreGive(data.lock);
-    NVIC_SetVector(USBHD_IRQn, usb_handler);
+    NVIC_SetVector(USB_HP_CAN1_TX_IRQn,  usb_handler);
+    NVIC_SetVector(USB_LP_CAN1_RX0_IRQn, usb_handler);
+    NVIC_SetVector(USBWakeUp_IRQn,       usb_handler);
+    NVIC_SetVector(USBHD_IRQn,           usb_handler);
     tusb_init();
     xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
 
@@ -92,7 +95,7 @@ extern "C" void app_main(void*) {
 }
 
 uint8_t const* tud_descriptor_device_cb(void) {
-    return (uint8_t const*) &desc_device;
+    return reinterpret_cast<uint8_t const*>(&desc_device);
 }
 
 uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {

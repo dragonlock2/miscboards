@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 set(MCU ch32v20x) # specify SDK
+# set(TINYUSB_DRIVER "USBFS")
+set(TINYUSB_DRIVER "USBD")
 
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(mouse_jiggler ASM C CXX)
+
+add_compile_definitions(
+    TINYUSB_DRIVER_${TINYUSB_DRIVER}
+)
 
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
@@ -11,6 +17,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
+    -Wno-error=address # see stm32f1xx.h
     -Os
     -g3
     -ffunction-sections
