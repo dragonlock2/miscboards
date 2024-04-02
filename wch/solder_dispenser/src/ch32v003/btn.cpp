@@ -1,4 +1,5 @@
 #include <ch32v00x.h>
+#include <ch32v00x_exti.h>
 #include <ch32v00x_gpio.h>
 #include "btn.h"
 
@@ -10,6 +11,10 @@ static void btn_init(void) {
         .GPIO_Mode  = GPIO_Mode_IPU,
     };
     GPIO_Init(GPIOD, &cfg);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource2);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource3);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource4);
 }
 
 bool btn_read(btn c) {
@@ -20,4 +25,25 @@ bool btn_read(btn c) {
         case btn::dispense: status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_4); break;
     }
     return !static_cast<bool>(status);
+}
+
+void btn_sleep(void) {
+    EXTI_InitTypeDef exti = {
+        .EXTI_Line    = EXTI_Line2 | EXTI_Line3 | EXTI_Line4,
+        .EXTI_Mode    = EXTI_Mode_Event,
+        .EXTI_Trigger = EXTI_Trigger_Falling,
+        .EXTI_LineCmd = ENABLE,
+    };
+    EXTI_Init(&exti);
+    // handler in motor.cpp, but unused
+}
+
+void btn_wake(void) {
+    EXTI_InitTypeDef exti = {
+        .EXTI_Line    = EXTI_Line2 | EXTI_Line3 | EXTI_Line4,
+        .EXTI_Mode    = EXTI_Mode_Event,
+        .EXTI_Trigger = EXTI_Trigger_Falling,
+        .EXTI_LineCmd = DISABLE,
+    };
+    EXTI_Init(&exti);
 }

@@ -8,3 +8,5 @@ enum class btn {
 };
 
 bool btn_read(btn c);
+void btn_sleep(void);
+void btn_wake(void);

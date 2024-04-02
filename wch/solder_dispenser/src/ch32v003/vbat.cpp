@@ -34,3 +34,13 @@ static void vbat_init(void) {
 uint16_t vbat_read(void) {
     return 1200 * 1024 / ADC_GetConversionValue(ADC1);
 }
+
+void vbat_sleep(void) {
+    ADC_Cmd(ADC1, DISABLE);
+}
+
+void vbat_wake(void) {
+    ADC_Cmd(ADC1, ENABLE);
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+    while (!ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC));
+}

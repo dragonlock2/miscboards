@@ -1,10 +1,29 @@
 #include <ch32v00x.h>
+#include <ch32v00x_exti.h>
 #include <ch32v00x_gpio.h>
 #include <ch32v00x_tim.h>
 #include "motor.h"
 
+static struct {
+    bool dir;
+    volatile int32_t ticks;
+} data;
+
+__attribute__((interrupt))
+static void motor_isr(void) {
+    if (EXTI_GetFlagStatus(EXTI_Line1)) {
+        EXTI_ClearFlag(EXTI_Line1);
+        if (data.dir) {
+            data.ticks += 1;
+        } else {
+            data.ticks -= 1;
+        }
+    }
+}
+
 __attribute__((constructor))
 static void motor_init(void) {
+    // motor control
     GPIO_InitTypeDef dir_cfg = {
         .GPIO_Pin   = GPIO_Pin_2,
         .GPIO_Speed = GPIO_Speed_50MHz,
@@ -45,9 +64,45 @@ static void motor_init(void) {
 
     TIM_CtrlPWMOutputs(TIM1, ENABLE);
     TIM_Cmd(TIM1, ENABLE);
+
+    // ripple counting encoder
+    GPIO_InitTypeDef ripple_cfg = {
+        .GPIO_Pin   = GPIO_Pin_1,
+        .GPIO_Speed = GPIO_Speed_50MHz,
+        .GPIO_Mode  = GPIO_Mode_IPD,
+    };
+    GPIO_Init(GPIOC, &ripple_cfg);
+
+    EXTI_InitTypeDef exti = {
+        .EXTI_Line    = EXTI_Line1,
+        .EXTI_Mode    = EXTI_Mode_Interrupt,
+        .EXTI_Trigger = EXTI_Trigger_Rising,
+        .EXTI_LineCmd = ENABLE,
+    };
+    EXTI_Init(&exti);
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource1);
+    NVIC_SetVector(EXTI7_0_IRQn, motor_isr);
+    NVIC_EnableIRQ(EXTI7_0_IRQn);
 }
 
 void motor_write(bool dir, uint8_t duty) {
     TIM_SetCompare3(TIM1, duty);
     GPIO_WriteBit(GPIOC, GPIO_Pin_2, static_cast<BitAction>(dir));
+    if (data.dir != dir) {
+        data.ticks = 0;
+    }
+    data.dir = dir;
+}
+
+int32_t motor_read(void) {
+    return data.ticks;
+}
+
+void motor_sleep(void) {
+    // allow SDI wake, interestingly also lowers current draw
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource1);
+}
+
+void motor_wake(void) {
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource1);
 }
