@@ -87,8 +87,8 @@ static void motor_init(void) {
 
 void motor_write(bool dir, uint8_t duty) {
     TIM_SetCompare3(TIM1, duty);
-    GPIO_WriteBit(GPIOC, GPIO_Pin_2, static_cast<BitAction>(dir));
-    if (data.dir != dir) {
+    GPIO_WriteBit(GPIOC, GPIO_Pin_2, static_cast<BitAction>(!dir));
+    if (data.dir != dir || duty == 0) {
         data.ticks = 0;
     }
     data.dir = dir;

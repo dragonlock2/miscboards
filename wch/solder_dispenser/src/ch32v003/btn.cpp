@@ -20,9 +20,10 @@ static void btn_init(void) {
 bool btn_read(btn c) {
     uint8_t status = 0xFF;
     switch (c) {
-        case btn::up:       status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_2); break;
+        case btn::up:       status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_4); break;
         case btn::down:     status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_3); break;
-        case btn::dispense: status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_4); break;
+        case btn::dispense: status = GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_2); break;
+        default: break;
     }
     return !static_cast<bool>(status);
 }
