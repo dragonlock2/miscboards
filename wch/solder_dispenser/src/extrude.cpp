@@ -11,18 +11,21 @@
 #define TICKS_PER_MM3   (TICKS_PER_REV / MM3_PER_REV)
 
 // increase pressure in syringe to speed up extrusion
-#define EXTRUDE_EXTRA ( 32)
-#define RETRACT_EXTRA (-30)
+#define EXTRUDE_EXTRA (256)
+#define RETRACT_EXTRA (-256)
+#define WAIT_EXTRA    (512)
 
 enum class extrude_state {
     idle,
     extrude,
+    wait,
     retract,
+    continuous,
 };
 
 static struct {
     extrude_state state;
-    int32_t extrude, retract;
+    int32_t extrude, wait, retract;
 } data;
 
 void extrude_run(void) {
@@ -35,6 +38,14 @@ void extrude_run(void) {
             motor_write(true, 255);
             if (motor_read() >= data.extrude) {
                 motor_write(true, 0);
+                data.state = extrude_state::wait;
+            }
+            break;
+
+        case extrude_state::wait:
+            motor_write(true, 0);
+            data.wait--;
+            if (data.wait <= 0) {
                 data.state = extrude_state::retract;
             }
             break;
@@ -46,6 +57,11 @@ void extrude_run(void) {
                 data.state = extrude_state::idle;
             }
             break;
+
+        case extrude_state::continuous:
+            motor_write(true, 255);
+            data.state = extrude_state::idle;
+            break;
     }
 }
 
@@ -56,7 +72,12 @@ bool extrude_idle(void) {
 void extrude_dispense(float amt) {
     if (data.state == extrude_state::idle) {
         data.extrude = EXTRUDE_EXTRA + lround(static_cast<float>(TICKS_PER_MM3) * amt);
+        data.wait    = WAIT_EXTRA;
         data.retract = RETRACT_EXTRA;
         data.state = extrude_state::extrude;
     }
+}
+
+void extrude_hold_dispense(void) {
+    data.state = extrude_state::continuous;
 }

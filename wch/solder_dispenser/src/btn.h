@@ -10,6 +10,7 @@ enum class btn {
 
 void btn_run(void);
 bool btn_pressed(btn c);
+bool btn_long_pressed(btn c);
 
 bool btn_read(btn c);
 void btn_sleep(void);

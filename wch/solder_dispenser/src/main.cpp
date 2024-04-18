@@ -9,16 +9,18 @@
 
 // 0402 ~= 0.05mm^3
 // 0603 ~= 0.11mm^3
-#define DEFAULT_STEP  (2)
+#define DEFAULT_STEP  (4)
 #define MAX_STEP      (8)
-#define MM3_PER_STEP  (0.025f)
-#define LOW_BATT      (3400) // mV
+#define MM3_PER_STEP  (0.05f)
+#define LOW_BATT_HI   (3600) // mV
+#define LOW_BATT_LO   (3400) // mV
 #define SLEEP_TIME    (10000) // ms
 
 static struct {
     uint32_t amt;
     uint32_t sleep_ctr;
     uint8_t  batt_ctr;
+    bool pwr_good;
 } data;
 
 extern "C" int main(void) {
@@ -28,16 +30,23 @@ extern "C" int main(void) {
 
     data.amt       = DEFAULT_STEP;
     data.sleep_ctr = SLEEP_TIME;
+    data.pwr_good  = true;
 
     while (true) {
         btn_run();
         extrude_run();
 
-        bool pwr_good = vbat_read() > LOW_BATT;
+        if (data.pwr_good) {
+            data.pwr_good = vbat_read() > LOW_BATT_LO;
+        } else {
+            data.pwr_good = vbat_read() > LOW_BATT_HI;
+        }
 
         // process user commands
-        if (pwr_good && btn_pressed(btn::dispense)) {
+        if (data.pwr_good && btn_pressed(btn::dispense)) {
             extrude_dispense(data.amt * MM3_PER_STEP);
+        } else if (data.pwr_good && btn_long_pressed(btn::dispense)) {
+            extrude_hold_dispense();
         } else if (btn_pressed(btn::up)) {
             if (data.amt < MAX_STEP) {
                 data.amt += 1;
@@ -52,7 +61,7 @@ extern "C" int main(void) {
         if (!extrude_idle()) {
             rgb_write(0, 0, 32);
             data.sleep_ctr = SLEEP_TIME;
-        } else if (pwr_good) {
+        } else if (data.pwr_good) {
             uint8_t r = 32 * (MAX_STEP - data.amt) / MAX_STEP;
             uint8_t g = 16  * data.amt / MAX_STEP;
             rgb_write(r, g, 0);
@@ -62,6 +71,7 @@ extern "C" int main(void) {
 
         data.sleep_ctr--;
         if (data.sleep_ctr == 0) {
+            rgb_write(0, 0, 0);
             pwr_sleep();
             data.sleep_ctr = SLEEP_TIME;
         }
