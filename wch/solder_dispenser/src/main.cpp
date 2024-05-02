@@ -7,11 +7,9 @@
 #include "ticker.h"
 #include "vbat.h"
 
-// 0402 ~= 0.05mm^3
-// 0603 ~= 0.11mm^3
-#define DEFAULT_STEP  (4)
+#define DEFAULT_STEP  (2)
 #define MAX_STEP      (8)
-#define MM3_PER_STEP  (0.05f)
+#define MM3_PER_STEP  (0.1f)
 #define LOW_BATT_HI   (3600) // mV
 #define LOW_BATT_LO   (3400) // mV
 #define SLEEP_TIME    (10000) // ms
@@ -43,10 +41,8 @@ extern "C" int main(void) {
         }
 
         // process user commands
-        if (data.pwr_good && btn_pressed(btn::dispense)) {
-            extrude_dispense(data.amt * MM3_PER_STEP);
-        } else if (data.pwr_good && btn_long_pressed(btn::dispense)) {
-            extrude_hold_dispense();
+        if (data.pwr_good && btn_read(btn::dispense)) {
+            extrude_dispense();
         } else if (btn_pressed(btn::up)) {
             if (data.amt < MAX_STEP) {
                 data.amt += 1;
@@ -56,6 +52,7 @@ extern "C" int main(void) {
                 data.amt -= 1;
             }
         }
+        extrude_set(data.amt * MM3_PER_STEP);
 
         // setting indication
         if (!extrude_idle()) {
@@ -69,6 +66,7 @@ extern "C" int main(void) {
             rgb_write((data.batt_ctr++) / 8, 0, 0);
         }
 
+        // sleep counter
         data.sleep_ctr--;
         if (data.sleep_ctr == 0) {
             rgb_write(0, 0, 0);
