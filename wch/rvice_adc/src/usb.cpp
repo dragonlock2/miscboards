@@ -24,7 +24,7 @@ enum class usb_itf_num {
 static const tusb_desc_device_t desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0110, // USB 1.1 (not high speed)
+    .bcdUSB             = 0x0200,
     .bDeviceClass       = TUSB_CLASS_MISC,
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
@@ -355,7 +355,9 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
 usbd_class_driver_t const* usbd_app_driver_get_cb(uint8_t* driver_count) {
     static const usbd_class_driver_t app_drivers[] = {
         {
+            .name             = "rpc",
             .init             = rpc::init,
+            .deinit           = NULL,
             .reset            = rpc::reset,
             .open             = rpc::open,
             .control_xfer_cb  = NULL,

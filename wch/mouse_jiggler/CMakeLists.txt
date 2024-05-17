@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 set(MCU ch32v20x) # specify SDK
-# set(TINYUSB_DRIVER "USBFS")
-set(TINYUSB_DRIVER "USBD")
+set(TINYUSB_DRIVER "USBFS")
+# set(TINYUSB_DRIVER "USBD")
 
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(mouse_jiggler ASM C CXX)
