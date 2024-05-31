@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <avr/io.h>
+#include "dbg.h"
 
+/* private helpers */
 static int dbg_putc(char c, FILE *f) {
     while (!(USART0.STATUS & USART_DREIF_bm));
     USART0.TXDATAL = c;
     return 0;
 }
 
+/* public functions */
 void dbg_init(void) {
     CCP = CCP_IOREG_gc;
     CLKCTRL.MCLKCTRLB = 0x00; // F_CPU => 20MHz
