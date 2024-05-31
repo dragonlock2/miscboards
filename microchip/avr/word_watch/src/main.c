@@ -1,9 +1,18 @@
+#include <stdio.h>
+#include <avr/interrupt.h>
 #include <avr/io.h>
+#include "dbg.h"
 
 int main(void) {
-    // divider = 1 => 20MHz
-    CCP = CCP_IOREG_gc;
-    CLKCTRL.MCLKCTRLB = 0x00;
+    // constructor priorities not supported :(
+    cli();
+    dbg_init();
+    sei();
+    printf("booted!\r\n");
 
-    // TODO stuff
+    // TODO matrix
+    // TODO vbat
+    // TODO clock
+    // TODO buttons/shake
+    // TODO sleep
 }

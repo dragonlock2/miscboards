@@ -37,4 +37,5 @@ include_directories(
 
 add_executable(${PROJECT_NAME}.elf
     src/main.c
+    src/dbg.c
 )
