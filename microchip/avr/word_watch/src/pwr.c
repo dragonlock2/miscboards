@@ -1,4 +1,8 @@
 #include <avr/io.h>
+#include <avr/sleep.h>
+#include "btn.h"
+#include "dbg.h"
+#include "matrix.h"
 #include "pwr.h"
 
 void pwr_init(void) {
@@ -16,4 +20,17 @@ uint16_t pwr_vbat(void) {
     while (ADC0.COMMAND & ADC_STCONV_bm);
     uint32_t raw = ADC0.RES;
     return (2500L * 1023L) / raw;
+}
+
+void pwr_sleep(void) {
+    dbg_sleep();
+    matrix_sleep();
+    btn_sleep();
+
+    // can shorten time to sleep from RTC wake for marginal current improvement
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_mode();
+
+    btn_wake();
+    matrix_wake();
 }

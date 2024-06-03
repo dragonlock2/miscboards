@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022, Microchip Technology Inc. and its subsidiaries ("Microchip")
+ * Copyright (C) 2023, Microchip Technology Inc. and its subsidiaries ("Microchip")
  * All rights reserved.
  *
  * This software is developed by Microchip Technology Inc. and its subsidiaries ("Microchip").
@@ -43,8 +43,6 @@
 
 /* Ungrouped common registers */
 #define CCP  _SFR_MEM8(0x0034)  /* Configuration Change Protection */
-#define SPL  _SFR_MEM8(0x003D)  /* Stack Pointer Low */
-#define SPH  _SFR_MEM8(0x003E)  /* Stack Pointer High */
 #define SREG  _SFR_MEM8(0x003F)  /* Status Register */
 
 
@@ -383,6 +381,13 @@ typedef struct CCL_struct
     register8_t TRUTH1;  /* Truth 1 */
     register8_t reserved_2[51];
 } CCL_t;
+
+/* Clock Source Selection */
+typedef enum CCL_CLKSRC_enum
+{
+    CCL_CLKSRC_CLKPER_gc = (0x00<<6),  /* CLK_PER is clocking the LUT */
+    CCL_CLKSRC_IN2_gc = (0x01<<6)  /* IN[2] is clocking the LUT */
+} CCL_CLKSRC_t;
 
 /* Edge Detection Enable select */
 typedef enum CCL_EDGEDET_enum

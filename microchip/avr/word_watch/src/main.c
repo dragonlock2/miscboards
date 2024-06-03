@@ -19,7 +19,26 @@ int main(void) {
     sei();
     printf("booted!\r\n");
 
-    // TODO sleep
     // TODO app
-    while (1);
+        // time display
+        // time change
+        // low battery indicator
+        // sleep timeout
+    while (1) {
+        pwr_sleep();
+        if (btn_waked()) {
+            uint8_t h, m, s;
+            clock_now(&h, &m, &s);
+            for (uint8_t x = 0; x < 10; x++) {
+                for (uint8_t y = 0; y < 9; y++) {
+                    if ((y * 10 + x) <= s) {
+                        matrix_set(x, y);
+                    }
+                }
+            }
+            matrix_display();
+            printf("%d %d %d\r\n", h, m, s);
+            _delay_ms(1000);
+        }
+    }
 }

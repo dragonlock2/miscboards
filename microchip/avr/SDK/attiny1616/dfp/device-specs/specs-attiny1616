@@ -61,7 +61,7 @@
 	%{mmcu=*:-m%*} 
 
 *link_data_start:
-	-Tdata 0x803800
+	%{!Tdata:-Tdata 0x803800}
 
 *link_text_start:
 

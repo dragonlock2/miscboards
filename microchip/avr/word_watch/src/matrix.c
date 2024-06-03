@@ -58,3 +58,23 @@ void matrix_display(void) {
     sei();
     memset(data.frame[!data.frame_curr], 0, MATRIX_LENGTH);
 }
+
+void matrix_sleep(void) {
+    TCB0.CTRLA    &= ~TCB_ENABLE_bm;
+    TCB0.INTFLAGS  = TCB_CAPT_bm;
+
+    // floating draws extra current
+    PORTA.DIRCLR = MATRIX_PORTA_CLR;
+    PORTB.DIRCLR = MATRIX_PORTB_CLR;
+    PORTA.OUTCLR = MATRIX_PORTA_CLR;
+    PORTB.OUTCLR = MATRIX_PORTB_CLR;
+    PORTA.DIRSET = MATRIX_PORTA_CLR;
+    PORTB.DIRSET = MATRIX_PORTB_CLR;
+
+    // don't display old frame on wake
+    memset(data.frame[data.frame_curr], 0, MATRIX_LENGTH);
+}
+
+void matrix_wake(void) {
+    TCB0.CTRLA |= TCB_ENABLE_bm;
+}

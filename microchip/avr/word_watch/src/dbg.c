@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <util/delay.h>
 #include <avr/io.h>
 #include "dbg.h"
 
@@ -22,4 +23,11 @@ void dbg_init(void) {
 
     static FILE uart_stdout = FDEV_SETUP_STREAM(dbg_putc, NULL, _FDEV_SETUP_WRITE);
     stdout = &uart_stdout;
+}
+
+void dbg_sleep(void) {
+    // TODO waiting for TXCIF and DREIF not enough??
+    if (!(USART0.STATUS & USART_TXCIF_bm) || !(USART0.STATUS & USART_DREIF_bm)) {
+        _delay_us(250); // 200us works, but flag incorrectly set on wake...
+    }
 }
