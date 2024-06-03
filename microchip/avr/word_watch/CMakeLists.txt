@@ -38,8 +38,11 @@ include_directories(
 
 add_executable(${PROJECT_NAME}.elf
     src/main.c
+    src/btn.c
+    src/clock.c
     src/dbg.c
     src/matrix.c
+    src/pwr.c
 )
 
 add_custom_command(

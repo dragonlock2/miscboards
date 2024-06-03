@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <avr/interrupt.h>
+#include <avr/io.h>
+#include "clock.h"
+
+static struct {
+    volatile uint8_t hour, minute, second;
+} data;
+
+ISR(RTC_PIT_vect) {
+    RTC.PITINTFLAGS = RTC_PI_bm;
+    data.second++;
+    if (data.second >= 60) {
+        data.second = 0;
+        data.minute++;
+        if (data.minute >= 60) {
+            data.minute = 0;
+            data.hour++;
+            if (data.hour >= 24) {
+                data.hour = 0;
+            }
+        }
+    }
+}
+
+void clock_init(void) {
+    CCP = CCP_IOREG_gc;
+    CLKCTRL.XOSC32KCTRLA = CLKCTRL_ENABLE_bm; // external crystal
+    // CLKCTRL.XOSC32KCTRLA = CLKCTRL_SEL_bm | CLKCTRL_ENABLE_bm // external clock
+    RTC.CLKSEL           = RTC_CLKSEL_TOSC32K_gc;
+    RTC.CTRLA            = RTC_RTCEN_bm;
+    RTC.PITINTCTRL       = RTC_PI_bm;
+    RTC.PITCTRLA         = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm; // 1s interrupt
+    while (!(CLKCTRL.MCLKSTATUS & CLKCTRL_XOSC32KS_bm));
+}
+
+void clock_now(uint8_t *hour, uint8_t *minute, uint8_t *second) {
+    cli();
+    *hour   = data.hour;
+    *minute = data.minute;
+    *second = data.second;
+    sei();
+}
+
+void clock_set(uint8_t hour, uint8_t minute, uint8_t second) {
+    cli();
+    data.hour   = hour;
+    data.minute = minute;
+    data.second = second;
+    sei();
+}
