@@ -63,7 +63,7 @@ void matrix_sleep(void) {
     TCB0.CTRLA    &= ~TCB_ENABLE_bm;
     TCB0.INTFLAGS  = TCB_CAPT_bm;
 
-    // floating draws extra current
+    // floating draws extra current bc LEDs are sensors
     PORTA.DIRCLR = MATRIX_PORTA_CLR;
     PORTB.DIRCLR = MATRIX_PORTB_CLR;
     PORTA.OUTCLR = MATRIX_PORTA_CLR;
