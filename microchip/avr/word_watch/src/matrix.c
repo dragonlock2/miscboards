@@ -41,7 +41,7 @@ void matrix_init(void) {
     TCB0.CTRLA   = TCB_CLKSEL_CLKDIV2_gc;
     TCB0.CTRLB   = TCB_CNTMODE_INT_gc;
     TCB0.INTCTRL = TCB_CAPT_bm;
-    TCB0.CCMP    = F_CPU / 2 / MATRIX_LENGTH / 90 - 1; // 90fps
+    TCB0.CCMP    = F_CPU / 2 / MATRIX_LENGTH / 120 - 1; // 120fps
     TCB0.CTRLA  |= TCB_ENABLE_bm;
 
     data.frame_curr = false;

@@ -25,8 +25,8 @@ ISR(RTC_PIT_vect) {
 
 void clock_init(void) {
     CCP = CCP_IOREG_gc;
-    CLKCTRL.XOSC32KCTRLA = CLKCTRL_ENABLE_bm; // external crystal
-    // CLKCTRL.XOSC32KCTRLA = CLKCTRL_SEL_bm | CLKCTRL_ENABLE_bm // external clock
+    // CLKCTRL.XOSC32KCTRLA = CLKCTRL_ENABLE_bm; // external crystal
+    CLKCTRL.XOSC32KCTRLA = CLKCTRL_SEL_bm | CLKCTRL_ENABLE_bm; // external clock
     RTC.CLKSEL           = RTC_CLKSEL_TOSC32K_gc;
     RTC.CTRLA            = RTC_PRESCALER_DIV32_gc | RTC_RTCEN_bm; // 1024Hz ticks
     RTC.PITINTCTRL       = RTC_PI_bm;
