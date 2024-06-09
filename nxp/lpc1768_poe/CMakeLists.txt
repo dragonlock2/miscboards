@@ -11,6 +11,13 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 
 project(lpc1768_poe C CXX ASM)
 
+# sdk copied from LPCXpresso LPC1769 board v2.10
+# https://www.nxp.com/design/design-center/software/software-library/lpcopen-software-development-platform-lpc17xx
+
+add_compile_definitions(
+    CORE_M3
+)
+
 add_compile_options(
     -mcpu=cortex-m3
     $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
@@ -18,6 +25,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
+    -Wno-unused-parameter # lots in sdk
     -Os
     -g3
     -ffunction-sections
@@ -43,9 +51,15 @@ add_link_options(
     --specs=nosys.specs
 )
 
-add_executable(${PROJECT_NAME}.elf
+file(GLOB SRCS
     src/main.c
     platform/startup.c
+)
+add_executable(${PROJECT_NAME}.elf ${SRCS})
+
+include_directories(
+    src
+    platform/inc
 )
 
 add_custom_target(${PROJECT_NAME}.hex ALL ${CMAKE_OBJCOPY} -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)
