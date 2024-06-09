@@ -5,13 +5,14 @@ set(CMAKE_C_COMPILER   arm-none-eabi-gcc) # tested on 13.2.rel1
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 set(CMAKE_ASM_COMPILER arm-none-eabi-gcc)
 set(CMAKE_OBJCOPY      arm-none-eabi-objcopy)
+set(CMAKE_OBJDUMP      arm-none-eabi-objdump)
 
 set(CMAKE_C_COMPILER_WORKS   1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
 project(lpc1768_poe C CXX ASM)
 
-# sdk copied from LPCXpresso LPC1769 board v2.10
+# sdk copied from LPCXpresso LPC1769 board v2.10, modified to fix warnings
 # https://www.nxp.com/design/design-center/software/software-library/lpcopen-software-development-platform-lpc17xx
 
 add_compile_definitions(
@@ -25,7 +26,6 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
-    -Wno-unused-parameter # lots in sdk
     -Os
     -g3
     -ffunction-sections
@@ -52,12 +52,13 @@ add_link_options(
 )
 
 file(GLOB SRCS
-    src/main.c
+    src/*.c
+    platform/src/*.c
     platform/startup.c
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 
-include_directories(
+include_directories(SYSTEM
     src
     platform/inc
 )

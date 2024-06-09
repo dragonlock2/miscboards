@@ -1,6 +1,8 @@
+#include <stdio.h>
+
 int main(void) {
-    // TODO set PLL to max freq
-    // TODO printf, scanf?
+    printf("booted!\r\n");
+
     // TODO C++ exceptions, classes w/ init working
     // TODO freertos
     // TODO led, btn

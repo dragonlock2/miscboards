@@ -50,6 +50,7 @@ SECTIONS {
         *(.sbss2*);
         *(COMMON*);
         _ebss = .;
+        end = .;
     } > RAM
 
     _eram = ORIGIN(RAM) + LENGTH(RAM);
