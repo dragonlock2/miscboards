@@ -1,3 +1,4 @@
+#include <iostream>
 #include <sys/stat.h>
 #include <chip.h>
 
@@ -22,6 +23,12 @@ static void dbg_init(void) {
 	Chip_UART_TXEnable(LPC_UART0);
 }
 
+namespace __cxxabiv1 {
+    std::terminate_handler __terminate_handler = std::abort;
+}
+
+extern "C" {
+
 __attribute__((used))
 int _write(int fd, char *ptr, int len) {
     (void) fd;
@@ -45,3 +52,5 @@ __attribute__((used)) int _lseek(int fd, int ptr, int dir) { return 0; }
 __attribute__((used)) int _kill(pid_t pid, int sig) { return -1; }
 __attribute__((used)) pid_t _getpid(void) { return 0; }
 #pragma GCC diagnostic pop
+
+}

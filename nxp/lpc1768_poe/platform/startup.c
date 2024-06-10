@@ -39,7 +39,9 @@ static void reset_handler(void) {
     memcpy(&_data, &_data_rom, &_edata - &_data);
     memset(&_bss, 0, &_ebss - &_bss);
 
-    for (size_t i = 0; i < sizeof(ram_vectors) / sizeof(ram_vectors[0]); i++) {
+    ram_vectors[0] = (void(*)(void)) &_eram;
+    ram_vectors[1] = reset_handler;
+    for (size_t i = 2; i < sizeof(ram_vectors) / sizeof(ram_vectors[0]); i++) {
         ram_vectors[i] = default_handler;
     }
     SCB->VTOR = (uint32_t) ram_vectors;

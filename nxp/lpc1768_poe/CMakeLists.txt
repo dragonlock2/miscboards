@@ -48,21 +48,27 @@ add_link_options(
     -g3
     -flto
     -nostartfiles
-    --specs=nano.specs # comment if using exceptions
+    --specs=nano.specs # comment if using exceptions, need to increase stack size
     --specs=nosys.specs
 )
 
 file(GLOB SRCS
     src/*.c
     src/*.cpp
+    platform/*.c
     platform/src/*.c
-    platform/startup.c
+    FreeRTOS-Kernel/*.c
+    FreeRTOS-Kernel/portable/MemMang/heap_4.c
+    FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 
 include_directories(SYSTEM
     src
+    platform
     platform/inc
+    FreeRTOS-Kernel/include
+    FreeRTOS-Kernel/portable/GCC/ARM_CM3
 )
 
 add_custom_target(${PROJECT_NAME}.hex ALL ${CMAKE_OBJCOPY} -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)

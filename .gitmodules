@@ -19,3 +19,6 @@
 [submodule "wch/SDK/ch32x035/ch32x035"]
 	path = wch/SDK/ch32x035/ch32x035
 	url = https://github.com/openwch/ch32x035.git
+[submodule "nxp/lpc1768_poe/FreeRTOS-Kernel"]
+	path = nxp/lpc1768_poe/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
