@@ -32,6 +32,7 @@ add_compile_options(
     -fdata-sections
     -ffat-lto-objects
     -flto
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cxa-atexit>
 
     # save some flash
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
@@ -47,12 +48,13 @@ add_link_options(
     -g3
     -flto
     -nostartfiles
-    --specs=nano.specs
+    --specs=nano.specs # comment if using exceptions
     --specs=nosys.specs
 )
 
 file(GLOB SRCS
     src/*.c
+    src/*.cpp
     platform/src/*.c
     platform/startup.c
 )

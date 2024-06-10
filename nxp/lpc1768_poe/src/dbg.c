@@ -42,4 +42,6 @@ __attribute__((used)) int _close(int fd) { return -1; }
 __attribute__((used)) int _fstat(int fd, struct stat *st) { st->st_mode = S_IFCHR; return 0; }
 __attribute__((used)) int _isatty(int fd) { return 1; }
 __attribute__((used)) int _lseek(int fd, int ptr, int dir) { return 0; }
+__attribute__((used)) int _kill(pid_t pid, int sig) { return -1; }
+__attribute__((used)) pid_t _getpid(void) { return 0; }
 #pragma GCC diagnostic pop

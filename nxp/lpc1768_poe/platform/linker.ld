@@ -14,6 +14,12 @@ SECTIONS {
         *(.srodata*);
     } > ROM
 
+    .ARM.exidx : {
+        __exidx_start = .;
+        *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+        __exidx_end = .;
+    } > ROM
+
     .preinit_array (READONLY) : ALIGN(4) {
         __preinit_array_start = .;
         KEEP(*(.preinit_array*));
