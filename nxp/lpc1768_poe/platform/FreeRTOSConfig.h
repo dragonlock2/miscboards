@@ -5,8 +5,8 @@
 
 // adapted from https://github.com/ARM-software/CMSIS_6/blob/v6.1.0/CMSIS/Core/Include/core_cm3.h
 static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
-  uint32_t *vectors = (uint32_t*) ((uintptr_t) SCB->VTOR);
-  vectors[(int32_t) IRQn + 16] = vector;
+    uint32_t *vectors = (uint32_t*) ((uintptr_t) SCB->VTOR);
+    vectors[(int32_t) IRQn + 16] = vector;
 }
 
 // template from https://www.freertos.org/a00110.html
@@ -25,7 +25,7 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 #define configIDLE_SHOULD_YIELD                   (1)
 #define configUSE_TASK_NOTIFICATIONS              (1)
 #define configTASK_NOTIFICATION_ARRAY_ENTRIES     (3)
-#define configUSE_MUTEXES                         (0)
+#define configUSE_MUTEXES                         (1)
 #define configUSE_RECURSIVE_MUTEXES               (0)
 #define configUSE_COUNTING_SEMAPHORES             (0)
 #define configQUEUE_REGISTRY_SIZE                 (8)
@@ -79,7 +79,7 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 
 #define configASSERT(x)                                                \
     if ((x) == 0) {                                                    \
-        portENTER_CRITICAL();                                          \
+        __disable_irq();                                               \
         printf("error at line %d of file %s\r\n", __LINE__, __FILE__); \
         while(1);                                                      \
     }

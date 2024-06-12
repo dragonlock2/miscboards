@@ -60,6 +60,11 @@ file(GLOB SRCS
     FreeRTOS-Kernel/*.c
     FreeRTOS-Kernel/portable/MemMang/heap_4.c
     FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+    tinyusb/src/*.c
+    tinyusb/src/class/**/*.c
+    tinyusb/src/common/*.c
+    tinyusb/src/device/*.c
+    tinyusb/src/portable/nxp/lpc17_40/*.c
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 
@@ -69,6 +74,7 @@ include_directories(SYSTEM
     platform/inc
     FreeRTOS-Kernel/include
     FreeRTOS-Kernel/portable/GCC/ARM_CM3
+    tinyusb/src
 )
 
 add_custom_target(${PROJECT_NAME}.hex ALL ${CMAKE_OBJCOPY} -O ihex ${PROJECT_NAME}.elf ${PROJECT_NAME}.hex DEPENDS ${PROJECT_NAME}.elf)

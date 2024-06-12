@@ -22,3 +22,6 @@
 [submodule "nxp/lpc1768_poe/FreeRTOS-Kernel"]
 	path = nxp/lpc1768_poe/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+[submodule "nxp/lpc1768_poe/tinyusb"]
+	path = nxp/lpc1768_poe/tinyusb
+	url = https://github.com/hathach/tinyusb.git
