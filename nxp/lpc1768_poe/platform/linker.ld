@@ -59,5 +59,13 @@ SECTIONS {
         end = .;
     } > RAM
 
+    .ram1 (NOLOAD) : ALIGN(4) {
+        *(.ram1*);
+    } > RAM1
+
+    .ram2 (NOLOAD) : ALIGN(4) {
+        *(.ram2*);
+    } > RAM2
+
     _eram = ORIGIN(RAM) + LENGTH(RAM);
 }
