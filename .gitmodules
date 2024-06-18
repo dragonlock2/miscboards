@@ -25,3 +25,6 @@
 [submodule "nxp/lpc1768_poe/tinyusb"]
 	path = nxp/lpc1768_poe/tinyusb
 	url = https://github.com/hathach/tinyusb.git
+[submodule "nxp/lpc1768_poe/FreeRTOS-Plus-TCP"]
+	path = nxp/lpc1768_poe/FreeRTOS-Plus-TCP
+	url = https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git

@@ -11,7 +11,7 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 
 // template from https://www.freertos.org/a00110.html
 
-#define configAPP_MAIN_PRIORITY (1) // lowest priority
+#define configAPP_MAIN_PRIORITY (tskIDLE_PRIORITY + 1)
 
 #define configUSE_PREEMPTION                      (1)
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION   (1)
@@ -27,7 +27,7 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 #define configTASK_NOTIFICATION_ARRAY_ENTRIES     (3)
 #define configUSE_MUTEXES                         (1)
 #define configUSE_RECURSIVE_MUTEXES               (0)
-#define configUSE_COUNTING_SEMAPHORES             (0)
+#define configUSE_COUNTING_SEMAPHORES             (1)
 #define configQUEUE_REGISTRY_SIZE                 (8)
 #define configUSE_QUEUE_SETS                      (0)
 #define configUSE_TIME_SLICING                    (1)
@@ -45,8 +45,8 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 #define configSUPPORT_STATIC_ALLOCATION           (1)
 #define configSUPPORT_DYNAMIC_ALLOCATION          (1)
 #define configKERNEL_PROVIDED_STATIC_MEMORY       (1)
-#define configTOTAL_HEAP_SIZE                     (4096)
-#define configAPPLICATION_ALLOCATED_HEAP          (0) // can set to 1 and allocate heap in RAM1/RAM2
+#define configTOTAL_HEAP_SIZE                     (20 * 1024)
+#define configAPPLICATION_ALLOCATED_HEAP          (0)
 #define configSTACK_ALLOCATION_FROM_SEPARATE_HEAP (0)
 #define configENABLE_HEAP_PROTECTOR               (0)
 
@@ -77,11 +77,11 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 #define configKERNEL_INTERRUPT_PRIORITY      (31 << (8 - __NVIC_PRIO_BITS)) // lowest priority
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY (16 << (8 - __NVIC_PRIO_BITS)) // >= can use freertos api
 
-#define configASSERT(x)                                                \
-    if ((x) == 0) {                                                    \
-        __disable_irq();                                               \
-        printf("error at line %d of file %s\r\n", __LINE__, __FILE__); \
-        while(1);                                                      \
+#define configASSERT(x)                                   \
+    if ((x) == 0) {                                       \
+        __disable_irq();                                  \
+        printf("error at %s:%d\r\n", __FILE__, __LINE__); \
+        while(1);                                         \
     }
 
 #define INCLUDE_vTaskPrioritySet             (1)

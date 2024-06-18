@@ -26,7 +26,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
-    -Os
+    -O3
     -g3
     -ffunction-sections
     -fdata-sections
@@ -44,12 +44,21 @@ add_link_options(
     -T${CMAKE_CURRENT_LIST_DIR}/platform/linker.ld
     -Wl,--print-memory-usage
     -Wl,--gc-sections
-    -Os
+    -O3
     -g3
-    -flto
+    -flto=auto
     -nostartfiles
     --specs=nano.specs # comment if using exceptions, need to increase stack size
     --specs=nosys.specs
+)
+
+set_source_files_properties( # disable warnings for some files
+    FreeRTOS-Plus-TCP/source/FreeRTOS_DHCPv6.c
+    FreeRTOS-Plus-TCP/source/FreeRTOS_IPv6_Utils.c
+    FreeRTOS-Plus-TCP/source/FreeRTOS_ND.c
+    FreeRTOS-Plus-TCP/source/FreeRTOS_Routing.c
+    FreeRTOS-Plus-TCP/source/FreeRTOS_Sockets.c
+    PROPERTIES APPEND_STRING PROPERTY COMPILE_FLAGS " -w"
 )
 
 file(GLOB SRCS
@@ -60,6 +69,8 @@ file(GLOB SRCS
     FreeRTOS-Kernel/*.c
     FreeRTOS-Kernel/portable/MemMang/heap_4.c
     FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+    FreeRTOS-Plus-TCP/source/*.c
+    FreeRTOS-Plus-TCP/source/portable/BufferManagement/BufferAllocation_1.c
     tinyusb/src/*.c
     tinyusb/src/class/**/*.c
     tinyusb/src/common/*.c
@@ -69,11 +80,13 @@ file(GLOB SRCS
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 
 include_directories(SYSTEM
-    src
+    inc
     platform
     platform/inc
     FreeRTOS-Kernel/include
     FreeRTOS-Kernel/portable/GCC/ARM_CM3
+    FreeRTOS-Plus-TCP/source/include
+    FreeRTOS-Plus-TCP/source/portable/Compiler/GCC
     tinyusb/src
 )
 
