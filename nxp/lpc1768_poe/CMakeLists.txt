@@ -71,6 +71,7 @@ file(GLOB SRCS
     FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
     FreeRTOS-Plus-TCP/source/*.c
     FreeRTOS-Plus-TCP/source/portable/BufferManagement/BufferAllocation_1.c
+    mongoose/mongoose.c
     tinyusb/src/*.c
     tinyusb/src/class/**/*.c
     tinyusb/src/common/*.c
@@ -87,6 +88,7 @@ include_directories(SYSTEM
     FreeRTOS-Kernel/portable/GCC/ARM_CM3
     FreeRTOS-Plus-TCP/source/include
     FreeRTOS-Plus-TCP/source/portable/Compiler/GCC
+    mongoose
     tinyusb/src
 )
 

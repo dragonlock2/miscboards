@@ -30,14 +30,14 @@ namespace __cxxabiv1 {
 extern "C" {
 
 __attribute__((used))
-int _write(int fd, char *ptr, int len) {
+int _write(int fd, char* ptr, int len) {
     (void) fd;
     Chip_UART_SendBlocking(LPC_UART0, ptr, len);
     return len;
 }
 
 __attribute__((used))
-int _read(int fd, char *ptr, int len) {
+int _read(int fd, char* ptr, int len) {
     (void) fd;
     while (!(Chip_UART_ReadLineStatus(LPC_UART0) & UART_LSR_RDR)); // wait until char available
     return Chip_UART_Read(LPC_UART0, ptr, len);
@@ -45,10 +45,14 @@ int _read(int fd, char *ptr, int len) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+__attribute__((used)) int _open(const char* path, int oflag, ...) { return -1; }
 __attribute__((used)) int _close(int fd) { return -1; }
-__attribute__((used)) int _fstat(int fd, struct stat *st) { st->st_mode = S_IFCHR; return 0; }
-__attribute__((used)) int _isatty(int fd) { return 1; }
-__attribute__((used)) int _lseek(int fd, int ptr, int dir) { return 0; }
+__attribute__((used)) int _link(const char* path1, const char* path2) { return -1; }
+__attribute__((used)) int _unlink(const char* path) { return -1; }
+__attribute__((used)) int _stat(const char* path, struct stat* buf) { return -1; }
+__attribute__((used)) int _fstat(int fd, struct stat* st) { return -1; }
+__attribute__((used)) int _isatty(int fd) { return -1; }
+__attribute__((used)) int _lseek(int fd, int ptr, int dir) { return -1; }
 __attribute__((used)) int _kill(pid_t pid, int sig) { return -1; }
 __attribute__((used)) pid_t _getpid(void) { return 0; }
 #pragma GCC diagnostic pop

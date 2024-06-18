@@ -53,7 +53,7 @@
 #define ipconfigSOCK_DEFAULT_RECEIVE_BLOCK_TIME     (portMAX_DELAY)
 #define ipconfigSOCK_DEFAULT_SEND_BLOCK_TIME        (portMAX_DELAY)
 #define ipconfigSOCKET_HAS_USER_SEMAPHORE           (0)
-#define ipconfigSUPPORT_SELECT_FUNCTION             (0)
+#define ipconfigSUPPORT_SELECT_FUNCTION             (1) // needed by mongoose
 #define ipconfigSUPPORT_SIGNALS                     (0)
 
 #define ipconfigARP_CACHE_ENTRIES                   (16)
@@ -93,6 +93,8 @@
 #define ipconfigUSE_RA                              (1)
 #define ipconfigRA_SEARCH_COUNT                     (3)
 #define ipconfigRA_IP_TEST_COUNT                    (3)
+
+#define ipconfigIPv4_BACKWARD_COMPATIBLE            (1) // needed by mongoose, disables IPv6
 
 #if ipconfigHAS_DEBUG_PRINTF != 0
 #define FreeRTOS_debug_printf(X) \

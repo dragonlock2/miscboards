@@ -24,7 +24,7 @@ int main(void) {
     NVIC_SetVector(PendSV_IRQn,  (uint32_t) xPortPendSVHandler);
     NVIC_SetVector(SysTick_IRQn, (uint32_t) xPortSysTickHandler);
 
-    xTaskCreate(app_main, "app_main", configMINIMAL_STACK_SIZE, NULL, configAPP_MAIN_PRIORITY, NULL);
+    xTaskCreate(app_main, "app_main", configAPP_MAIN_STACK_SIZE, NULL, configAPP_MAIN_PRIORITY, NULL);
     vTaskStartScheduler();
     while (1);
 }

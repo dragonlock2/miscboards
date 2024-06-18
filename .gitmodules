@@ -28,3 +28,6 @@
 [submodule "nxp/lpc1768_poe/FreeRTOS-Plus-TCP"]
 	path = nxp/lpc1768_poe/FreeRTOS-Plus-TCP
 	url = https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git
+[submodule "nxp/lpc1768_poe/mongoose"]
+	path = nxp/lpc1768_poe/mongoose
+	url = https://github.com/cesanta/mongoose.git

@@ -11,7 +11,8 @@ static inline void NVIC_SetVector(IRQn_Type IRQn, uint32_t vector) {
 
 // template from https://www.freertos.org/a00110.html
 
-#define configAPP_MAIN_PRIORITY (tskIDLE_PRIORITY + 1)
+#define configAPP_MAIN_PRIORITY   (tskIDLE_PRIORITY + 1)
+#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE * 4) // needed by mongoose
 
 #define configUSE_PREEMPTION                      (1)
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION   (1)

@@ -300,6 +300,10 @@ BaseType_t xApplicationDNSQueryHook_Multi(struct xNetworkEndPoint* pxEndPoint, c
     return pdFALSE;
 }
 
+BaseType_t xApplicationDNSQueryHook(const char* pcName) { // needed by mongoose, backwards compatibility
+    return xApplicationDNSQueryHook_Multi(&data.net_ep, pcName);
+}
+
 BaseType_t xApplicationGetRandomNumber(uint32_t* pulNumber) {
     *pulNumber = data.rand_dist(data.rand_eng);
     return pdTRUE;
