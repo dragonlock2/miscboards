@@ -1,15 +1,9 @@
 cmake_minimum_required(VERSION 3.20.0)
 
 set(MCU ch32v20x) # specify SDK
-set(TINYUSB_DRIVER "USBFS")
-# set(TINYUSB_DRIVER "USBD")
 
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(mouse_jiggler ASM C CXX)
-
-add_compile_definitions(
-    TINYUSB_DRIVER_${TINYUSB_DRIVER}
-)
 
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
@@ -41,7 +35,7 @@ add_link_options(
 )
 
 include_directories(
-    src/
+    src
     src/${MCU}
 )
 
@@ -50,5 +44,7 @@ file(GLOB SRCS
     src/${MCU}/*.cpp
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
-add_subdirectory(../SDK/tinyusb ${CMAKE_CURRENT_BINARY_DIR}/tinyusb) # includes SDK and FreeRTOS
-target_link_libraries(${PROJECT_NAME}.elf tinyusb)
+add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
+add_subdirectory(../SDK/freertos ${CMAKE_CURRENT_BINARY_DIR}/freertos)
+add_subdirectory(../SDK/tinyusb ${CMAKE_CURRENT_BINARY_DIR}/tinyusb)
+target_link_libraries(${PROJECT_NAME}.elf SDK freertos tinyusb)

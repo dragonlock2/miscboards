@@ -5,12 +5,11 @@ file(GLOB TINYUSB_SRCS
     ../../../shared/tinyusb/src/class/**/*.c
     ../../../shared/tinyusb/src/common/*.c
     ../../../shared/tinyusb/src/device/*.c
-    ../../../shared/tinyusb/src/portable/wch/dcd_ch32_usbfs.c
-    ../../../shared/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+    ../../../shared/tinyusb/src/portable/nxp/lpc17_40/*.c
 )
 add_library(tinyusb ${TINYUSB_SRCS})
 
-target_include_directories(tinyusb PUBLIC
+target_include_directories(tinyusb SYSTEM PUBLIC
     ../../../shared/tinyusb/src
 )
 

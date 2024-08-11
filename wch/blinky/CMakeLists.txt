@@ -38,7 +38,7 @@ add_link_options(
 )
 
 include_directories(
-    src/
+    src
     src/${MCU}
 )
 

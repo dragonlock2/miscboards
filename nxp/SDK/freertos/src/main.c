@@ -1,6 +1,6 @@
+#include <stdio.h>
 #include <FreeRTOS.h>
 #include <task.h>
-#include <stdio.h>
 
 extern void vPortSVCHandler(void);
 extern void xPortPendSVHandler(void);

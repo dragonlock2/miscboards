@@ -53,6 +53,7 @@ file(GLOB SRCS
     platform/${MCU}/*.cpp
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
-
-add_subdirectory(../SDK/tinyusb ${CMAKE_CURRENT_BINARY_DIR}/tinyusb) # includes SDK and FreeRTOS
-target_link_libraries(${PROJECT_NAME}.elf tinyusb)
+add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)
+add_subdirectory(../SDK/freertos ${CMAKE_CURRENT_BINARY_DIR}/freertos)
+add_subdirectory(../SDK/tinyusb ${CMAKE_CURRENT_BINARY_DIR}/tinyusb)
+target_link_libraries(${PROJECT_NAME}.elf SDK freertos tinyusb)

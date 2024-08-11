@@ -14,5 +14,4 @@
 #define CFG_TUD_MIDI           (0)
 #define CFG_TUD_VENDOR         (0)
 
-
 #endif // TUSB_CONFIG_H

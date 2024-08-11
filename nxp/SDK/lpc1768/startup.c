@@ -17,7 +17,8 @@ extern int main(void);
 void _init(void) {}
 void _fini(void) {}
 
-static void reset_handler(void);
+void reset_handler(void);
+
 static void default_handler(void) { while (1); }
 
 __attribute__((used, section(".vectors")))
@@ -34,8 +35,8 @@ static void (*const rom_vectors[8])(void) = {
 
 static void (*ram_vectors[51])(void) __attribute__((aligned(1024)));
 
-__attribute__((naked, optimize("O1"), section(".reset_handler")))
-static void reset_handler(void) {
+__attribute__((used, naked, optimize("O1"), section(".reset_handler")))
+void reset_handler(void) {
     memcpy(&_data, &_data_rom, &_edata - &_data);
     memset(&_bss, 0, &_ebss - &_bss);
 

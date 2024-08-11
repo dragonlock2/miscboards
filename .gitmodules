@@ -1,33 +1,27 @@
-[submodule "pico/pico-sdk"]
+[submodule "raspberrypi/pico-sdk"]
 	path = raspberrypi/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
-[submodule "pic/cmake-microchip"]
+[submodule "microchip/pic/cmake-microchip"]
 	path = microchip/pic/cmake-microchip
 	url = https://github.com/Elemecca/cmake-microchip.git
-[submodule "wch/SDK/ch32v003"]
+[submodule "wch/SDK/ch32v003/ch32v003"]
 	path = wch/SDK/ch32v003/ch32v003
 	url = https://github.com/openwch/ch32v003.git
 [submodule "wch/SDK/ch32v20x/ch32v20x"]
 	path = wch/SDK/ch32v20x/ch32v20x
 	url = https://github.com/openwch/ch32v20x.git
-[submodule "wch/rvice_adc/FreeRTOS-Kernel"]
-	path = wch/SDK/freertos/FreeRTOS-Kernel
-	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
-[submodule "wch/SDK/tinyusb"]
-	path = wch/SDK/tinyusb/tinyusb
-	url = git@github.com:dragonlock2/tinyusb.git
 [submodule "wch/SDK/ch32x035/ch32x035"]
 	path = wch/SDK/ch32x035/ch32x035
 	url = https://github.com/openwch/ch32x035.git
-[submodule "nxp/lpc1768_poe/FreeRTOS-Kernel"]
-	path = nxp/lpc1768_poe/FreeRTOS-Kernel
+[submodule "shared/FreeRTOS-Kernel"]
+	path = shared/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
-[submodule "nxp/lpc1768_poe/tinyusb"]
-	path = nxp/lpc1768_poe/tinyusb
+[submodule "shared/tinyusb"]
+	path = shared/tinyusb
 	url = https://github.com/hathach/tinyusb.git
-[submodule "nxp/lpc1768_poe/FreeRTOS-Plus-TCP"]
-	path = nxp/lpc1768_poe/FreeRTOS-Plus-TCP
+[submodule "shared/FreeRTOS-Plus-TCP"]
+	path = shared/FreeRTOS-Plus-TCP
 	url = https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git
-[submodule "nxp/lpc1768_poe/mongoose"]
-	path = nxp/lpc1768_poe/mongoose
+[submodule "shared/mongoose"]
+	path = shared/mongoose
 	url = https://github.com/cesanta/mongoose.git
