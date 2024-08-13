@@ -342,10 +342,10 @@ typedef struct {
 /**
  * @brief SPI data setup structure
  */
-typedef struct {
-	uint16_t  *pTx;	/**< Pointer to data buffer*/
+typedef struct { // NOTE modified to use uint8_t* instead of uint16_t*
+	uint8_t   *pTx;	/**< Pointer to data buffer*/
 	uint32_t  TxCnt;/* Transmit Counter */
-	uint16_t  *pRx;	/**< Pointer to data buffer*/
+	uint8_t   *pRx;	/**< Pointer to data buffer*/
 	uint32_t  RxCnt;/* Transmit Counter */
 	uint32_t  Length;	/**< Data Length*/
 	uint32_t    ssel;	/**< Slave select bits */
