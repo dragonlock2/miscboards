@@ -82,13 +82,12 @@ void spi_transceive(uint8_t* tx, uint8_t* rx, size_t len) {
         .dest    = DMA_ADDR(rx + len - 1),
         .next    = DMA_ADDR(0),
     };
-    Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT);
     Chip_SPI_SetControlInfo(LPC_SPI0, 8, SPI_TXCTL_ASSERT_SSEL0 | SPI_TXCTL_EOF);
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_TX, &tx_desc);
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_RX, &rx_desc);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
     xSemaphoreTake(data.done, portMAX_DELAY);
-    Chip_SPI_SetControlInfo(LPC_SPI0, 8, SPI_TXCTL_EOT | SPI_TXCTL_EOF);
+    Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT); // end transfer
     xSemaphoreGive(data.lock);
 }
