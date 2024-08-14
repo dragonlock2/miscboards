@@ -6,9 +6,10 @@
 #include "spi.h"
 #include "oaspi.h"
 
+/* private defines */
+
 /* private data */
 static struct {
-    StaticSemaphore_t mdio_lock_buf;
     SemaphoreHandle_t mdio_lock;
 } data;
 
@@ -24,14 +25,11 @@ static bool oaspi_parity(uint8_t hdr[4]) {
 }
 
 static bool oaspi_control_check(uint8_t rx[16]) {
-    if ((rx[4] & 0x40) || oaspi_parity(&rx[4])) { // HDRB or parity error
-        return false;
+    if ((rx[4] & 0x40) || oaspi_parity(&rx[4])) {
+        return false; // HDRB or parity error
     }
-    if (((rx[8]  | rx[12]) != 0xFF) ||
-        ((rx[9]  | rx[13]) != 0xFF) ||
-        ((rx[10] | rx[14]) != 0xFF) ||
-        ((rx[11] | rx[15]) != 0xFF)) { // protection error
-        return false;
+    if ((*reinterpret_cast<uint32_t*>(&rx[8]) ^ *reinterpret_cast<uint32_t*>(&rx[12])) != 0xFFFFFFFF) {
+        return false; // protection error
     }
     return true;
 }
@@ -49,7 +47,8 @@ static uint16_t oaspi_mdio_cmd(uint32_t cmd) {
 
 /* public functions */
 void oaspi_init(void) {
-    data.mdio_lock = xSemaphoreCreateMutexStatic(&data.mdio_lock_buf);
+    data.mdio_lock = xSemaphoreCreateMutex();
+    configASSERT(data.mdio_lock);
 
     // hardware reset
     Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 7);
@@ -67,7 +66,7 @@ void oaspi_init(void) {
     tmp = oaspi_mdio_c45_read(0x1E, 0x8C83);
     oaspi_mdio_c45_write(0x1E, 0x8C83, tmp | 0x0005); // active-high
     tmp = oaspi_mdio_c45_read(0x1E, 0x8C82);
-    oaspi_mdio_c45_write(0x1E, 0x8C82, (tmp & ~(0x1f1f)) | 0x0304); // LED0: act, LED1: link
+    oaspi_mdio_c45_write(0x1E, 0x8C82, (tmp & ~(0x1F1F)) | 0x0304); // LED0: act, LED1: link
 
     // PHY turn on
     oaspi_mdio_c45_write(0x1E, 0x8812, 0x0000);

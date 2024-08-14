@@ -3,7 +3,7 @@
 #include <tusb.h>
 #include "usb.h"
 
-/* private constants */
+/* private defines */
 enum class usb_string_desc {
     LANGID,
     MANUFACTURER,

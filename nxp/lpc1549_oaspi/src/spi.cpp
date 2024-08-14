@@ -1,12 +1,34 @@
 #include <cstdio>
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
 #include <chip.h>
 #include "spi.h"
 
+/* private data */
+static struct {
+    SemaphoreHandle_t lock;
+    SemaphoreHandle_t done;
+} data;
+
+/* private helpers */
+static void spi_dma_handler(void) {
+    Chip_DMA_ClearActiveIntAChannel(LPC_DMA, DMAREQ_SPI0_RX);
+    BaseType_t woke = pdFALSE;
+    xSemaphoreGiveFromISR(data.done, &woke);
+    portYIELD_FROM_ISR(woke);
+}
+
+/* public functions */
 void spi_init(void) {
+    data.lock = xSemaphoreCreateMutex();
+    data.done = xSemaphoreCreateBinary();
+    configASSERT(data.lock && data.done);
+
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 8,  IOCON_MODE_INACT);
-	Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 5,  IOCON_MODE_INACT);
-	Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_MODE_INACT);
-	Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 11, IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 5,  IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 11, IOCON_MODE_INACT);
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_MOSI_IO,     0, 8);
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_MISO_IO,     0, 5);
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_SCK_IO,      0, 18);
@@ -29,18 +51,44 @@ void spi_init(void) {
     Chip_SPI_SetConfig(LPC_SPI0, &cfg);
     Chip_SPI_DelayConfig(LPC_SPI0, &delay_cfg);
     Chip_SPI_Enable(LPC_SPI0);
+
+    NVIC_SetVector(DMA_IRQn, reinterpret_cast<uint32_t>(spi_dma_handler));
+    NVIC_SetPriority(DMA_IRQn, configMAX_SYSCALL_INTERRUPT_PRIORITY >> (8 - __NVIC_PRIO_BITS));
+    NVIC_EnableIRQ(DMA_IRQn);
+
+    Chip_DMA_Init(LPC_DMA);
+    Chip_DMA_Enable(LPC_DMA);
+    Chip_DMA_SetSRAMBase(LPC_DMA, DMA_ADDR(Chip_DMA_Table));
+    Chip_DMA_EnableChannel(LPC_DMA, DMAREQ_SPI0_TX);
+    Chip_DMA_EnableChannel(LPC_DMA, DMAREQ_SPI0_RX);
+    Chip_DMA_SetupChannelConfig(LPC_DMA, DMAREQ_SPI0_TX, DMA_CFG_PERIPHREQEN | DMA_CFG_CHPRIORITY(0));
+    Chip_DMA_SetupChannelConfig(LPC_DMA, DMAREQ_SPI0_RX, DMA_CFG_PERIPHREQEN | DMA_CFG_CHPRIORITY(0));
+    Chip_DMA_EnableIntChannel(LPC_DMA, DMAREQ_SPI0_RX);
 }
 
 void spi_transceive(uint8_t* tx, uint8_t* rx, size_t len) {
-    // TODO use DMA
-    SPI_DATA_SETUP_T setup = {
-        .pTx      = tx,
-        .TxCnt    = 0,
-        .pRx      = rx,
-        .RxCnt    = 0,
-        .Length   = len,
-        .ssel     = SPI_TXCTL_ASSERT_SSEL0,
-        .DataSize = 8,
+    xSemaphoreTake(data.lock, portMAX_DELAY);
+    DMA_CHDESC_T tx_desc = {
+        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_WIDTH_8 |
+                   DMA_XFERCFG_SRCINC_1 | DMA_XFERCFG_DSTINC_0 | DMA_XFERCFG_XFERCOUNT(len),
+        .source  = DMA_ADDR(tx + len - 1),
+        .dest    = DMA_ADDR(&LPC_SPI0->TXDAT),
+        .next    = DMA_ADDR(0),
     };
-    Chip_SPI_RWFrames_Blocking(LPC_SPI0, &setup);
+    DMA_CHDESC_T rx_desc = {
+        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_SETINTA | DMA_XFERCFG_WIDTH_8 |
+                   DMA_XFERCFG_SRCINC_0 | DMA_XFERCFG_DSTINC_1 | DMA_XFERCFG_XFERCOUNT(len),
+        .source  = DMA_ADDR(&LPC_SPI0->RXDAT),
+        .dest    = DMA_ADDR(rx + len - 1),
+        .next    = DMA_ADDR(0),
+    };
+    Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT);
+    Chip_SPI_SetControlInfo(LPC_SPI0, 8, SPI_TXCTL_ASSERT_SSEL0 | SPI_TXCTL_EOF);
+    Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_TX, &tx_desc);
+    Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_RX, &rx_desc);
+    Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
+    Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
+    xSemaphoreTake(data.done, portMAX_DELAY);
+    Chip_SPI_SetControlInfo(LPC_SPI0, 8, SPI_TXCTL_EOT | SPI_TXCTL_EOF);
+    xSemaphoreGive(data.lock);
 }

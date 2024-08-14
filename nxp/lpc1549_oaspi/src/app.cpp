@@ -12,11 +12,14 @@ extern "C" void app_main(void*) {
     oaspi_init();
     printf("booted!\r\n");
 
-    // TODO spi dma
     // TODO interrupts
     // TODO full ethernet driver?
 
-    usr_rgb(1, 0, 0);
-
+    bool c = 0;
+    while (true) {
+        c = !c;
+        usr_rgb(c, 0, 0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
     vTaskDelete(NULL);
 }
