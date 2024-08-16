@@ -16,13 +16,11 @@ extern "C" void app_main(void*) {
     eth_init();
     printf("booted!\r\n");
 
-    // TODO usb rndis/ecm, randomize the mac addr
-
-    bool c = 0;
+    bool t = 0, r = 0, g = 0, b = 1;
     while (true) {
-        c = !c;
-        usr_rgb(c, 0, 0);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        usr_rgb(r, g, b);
+        t = r; r = g; g = b; b = t;
+        vTaskDelay(pdMS_TO_TICKS(250));
     }
     vTaskDelete(NULL);
 }

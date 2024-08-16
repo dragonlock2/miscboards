@@ -120,15 +120,18 @@ void oaspi_configure(void) {
     oaspi_reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
 
     // MAC filter
-    std::array<uint8_t, 6> bcast_addr {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    oaspi_mac_filter(2, bcast_addr, bcast_addr);
-    std::array<uint8_t, 6> mcast_addr {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    oaspi_mac_filter(0, mcast_addr, mcast_addr);
-    std::array<uint8_t, 6> ucast_addr;
-    extern uint8_t tud_network_mac_address[6];
-    std::memcpy(ucast_addr.data(), tud_network_mac_address, 6);
-    std::array<uint8_t, 6> ucast_mask {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    oaspi_mac_filter(1, ucast_addr, ucast_mask);
+    t0 = oaspi_reg_read(oaspi_mms::STANDARD, 0x06);
+    oaspi_reg_write(oaspi_mms::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
+    (void) oaspi_mac_filter;
+    // std::array<uint8_t, 6> bcast_addr {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    // oaspi_mac_filter(2, bcast_addr, bcast_addr);
+    // std::array<uint8_t, 6> mcast_addr {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
+    // oaspi_mac_filter(0, mcast_addr, mcast_addr);
+    // std::array<uint8_t, 6> ucast_addr;
+    // extern uint8_t tud_network_mac_address[6];
+    // std::memcpy(ucast_addr.data(), tud_network_mac_address, 6);
+    // std::array<uint8_t, 6> ucast_mask {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    // oaspi_mac_filter(1, ucast_addr, ucast_mask);
 
     // PHY led setting
     uint16_t t1;

@@ -35,10 +35,12 @@ add_link_options(
 
 include_directories(
     inc
+    ../../shared/tinyusb/lib/networking
 )
-
+    
 file(GLOB SRCS
     src/*.cpp
+    ../../shared/tinyusb/lib/networking/rndis_reports.c
 )
 add_executable(${PROJECT_NAME}.elf ${SRCS})
 add_subdirectory(../SDK/${MCU} ${CMAKE_CURRENT_BINARY_DIR}/SDK)

@@ -4,13 +4,14 @@
 #include <FreeRTOS.h>
 #include <semphr.h>
 #include <task.h>
+#include <tusb.h>
 #include <chip.h>
 #include "oaspi.h"
 #include "eth.h"
 
 /* private data */
 struct eth_tx_req {
-    uint8_t* pkt;
+    const uint8_t* pkt;
     size_t len;
 };
 
@@ -64,7 +65,7 @@ static void eth_task(void*) {
                         oaspi_fcs_add(data.tx.pkt, data.tx.len);
                         data.tx.len += 4;
                     }
-                    // TODO free packet
+                    tud_network_recv_renew(); // free buffer
                 }
             }
             if (data.tx.len) {
@@ -121,15 +122,8 @@ static void eth_task(void*) {
             }
         }
         if (data.rx.chunk.EV && data.rx.len >= 4 && oaspi_fcs_check(data.rx.pkt, data.rx.len)) {
-            // TODO push to net stack
-            printf("%02x:%02x:%02x:%02x:%02x:%02x len: %d\r\n",
-                data.rx.pkt[0],
-                data.rx.pkt[1],
-                data.rx.pkt[2],
-                data.rx.pkt[3],
-                data.rx.pkt[4],
-                data.rx.pkt[5],
-                data.rx.len - 4);
+            tud_network_xmit(data.rx.pkt.data(), data.rx.len - 4);
+            data.rx.len = 0;
         }
 
         // wait if both tx/rx want wait
@@ -161,4 +155,24 @@ void eth_init(void) {
     NVIC_EnableIRQ(PIN_INT0_IRQn);
 
     xTaskCreate(eth_task, "eth_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
+}
+
+void tud_network_init_cb(void) {}
+
+bool tud_network_recv_cb(const uint8_t* src, uint16_t size) {
+    eth_tx_req req = {
+        .pkt = src,
+        .len = size,
+    };
+    if (size && xQueueSend(data.tx.reqs, &req, 0) == pdTRUE) {
+        xSemaphoreGive(data.event);
+    }
+    return false;
+}
+
+uint16_t tud_network_xmit_cb(uint8_t* dst, void* ref, uint16_t arg) {
+    uint8_t* src = static_cast<uint8_t*>(ref);
+    uint16_t len = arg;
+    std::memcpy(dst, src, len);
+    return len;
 }
