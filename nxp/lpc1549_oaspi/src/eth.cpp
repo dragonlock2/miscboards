@@ -89,6 +89,7 @@ static void eth_task(void*) {
         data.tx.chunk.P   = oaspi_parity(data.tx.chunk.header);
 
         // perform data transfer
+        // TODO consider multiple chunks to reduce startup and context switch penalties
         oaspi_data_transfer(data.tx.chunk, data.rx.chunk);
         if (data.rx.chunk.HDRB || oaspi_parity(data.rx.chunk.footer)) { // drop tx/rx packets on error
             data.tx.len = 0;
