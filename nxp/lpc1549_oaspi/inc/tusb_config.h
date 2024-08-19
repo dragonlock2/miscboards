@@ -9,5 +9,6 @@
 #define CFG_TUD_ENDPOINT0_SIZE (64)
 
 #define CFG_TUD_ECM_RNDIS      (1)
+#define CFG_TUD_HID            (1)
 
 #endif // TUSB_CONFIG_H

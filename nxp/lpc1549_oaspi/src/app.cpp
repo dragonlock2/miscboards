@@ -8,6 +8,14 @@
 #include "usb.h"
 #include "usr.h"
 
+#if defined(CONFIG_ADIN1110) && defined(CONFIG_NCN26010)
+#error "define one config only"
+#endif
+
+#if !defined(CONFIG_ADIN1110) && !defined(CONFIG_NCN26010)
+#error "define one config pls"
+#endif
+
 uint8_t tud_network_mac_address[6] = {0x00, 0x50, 0xC2, 0x4B, 0x20, 0x00};
 
 extern "C" void app_main(void*) {
@@ -19,10 +27,10 @@ extern "C" void app_main(void*) {
     }
     tud_network_mac_address[5] = mac;
 
-    usb_init();
     spi_init();
     oaspi_init();
     eth_init();
+    usb_init();
     printf("booted! 0x%02x\r\n", mac);
 
     bool t = 0, r = 0, g = 0, b = 1;

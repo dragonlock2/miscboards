@@ -142,11 +142,17 @@ void eth_init(void) {
     data.tx.reqs = xQueueCreate(2, sizeof(eth_tx_req));
     configASSERT(data.event && data.tx.reqs);
 
+#ifdef CONFIG_ADIN1110
     Chip_GPIO_SetPinDIRInput(LPC_GPIO, 0, 12);
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 12, IOCON_MODE_PULLUP);
+    Chip_INMUX_PinIntSel(0, 0, 12);
+#elifdef CONFIG_NCN26010
+    Chip_GPIO_SetPinDIRInput(LPC_GPIO, 0, 18);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_MODE_PULLUP);
+    Chip_INMUX_PinIntSel(0, 0, 18);
+#endif
 
     Chip_PININT_Init(LPC_GPIO_PIN_INT);
-    Chip_INMUX_PinIntSel(0, 0, 12);
     Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
     Chip_PININT_SetPinModeEdge(LPC_GPIO_PIN_INT, PININTCH(0));
     Chip_PININT_EnableIntLow(LPC_GPIO_PIN_INT, PININTCH(0));

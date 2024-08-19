@@ -26,6 +26,7 @@ void spi_init(void) {
     data.done = xSemaphoreCreateBinary();
     configASSERT(data.lock && data.done);
 
+#ifdef CONFIG_ADIN1110
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 8,  IOCON_MODE_INACT);
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 5,  IOCON_MODE_INACT);
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_MODE_INACT);
@@ -34,6 +35,16 @@ void spi_init(void) {
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_MISO_IO,     0, 5);
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_SCK_IO,      0, 18);
     Chip_SWM_MovablePortPinAssign(SWM_SPI0_SSELSN_0_IO, 0, 11);
+#elifdef CONFIG_NCN26010
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 9,  IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 7,  IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 10, IOCON_MODE_INACT);
+    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 8,  IOCON_MODE_INACT);
+    Chip_SWM_MovablePortPinAssign(SWM_SPI0_MOSI_IO,     0, 9);
+    Chip_SWM_MovablePortPinAssign(SWM_SPI0_MISO_IO,     0, 7);
+    Chip_SWM_MovablePortPinAssign(SWM_SPI0_SCK_IO,      0, 10);
+    Chip_SWM_MovablePortPinAssign(SWM_SPI0_SSELSN_0_IO, 0, 8);
+#endif
 
     SPI_CFG_T cfg = {
         .Mode      = SPI_MODE_MASTER,

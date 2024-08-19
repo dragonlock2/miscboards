@@ -6,8 +6,12 @@
 #define OASPI_MAX_PKT_LEN (1518)
 
 enum class oaspi_mms {
-    STANDARD = 0x00,
-    MAC      = 0x01,
+    STANDARD   = 0,
+    MAC        = 1,
+    PHY_PCS    = 2,
+    PHY_PMAPMD = 3,
+    PHY_PLCA   = 4,
+    VENDOR12   = 12,
 };
 
 struct __attribute__((packed)) oaspi_tx_chunk {

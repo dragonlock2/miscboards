@@ -5,6 +5,11 @@ set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 
 project(lpc1549_oaspi C CXX ASM)
 
+add_compile_definitions(
+    # CONFIG_ADIN1110
+    CONFIG_NCN26010
+)
+
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++23>

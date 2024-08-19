@@ -82,6 +82,7 @@ static uint16_t oaspi_mdio_cmd(uint32_t cmd) {
 static void oaspi_mac_filter(uint8_t slot, std::array<uint8_t, 6>& addr, std::array<uint8_t, 6>& mask) {
     uint8_t offset = slot * 2;
     uint32_t val;
+#ifdef CONFIG_ADIN1110
     val = 0x40090000 | (addr[0] << 8) | (addr[1] << 0);
     oaspi_reg_write(oaspi_mms::MAC, 0x50 + offset, val);
     val = (addr[2] << 24) | (addr[3] << 16) | (addr[4] << 8) | (addr[5] << 0);
@@ -93,6 +94,17 @@ static void oaspi_mac_filter(uint8_t slot, std::array<uint8_t, 6>& addr, std::ar
     oaspi_reg_write(oaspi_mms::MAC, 0x70 + offset, val);
     val = (mask[2] << 24) | (mask[3] << 16) | (mask[4] << 8) | (mask[5] << 0);
     oaspi_reg_write(oaspi_mms::MAC, 0x71 + offset, val);
+#elifdef CONFIG_NCN26010
+    val = (addr[2] << 24) | (addr[3] << 16) | (addr[4] << 8) | (addr[5] << 0);
+    oaspi_reg_write(oaspi_mms::MAC, 0x10 + offset, val);
+    val = 0x80000000 | (addr[0] << 8) | (addr[1] << 0);
+    oaspi_reg_write(oaspi_mms::MAC, 0x11 + offset, val);
+
+    val = (mask[2] << 24) | (mask[3] << 16) | (mask[4] << 8) | (mask[5] << 0);
+    oaspi_reg_write(oaspi_mms::MAC, 0x20 + offset, val);
+    val = 0x80000000 | (mask[0] << 8) | (mask[1] << 0);
+    oaspi_reg_write(oaspi_mms::MAC, 0x21 + offset, val);
+#endif
 }
 
 /* public functions */
@@ -100,6 +112,7 @@ void oaspi_init(void) {
     data.mdio_lock = xSemaphoreCreateMutex();
     configASSERT(data.mdio_lock);
 
+#ifdef CONFIG_ADIN1110
     // hardware reset
     Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 7);
     Chip_GPIO_SetPinState(LPC_GPIO, 0, 7, 0);
@@ -111,6 +124,29 @@ void oaspi_init(void) {
     oaspi_reg_write(oaspi_mms::STANDARD, 0x03, 0x00000001);
     while (oaspi_reg_read(oaspi_mms::STANDARD, 0x01) != 0x0283BC91);
     oaspi_reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+#elifdef CONFIG_NCN26010
+    // hardware reset
+    Chip_GPIO_SetPinDIROutput(LPC_GPIO, 0, 11);
+    Chip_GPIO_SetPinState(LPC_GPIO, 0, 11, 0);
+    vTaskDelay(pdMS_TO_TICKS(1));
+    Chip_GPIO_SetPinState(LPC_GPIO, 0, 11, 1);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // enable protected control transactions
+    std::array<uint8_t, 12> tx {}, rx;
+    tx[0] = 0x20;
+    tx[2] = 0x04;
+    std::array<uint8_t, 4> hdr {tx[0], tx[1], tx[2], tx[3]};
+    tx[3] |= oaspi_parity(hdr);
+    tx[7] = 0x26; // PROTE=1, CPS=64bytes
+    spi_transceive(tx.data(), rx.data(), 12);
+
+    // clear reset
+    oaspi_reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+
+    // configure now, data transactions fail until SYNC=1
+    oaspi_configure();
+#endif
 }
 
 void oaspi_configure(void) {
@@ -119,6 +155,7 @@ void oaspi_configure(void) {
     t0 = oaspi_reg_read(oaspi_mms::STANDARD, 0x04);
     oaspi_reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
 
+#ifdef CONFIG_ADIN1110
     // MAC filter
     t0 = oaspi_reg_read(oaspi_mms::STANDARD, 0x06);
     oaspi_reg_write(oaspi_mms::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
@@ -145,6 +182,28 @@ void oaspi_configure(void) {
     // PHY turn on
     oaspi_mdio_c45_write(0x1E, 0x8812, 0x0000);
     while (oaspi_mdio_c45_read(0x1E, 0x8818) & 0x0002);
+
+#elifdef CONFIG_NCN26010
+    // MAC settings
+    t0 = oaspi_reg_read(oaspi_mms::STANDARD, 0xFF00);
+    oaspi_reg_write(oaspi_mms::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
+    t0 = oaspi_reg_read(oaspi_mms::MAC, 0x0000);
+    oaspi_reg_write(oaspi_mms::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
+
+    // MAC filter
+    t0 = oaspi_reg_read(oaspi_mms::MAC, 0x0000);
+    oaspi_reg_write(oaspi_mms::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
+    (void) oaspi_mac_filter;
+    // oaspi_reg_write(oaspi_mms::MAC, 0x0000, t0 | 0x00010000); // ADRF=1
+    // std::array<uint8_t, 6> ucast_addr;
+    // extern uint8_t tud_network_mac_address[6];
+    // std::memcpy(ucast_addr.data(), tud_network_mac_address, 6);
+    // std::array<uint8_t, 6> ucast_mask {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    // oaspi_mac_filter(0, ucast_addr, ucast_mask);
+
+    // PHY led setting
+    oaspi_reg_write(oaspi_mms::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
+#endif
 
     // mark configured
     t0 = oaspi_reg_read(oaspi_mms::STANDARD, 0x04);

@@ -1,12 +1,14 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <tusb.h>
+#include "oaspi.h"
 #include "usb.h"
 
 /* private defines */
-#define EP_NET_NOTIF (0x81)
-#define EP_NET_OUT   (0x02)
-#define EP_NET_IN    (0x82)
+#define EP_NET_NOTIF (0x81) // interrupt
+#define EP_NET_OUT   (0x02) // bulk
+#define EP_NET_IN    (0x82) // bulk
+#define EP_HID       (0x04) // interrupt
 
 enum class usb_string {
     LANGID,
@@ -21,6 +23,7 @@ enum class usb_string {
 enum class usb_itf {
     CDC,
     CDC_DATA,
+    HID,
     COUNT
 };
 
@@ -30,7 +33,7 @@ enum class usb_config {
     COUNT
 };
 
-static const tusb_desc_device_t desc_device = {
+static const tusb_desc_device_t device_descriptor = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = 0x0200,
@@ -47,18 +50,26 @@ static const tusb_desc_device_t desc_device = {
     .bNumConfigurations = static_cast<uint8_t>(usb_config::COUNT),
 };
 
+static const uint8_t hid_descriptor[] = {
+    TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE),
+};
+
 static const uint8_t rndis_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(static_cast<uint8_t>(usb_config::RNDIS) + 1, static_cast<uint8_t>(usb_itf::COUNT), 0,
-        TUD_CONFIG_DESC_LEN + TUD_RNDIS_DESC_LEN, 0, 500),
+        TUD_CONFIG_DESC_LEN + TUD_RNDIS_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
     TUD_RNDIS_DESCRIPTOR(static_cast<uint8_t>(usb_itf::CDC), static_cast<uint8_t>(usb_string::INTERFACE),
         EP_NET_NOTIF, 8, EP_NET_OUT, EP_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE),
+    TUD_HID_INOUT_DESCRIPTOR(static_cast<uint8_t>(usb_itf::HID), 0, HID_ITF_PROTOCOL_NONE, sizeof(hid_descriptor),
+        EP_HID, 0x80 | EP_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 static const uint8_t ecm_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(static_cast<uint8_t>(usb_config::ECM) + 1, static_cast<uint8_t>(usb_itf::COUNT), 0,
-        TUD_CONFIG_DESC_LEN + TUD_CDC_ECM_DESC_LEN, 0, 500),
+        TUD_CONFIG_DESC_LEN + TUD_CDC_ECM_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
     TUD_CDC_ECM_DESCRIPTOR(static_cast<uint8_t>(usb_itf::CDC), static_cast<uint8_t>(usb_string::INTERFACE),
         static_cast<uint8_t>(usb_string::MAC), EP_NET_NOTIF, 64, EP_NET_OUT, EP_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE, CFG_TUD_NET_MTU),
+    TUD_HID_INOUT_DESCRIPTOR(static_cast<uint8_t>(usb_itf::HID), 0, HID_ITF_PROTOCOL_NONE, sizeof(hid_descriptor),
+        EP_HID, 0x80 | EP_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
 static char const* desc_strings[] = { // keep <= 127 chars due to encoding
@@ -93,7 +104,12 @@ void usb_init(void) {
 }
 
 uint8_t const* tud_descriptor_device_cb(void) {
-    return reinterpret_cast<uint8_t const*>(&desc_device);
+    return reinterpret_cast<uint8_t const*>(&device_descriptor);
+}
+
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
+    (void) instance;
+    return hid_descriptor;
 }
 
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
@@ -129,4 +145,39 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     }
     str[0] = (TUSB_DESC_STRING << 8) | (2 + 2 * count);
     return str;
+}
+
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+    (void) instance;
+    (void) report_id;
+    (void) report_type;
+    (void) buffer;
+    (void) reqlen;
+    return 0;
+}
+
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+    (void) instance;
+    (void) report_id;
+    (void) report_type;
+#ifdef CONFIG_NCN26010
+    if (bufsize == 3) {
+        bool enable = buffer[0] & 0x01;
+        bool leader = buffer[0] & 0x02;
+        uint8_t id  = buffer[1];
+        uint8_t cnt = buffer[2];
+        if (enable) {
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0x8002, leader ? 0x0003 : 0x0000);
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0xCA01, 0x8000);
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0xCA02, (cnt << 8) | id);
+        } else {
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0x8002, 0x0000);
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0xCA01, 0x0000);
+            oaspi_reg_write(oaspi_mms::PHY_PLCA, 0xCA02, 0x08FF);
+        }
+    }
+#else
+    (void) buffer;
+    (void) bufsize;
+#endif
 }
