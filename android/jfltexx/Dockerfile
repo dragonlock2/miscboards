@@ -11,6 +11,8 @@ RUN apt-get install -y \
     lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
 RUN wget http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.4-2_amd64.deb && \
     dpkg -i libtinfo5_6.4-2_amd64.deb && rm -f libtinfo5_6.4-2_amd64.deb
+RUN wget http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.4-2_amd64.deb && \
+    dpkg -i libncurses5_6.4-2_amd64.deb && rm -f libncurses5_6.4-2_amd64.deb
 
 USER ubuntu
 WORKDIR /home/ubuntu
