@@ -34,3 +34,8 @@ RUN echo "export USE_CCACHE=1" >> ~/.profile && \
     echo "export CCACHE_DIR=$HOME/android/ccache" >> ~/.profile && \
     echo "export CCACHE_MAXSIZE=25G" >> ~/.profile && \
     echo "export CCACHE_COMPRESS=true" >> ~/.profile
+
+# run in order
+# ./init.sh
+# ./build.sh
+# ./flash.sh
