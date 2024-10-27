@@ -2,6 +2,7 @@ FROM ubuntu:22.04
 
 # adapted from https://openwrt.org/docs/guide-developer/toolchain/install-buildsystem
 # and https://openwrt.org/docs/guide-developer/toolchain/use-buildsystem
+# and https://openwrt.org/docs/guide-user/additional-software/saving_space
 
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y \
