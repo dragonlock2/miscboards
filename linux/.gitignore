@@ -1,2 +1,3 @@
+*.bin
 android
 push-update.sh
