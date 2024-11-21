@@ -29,6 +29,10 @@ Crypto::~Crypto() {
     mbedtls_entropy_free(&entropy);
 }
 
+void Crypto::gen_bytes(std::span<uint8_t> buffer) {
+    assert(mbedtls_ctr_drbg_random(&rng, buffer.data(), buffer.size()) == 0);
+}
+
 PubKeys Crypto::gen_pubkeys(void) {
     mbedtls_mpi pt_priv;
     mbedtls_ecp_point pt_pub;

@@ -39,6 +39,12 @@ union EncryptedPacket {
 static_assert(sizeof(EncryptedPacket) == 32);
 
 union Payload {
+    struct {
+        uint8_t next_chan;
+    } host;
+    struct {
+        std::array<uint8_t, 8> hid;
+    } device;
     std::array<uint8_t, 8> raw;
 };
 static_assert(sizeof(Payload) == 8);
@@ -48,6 +54,7 @@ public:
     Crypto();
     ~Crypto();
 
+    void gen_bytes(std::span<uint8_t> buffer);
     PubKeys gen_pubkeys(void);
     std::array<uint8_t, 32> compute_secret(const PubKeys &pair);
     SymKeys compute_symkeys(std::span<const uint8_t, 32> secret);
