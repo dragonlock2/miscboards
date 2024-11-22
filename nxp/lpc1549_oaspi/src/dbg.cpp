@@ -38,7 +38,7 @@ namespace __cxxabiv1 {
 extern "C" {
 
 __attribute__((used))
-int _write(int fd, char* ptr, int len) {
+int _write(int fd, char *ptr, int len) {
     (void) fd;
     Chip_UART_SendBlocking(LPC_USART0, ptr, len);
     return len;

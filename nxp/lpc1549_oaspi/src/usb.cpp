@@ -1,3 +1,4 @@
+#include <cstring>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <tusb.h>
@@ -72,13 +73,21 @@ static const uint8_t ecm_configuration[] = {
         EP_HID, 0x80 | EP_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
 
-static char const* desc_strings[] = { // keep <= 127 chars due to encoding
+static char const *desc_strings[] = { // keep <= 127 chars due to encoding
     [static_cast<size_t>(usb_string::LANGID)]        = (const char[]) { 0x09, 0x04 }, // supported language is English (0x0409)
     [static_cast<size_t>(usb_string::MANUFACTURER)]  = "miscboards",
     [static_cast<size_t>(usb_string::PRODUCT)]       = "lpc1549_oaspi",
     [static_cast<size_t>(usb_string::SERIAL_NUMBER)] = "69420",
     [static_cast<size_t>(usb_string::INTERFACE)]     = "lpc1649_oaspi interface",
 };
+
+/* private data */
+static struct {
+    TaskHandle_t usb_eth;
+    QueueHandle_t reqs;
+    eth_pkt *pkt;
+    uint32_t tx_drop, rx_drop;
+} data;
 
 /* private helpers */
 static void usb_handler(void) {
@@ -88,31 +97,64 @@ static void usb_handler(void) {
 static void usb_task(void*) {
     while (true) {
         tud_task();
+        xTaskNotifyIndexed(data.usb_eth, 0, 1 << configNOTIF_USB_ETH, eSetBits);
     }
     vTaskDelete(NULL);
 }
 
+static void usb_eth_task(void*) {
+    while (true) {
+        xQueueReceive(data.reqs, &data.pkt, portMAX_DELAY);
+        while (!tud_network_can_xmit(0)) {
+            // driver doesn't have callback when can_xmit=true, so must try on every event
+            xTaskNotifyWaitIndexed(0, 0, 1 << configNOTIF_USB_ETH, NULL, pdMS_TO_TICKS(10));
+        }
+        tud_network_xmit(data.pkt->buf.data(), ETH_HDR_LEN + data.pkt->len); // freed in callback below
+    }
+    vTaskDelete(NULL);
+}
+
+static bool usb_eth_cb(eth_pkt *pkt, void *arg) {
+    (void) arg;
+    if (xQueueSend(data.reqs, &pkt, 0) == pdTRUE) {
+        return true;
+    } else {
+        data.rx_drop++;
+        return false;
+    }
+}
+
 /* public functions */
 void usb_init(void) {
+    data.reqs = xQueueCreate(ETH_POOL_SIZE / 2, sizeof(eth_pkt*));
+    configASSERT(data.reqs);
+    eth_set_cb(0, usb_eth_cb, NULL);
+
     NVIC_SetVector(USB0_IRQn, reinterpret_cast<uint32_t>(usb_handler));
     NVIC_SetPriority(USB0_IRQn, configMAX_SYSCALL_INTERRUPT_PRIORITY >> (8 - __NVIC_PRIO_BITS));
 
     Chip_USB_Init();
 
     tusb_init();
-    xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL);
+    configASSERT(xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, NULL) == pdPASS);
+    configASSERT(xTaskCreate(usb_eth_task, "usb_eth_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 2, &data.usb_eth) == pdPASS);
 }
 
-uint8_t const* tud_descriptor_device_cb(void) {
+void usb_eth_get_error(uint32_t &tx_drop, uint32_t &rx_drop) {
+    tx_drop = data.tx_drop;
+    rx_drop = data.rx_drop;
+}
+
+uint8_t const *tud_descriptor_device_cb(void) {
     return reinterpret_cast<uint8_t const*>(&device_descriptor);
 }
 
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance) {
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
     (void) instance;
     return hid_descriptor;
 }
 
-uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
+uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
     switch (static_cast<usb_config>(index)) {
         case usb_config::RNDIS: return rndis_configuration;
         case usb_config::ECM:   return ecm_configuration;
@@ -120,7 +162,7 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     }
 }
 
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
+uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     static uint16_t str[127]; // UTF-16
     (void) langid;
 
@@ -129,7 +171,7 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     if (index >= static_cast<uint8_t>(usb_string::COUNT)) {
         return NULL;
     } else if (index == static_cast<uint8_t>(usb_string::LANGID)) {
-        memcpy(&str[1], desc_strings[index], strlen(desc_strings[index]));
+        std::memcpy(&str[1], desc_strings[index], strlen(desc_strings[index]));
         count = 1;
     } else if (index == static_cast<uint8_t>(usb_string::MAC)) {
         for (size_t i = 0; i < sizeof(tud_network_mac_address); i++) {
@@ -147,7 +189,33 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return str;
 }
 
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {
+void tud_network_init_cb(void) {}
+
+bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
+    if (size < ETH_HDR_LEN || size > (ETH_HDR_LEN + ETH_MTU)) {
+        return false;
+    }
+    eth_pkt *pkt = eth_pkt_alloc(false);
+    if (pkt) {
+        std::memcpy(pkt->buf.data(), src, size);
+        pkt->len = size - ETH_HDR_LEN;
+        eth_send(pkt);
+        tud_network_recv_renew();
+        return true;
+    } else {
+        data.tx_drop++;
+        return false;
+    }
+}
+
+uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg) {
+    std::memcpy(dst, ref, arg);
+    eth_pkt_free(data.pkt);
+    data.pkt = NULL;
+    return arg;
+}
+
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen) {
     (void) instance;
     (void) report_id;
     (void) report_type;
@@ -156,7 +224,7 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize) {
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize) {
     (void) instance;
     (void) report_id;
     (void) report_type;

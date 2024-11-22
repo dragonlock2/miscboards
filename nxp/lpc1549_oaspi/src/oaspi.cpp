@@ -49,17 +49,16 @@ static struct {
 } data;
 
 /* private helpers */
-static uint32_t oaspi_fcs(std::array<uint8_t, OASPI_MAX_PKT_LEN>& pkt, size_t len) {
+static uint32_t oaspi_fcs(eth_pkt &pkt, bool check) {
     uint32_t fcs = 0xFFFFFFFF;
-    for (size_t i = 0; i < len; i++) {
-        fcs = FCS_TABLE[(pkt[i] ^ fcs) & 0xFF] ^ (fcs >> 8);
+    for (size_t i = 0; i < (ETH_HDR_LEN + pkt.len + (check ? 4 : 0)); i++) {
+        fcs = FCS_TABLE[(pkt.buf[i] ^ fcs) & 0xFF] ^ (fcs >> 8);
     }
     return ~fcs;
 }
 
-static bool oaspi_control_check(std::array<uint8_t, 16>& rx) {
-    std::array<uint8_t, 4> hdr {rx[4], rx[5], rx[6], rx[7]};
-    if ((rx[4] & 0x40) || oaspi_parity(hdr)) {
+static bool oaspi_control_check(std::span<uint8_t, 16> rx) {
+    if ((rx[4] & 0x40) || oaspi_parity(rx.subspan<4, 4>())) {
         return false; // HDRB or parity error
     }
     if ((*reinterpret_cast<uint32_t*>(&rx[8]) ^ *reinterpret_cast<uint32_t*>(&rx[12])) != 0xFFFFFFFF) {
@@ -79,7 +78,7 @@ static uint16_t oaspi_mdio_cmd(uint32_t cmd) {
     }
 }
 
-static void oaspi_mac_filter(uint8_t slot, std::array<uint8_t, 6>& addr, std::array<uint8_t, 6>& mask) {
+static void oaspi_mac_filter(uint8_t slot, std::span<uint8_t, 6> addr, std::span<uint8_t, 6> mask) {
     uint8_t offset = slot * 2;
     uint32_t val;
 #ifdef CONFIG_ADIN1110
@@ -136,8 +135,7 @@ void oaspi_init(void) {
     std::array<uint8_t, 12> tx {}, rx;
     tx[0] = 0x20;
     tx[2] = 0x04;
-    std::array<uint8_t, 4> hdr {tx[0], tx[1], tx[2], tx[3]};
-    tx[3] |= oaspi_parity(hdr);
+    tx[3] |= oaspi_parity(std::span<uint8_t, 4>(&tx[0], 4));
     tx[7] = 0x26; // PROTE=1, CPS=64bytes
     spi_transceive(tx.data(), rx.data(), 12);
 
@@ -210,7 +208,7 @@ void oaspi_configure(void) {
     oaspi_reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x8000); // SYNC=1
 }
 
-bool oaspi_parity(std::array<uint8_t, 4>& hdr) {
+bool oaspi_parity(std::span<uint8_t, 4> hdr) {
     uint32_t val = *reinterpret_cast<uint32_t*>(hdr.data()); // endian-independent
     val = val ^ (val >> 1);
     val = val ^ (val >> 2);
@@ -220,19 +218,19 @@ bool oaspi_parity(std::array<uint8_t, 4>& hdr) {
     return !(val & 1);
 }
 
-void oaspi_fcs_add(std::array<uint8_t, OASPI_MAX_PKT_LEN>& pkt, size_t len) {
-    uint32_t fcs = oaspi_fcs(pkt, len);
-    pkt[len + 0] = (fcs >> 0)  & 0xFF;
-    pkt[len + 1] = (fcs >> 8)  & 0xFF;
-    pkt[len + 2] = (fcs >> 16) & 0xFF;
-    pkt[len + 3] = (fcs >> 24) & 0xFF;
+void oaspi_fcs_add(eth_pkt &pkt) {
+    uint32_t fcs = oaspi_fcs(pkt, false);
+    pkt.buf[ETH_HDR_LEN + pkt.len + 0] = (fcs >> 0)  & 0xFF;
+    pkt.buf[ETH_HDR_LEN + pkt.len + 1] = (fcs >> 8)  & 0xFF;
+    pkt.buf[ETH_HDR_LEN + pkt.len + 2] = (fcs >> 16) & 0xFF;
+    pkt.buf[ETH_HDR_LEN + pkt.len + 3] = (fcs >> 24) & 0xFF;
 }
 
-bool oaspi_fcs_check(std::array<uint8_t, OASPI_MAX_PKT_LEN>& pkt, size_t len) {
-    return oaspi_fcs(pkt, len) == 0x2144DF1C;
+bool oaspi_fcs_check(eth_pkt &pkt) {
+    return oaspi_fcs(pkt, true) == 0x2144DF1C;
 }
 
-void oaspi_data_transfer(oaspi_tx_chunk& tx, oaspi_rx_chunk& rx) {
+void oaspi_data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx) {
     spi_transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(oaspi_tx_chunk));
 }
 
@@ -243,8 +241,7 @@ void oaspi_reg_write(oaspi_mms mms, uint16_t reg, uint32_t val) {
         tx[1]  = (reg >> 8) & 0xFF;
         tx[2]  = reg & 0xFF;
         tx[3]  = 0x00;
-        std::array<uint8_t, 4> hdr {tx[0], tx[1], tx[2], tx[3]};
-        tx[3] |= oaspi_parity(hdr);
+        tx[3] |= oaspi_parity(std::span<uint8_t, 4>(&tx[0], 4));
         tx[4]  = (val >> 24) & 0xFF;
         tx[5]  = (val >> 16) & 0xFF;
         tx[6]  = (val >> 8)  & 0xFF;
@@ -267,8 +264,7 @@ uint32_t oaspi_reg_read(oaspi_mms mms, uint16_t reg) {
         tx[1] = (reg >> 8) & 0xFF;
         tx[2] = reg & 0xFF;
         tx[3] = 0;
-        std::array<uint8_t, 4> hdr {tx[0], tx[1], tx[2], tx[3]};
-        tx[3] |= oaspi_parity(hdr);
+        tx[3] |= oaspi_parity(std::span<uint8_t, 4>(&tx[0], 4));
         spi_transceive(tx.data(), rx.data(), 16);
         if (oaspi_control_check(rx)) {
             return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);

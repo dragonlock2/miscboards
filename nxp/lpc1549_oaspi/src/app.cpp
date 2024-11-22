@@ -35,9 +35,13 @@ extern "C" void app_main(void*) {
 
     bool t = 0, r = 0, g = 0, b = 1;
     while (true) {
+        uint32_t txu, rxu, txe, rxe;
+        usb_eth_get_error(txu, rxu);
+        eth_get_error(txe, rxe);
+        printf("time: 0x%08lx tx_drop: %ld rx_drop: %ld\r\n", xTaskGetTickCount(), txu + txe, rxu + rxe);
         usr_rgb(r, g, b);
         t = r; r = g; g = b; b = t;
-        vTaskDelay(pdMS_TO_TICKS(250));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
     vTaskDelete(NULL);
 }

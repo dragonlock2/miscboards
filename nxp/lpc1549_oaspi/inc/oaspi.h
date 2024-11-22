@@ -1,9 +1,7 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
-
-#define OASPI_MAX_PKT_LEN (1518)
+#include <span>
+#include "eth.h"
 
 enum class oaspi_mms {
     STANDARD   = 0,
@@ -67,10 +65,10 @@ static_assert(sizeof(oaspi_rx_chunk) == 68);
 void oaspi_init(void);
 void oaspi_configure(void);
 
-bool oaspi_parity(std::array<uint8_t, 4>& hdr);
-void oaspi_fcs_add(std::array<uint8_t, OASPI_MAX_PKT_LEN>& pkt, size_t len);
-bool oaspi_fcs_check(std::array<uint8_t, OASPI_MAX_PKT_LEN>& pkt, size_t len);
-void oaspi_data_transfer(oaspi_tx_chunk& tx, oaspi_rx_chunk& rx);
+bool oaspi_parity(std::span<uint8_t, 4> hdr);
+void oaspi_fcs_add(eth_pkt &pkt);
+bool oaspi_fcs_check(eth_pkt &pkt);
+void oaspi_data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx);
 
 void oaspi_reg_write(oaspi_mms mms, uint16_t reg, uint32_t val);
 uint32_t oaspi_reg_read(oaspi_mms mms, uint16_t reg);

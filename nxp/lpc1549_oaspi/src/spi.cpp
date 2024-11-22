@@ -8,7 +8,7 @@
 /* private data */
 static struct {
     SemaphoreHandle_t lock;
-    SemaphoreHandle_t done;
+    TaskHandle_t waiter;
 } data;
 
 /* private helpers */
@@ -16,15 +16,14 @@ static void spi_dma_handler(void) {
     Chip_DMA_ClearActiveIntAChannel(LPC_DMA, DMAREQ_SPI0_RX);
     Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT); // end transfer
     BaseType_t woke = pdFALSE;
-    xSemaphoreGiveFromISR(data.done, &woke);
+    xTaskNotifyIndexedFromISR(data.waiter, 0, 1 << configNOTIF_SPI, eSetBits, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
 /* public functions */
 void spi_init(void) {
     data.lock = xSemaphoreCreateMutex();
-    data.done = xSemaphoreCreateBinary();
-    configASSERT(data.lock && data.done);
+    configASSERT(data.lock);
 
 #ifdef CONFIG_ADIN1110
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 8,  IOCON_MODE_INACT);
@@ -78,8 +77,9 @@ void spi_init(void) {
     Chip_DMA_EnableIntChannel(LPC_DMA, DMAREQ_SPI0_RX);
 }
 
-void spi_transceive(uint8_t* tx, uint8_t* rx, size_t len) {
+void spi_transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     xSemaphoreTake(data.lock, portMAX_DELAY);
+    data.waiter = xTaskGetCurrentTaskHandle();
     DMA_CHDESC_T tx_desc = {
         .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_WIDTH_8 |
                    DMA_XFERCFG_SRCINC_1 | DMA_XFERCFG_DSTINC_0 | DMA_XFERCFG_XFERCOUNT(len),
@@ -99,6 +99,6 @@ void spi_transceive(uint8_t* tx, uint8_t* rx, size_t len) {
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_RX, &rx_desc);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
-    xSemaphoreTake(data.done, portMAX_DELAY);
+    xTaskNotifyWaitIndexed(0, 0, 1 << configNOTIF_SPI, NULL, portMAX_DELAY);
     xSemaphoreGive(data.lock);
 }
