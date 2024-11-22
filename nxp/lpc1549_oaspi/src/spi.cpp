@@ -16,7 +16,7 @@ static void spi_dma_handler(void) {
     Chip_DMA_ClearActiveIntAChannel(LPC_DMA, DMAREQ_SPI0_RX);
     Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT); // end transfer
     BaseType_t woke = pdFALSE;
-    xTaskNotifyIndexedFromISR(data.waiter, 0, 1 << configNOTIF_SPI, eSetBits, &woke);
+    vTaskNotifyGiveIndexedFromISR(data.waiter, configNOTIF_SPI, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
@@ -99,6 +99,6 @@ void spi_transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_RX, &rx_desc);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
-    xTaskNotifyWaitIndexed(0, 0, 1 << configNOTIF_SPI, NULL, portMAX_DELAY);
+    ulTaskNotifyTakeIndexed(configNOTIF_SPI, true, portMAX_DELAY);
     xSemaphoreGive(data.lock);
 }

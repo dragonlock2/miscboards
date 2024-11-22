@@ -97,7 +97,7 @@ static void usb_handler(void) {
 static void usb_task(void*) {
     while (true) {
         tud_task();
-        xTaskNotifyIndexed(data.usb_eth, 0, 1 << configNOTIF_USB_ETH, eSetBits);
+        xTaskNotifyGiveIndexed(data.usb_eth, configNOTIF_USB_ETH);
     }
     vTaskDelete(NULL);
 }
@@ -107,7 +107,7 @@ static void usb_eth_task(void*) {
         xQueueReceive(data.reqs, &data.pkt, portMAX_DELAY);
         while (!tud_network_can_xmit(0)) {
             // driver doesn't have callback when can_xmit=true, so must try on every event
-            xTaskNotifyWaitIndexed(0, 0, 1 << configNOTIF_USB_ETH, NULL, pdMS_TO_TICKS(10));
+            ulTaskNotifyTakeIndexed(configNOTIF_USB_ETH, true, pdMS_TO_TICKS(10));
         }
         tud_network_xmit(data.pkt->buf.data(), ETH_HDR_LEN + data.pkt->len); // freed in callback below
     }

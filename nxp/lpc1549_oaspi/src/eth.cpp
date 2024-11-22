@@ -41,7 +41,7 @@ static struct {
 static void eth_int_handler(void) {
     Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
     BaseType_t woke = pdFALSE;
-    xTaskNotifyIndexedFromISR(data.handle, 0, 1 << configNOTIF_ETH, eSetBits, &woke);
+    vTaskNotifyGiveIndexedFromISR(data.handle, configNOTIF_ETH, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
@@ -49,7 +49,7 @@ static void eth_task(void*) {
     bool wait = false;
     while (true) {
         if (wait) {
-            xTaskNotifyWaitIndexed(0, 0, 1 << configNOTIF_ETH, NULL, portMAX_DELAY);
+            ulTaskNotifyTakeIndexed(configNOTIF_ETH, true, portMAX_DELAY);
             wait = false;
         }
 
@@ -225,7 +225,7 @@ void eth_send(eth_pkt *pkt) {
     }
     oaspi_fcs_add(*pkt);
     if (xQueueSend(data.tx.reqs, &pkt, 0) == pdTRUE) {
-        xTaskNotifyIndexed(data.handle, 0, 1 << configNOTIF_ETH, eSetBits);
+        xTaskNotifyGiveIndexed(data.handle, configNOTIF_ETH);
     } else {
         eth_pkt_free(pkt);
         data.tx.drops++;

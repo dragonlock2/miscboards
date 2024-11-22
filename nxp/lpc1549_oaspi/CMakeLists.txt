@@ -16,7 +16,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Werror
-    -O3
+    -O3 # use -Og for correct layout for pyOCD GDB
     -g3
     -ffunction-sections
     -fdata-sections
