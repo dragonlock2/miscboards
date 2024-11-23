@@ -108,6 +108,14 @@ static void oaspi_mac_filter(uint8_t slot, std::span<uint8_t, 6> addr, std::span
 
 /* public functions */
 void oaspi_init(void) {
+    // compiler bitorder check
+    struct A {
+        uint8_t a : 4, b : 4;
+        constexpr A(uint8_t val) { *this = std::bit_cast<A>(val); }
+    };
+    static_assert(A(0x69).a == 0x9);
+    static_assert(A(0x69).b == 0x6);
+
     data.mdio_lock = xSemaphoreCreateMutex();
     configASSERT(data.mdio_lock);
 

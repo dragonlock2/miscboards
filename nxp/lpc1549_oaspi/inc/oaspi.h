@@ -14,6 +14,8 @@ enum class oaspi_mms {
 
 struct __attribute__((packed)) oaspi_tx_chunk {
     union {
+        // using uint8_t is messier but should be endian agnostic
+        // MSVC, GCC, and Clang order bitfields from low to high
         struct {
             uint8_t RSVD0 : 5;
             uint8_t NORX  : 1;
