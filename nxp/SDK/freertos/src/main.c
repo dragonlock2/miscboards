@@ -8,15 +8,13 @@ extern void xPortSysTickHandler(void);
 extern void app_main(void*);
 
 __attribute__((used))
-void __malloc_lock(struct _reent *r) {
-    (void) r;
-    vTaskSuspendAll();
+void *_malloc_r(struct _reent*, size_t size) {
+    return pvPortMalloc(size);
 }
 
 __attribute__((used))
-void __malloc_unlock(struct _reent *r) {
-    (void) r;
-    xTaskResumeAll();
+void _free_r(struct _reent*, void *ptr) {
+    vPortFree(ptr);
 }
 
 int main(void) {
