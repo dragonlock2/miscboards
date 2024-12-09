@@ -1,51 +1,32 @@
-#include <array>
 #include <cstdio>
 #include <cstring>
-#include <tuple>
-#include <FreeRTOS.h>
-#include <semphr.h>
-#include <task.h>
-#include <tusb.h>
-#include <chip.h>
-#include "oaspi.h"
+#include "usr.h"
 #include "eth.h"
+
+namespace eth {
+
+/* private constants */
+static constexpr size_t TX_REQ_SIZE = POOL_SIZE / 2; // can adjust
 
 /* private data */
 static struct {
-    TaskHandle_t handle;
-    struct {
-        std::array<eth_pkt, ETH_POOL_SIZE> buf;
-        QueueHandle_t pool;
-    } pool;
-    struct {
-        SemaphoreHandle_t lock;
-        std::array<std::tuple<eth_callback, void*>, 2> cbs;
-    } callbacks;
-    struct {
-        QueueHandle_t reqs;
-        bool start;
-        eth_pkt *pkt;
-        size_t idx, len;
-        oaspi_tx_chunk chunk;
-        uint32_t drops;
-    } tx;
-    struct {
-        eth_pkt *pkt;
-        size_t len;
-        oaspi_rx_chunk chunk;
-        uint32_t drops;
-    } rx;
+    std::array<Packet, POOL_SIZE> pool_buf;
+    QueueHandle_t pool;
 } data;
 
 /* private helpers */
-static void eth_int_handler(void) {
-    Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
+struct EthHelper {
+
+static void int_handler(void *arg) {
+    Eth &dev = *reinterpret_cast<Eth*>(arg);
     BaseType_t woke = pdFALSE;
-    vTaskNotifyGiveIndexedFromISR(data.handle, configNOTIF_ETH, &woke);
+    vTaskNotifyGiveIndexedFromISR(dev.handle, configNOTIF_ETH, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
-static void eth_task(void*) {
+static void task(void *arg) {
+    configASSERT(arg != nullptr);
+    Eth &dev = *reinterpret_cast<Eth*>(arg);
     bool wait = false;
     while (true) {
         if (wait) {
@@ -54,186 +35,182 @@ static void eth_task(void*) {
         }
 
         // setup tx chunk
-        data.tx.chunk.header.fill(0);
-        if (data.rx.chunk.TXC != 0) {
-            if (data.tx.len == 0) {
-                if (xQueueReceive(data.tx.reqs, &data.tx.pkt, 0) == pdTRUE) {
-                    data.tx.start = true;
-                    data.tx.idx   = 0;
-                    data.tx.len   = ETH_HDR_LEN + data.tx.pkt->len + 4; // include CRC
+        dev.tx.chunk.header.fill(0);
+        if (dev.rx.chunk.TXC != 0) {
+            if (dev.tx.len == 0) {
+                if (xQueueReceive(dev.tx.reqs, &dev.tx.pkt, 0) == pdTRUE) {
+                    dev.tx.start = true;
+                    dev.tx.idx   = 0;
+                    dev.tx.len   = Packet::HDR_LEN + dev.tx.pkt->_len + 4; // include CRC
                 }
             }
-            if (data.tx.len) {
-                data.tx.chunk.DV  = 1;
-                data.tx.chunk.SV  = data.tx.start;
-                data.tx.chunk.SWO = 0;
-                if (data.tx.len <= 64) {
-                    data.tx.chunk.EV  = 1;
-                    data.tx.chunk.EBO = data.tx.len - 1;
-                    std::memcpy(data.tx.chunk.data.data(), &data.tx.pkt->buf[data.tx.idx], data.tx.len);
-                    data.tx.len = 0;
+            if (dev.tx.len) {
+                dev.tx.chunk.DV  = 1;
+                dev.tx.chunk.SV  = dev.tx.start;
+                dev.tx.chunk.SWO = 0;
+                if (dev.tx.len <= 64) {
+                    dev.tx.chunk.EV  = 1;
+                    dev.tx.chunk.EBO = dev.tx.len - 1;
+                    std::memcpy(dev.tx.chunk.data.data(), &dev.tx.pkt->_buf[dev.tx.idx], dev.tx.len);
+                    dev.tx.len = 0;
                 } else {
-                    std::memcpy(data.tx.chunk.data.data(), &data.tx.pkt->buf[data.tx.idx], 64);
-                    data.tx.idx += 64;
-                    data.tx.len -= 64;
+                    std::memcpy(dev.tx.chunk.data.data(), &dev.tx.pkt->_buf[dev.tx.idx], 64);
+                    dev.tx.idx += 64;
+                    dev.tx.len -= 64;
                 }
-                if (data.tx.len == 0) {
-                    eth_pkt_free(data.tx.pkt);
-                    data.tx.pkt = NULL;
+                if (dev.tx.len == 0) {
+                    Eth::pkt_free(dev.tx.pkt);
+                    dev.tx.pkt = nullptr;
                 }
-                data.tx.start = false;
+                dev.tx.start = false;
             }
         }
-        data.tx.chunk.DNC = 1;
-        data.tx.chunk.P   = oaspi_parity(data.tx.chunk.header);
+        dev.tx.chunk.DNC = 1;
+        dev.tx.chunk.P   = OASPI::parity(dev.tx.chunk.header);
 
         // perform data transfer (one chunk only to minimize latency and memory overhead)
-        oaspi_data_transfer(data.tx.chunk, data.rx.chunk);
-        if (data.rx.chunk.HDRB || oaspi_parity(data.rx.chunk.footer)) { // drop tx/rx packets on error
-            if (data.tx.len) {
-                data.tx.len = 0;
-                eth_pkt_free(data.tx.pkt);
-                data.tx.pkt = NULL;
+        dev.oaspi.data_transfer(dev.tx.chunk, dev.rx.chunk);
+        if (dev.rx.chunk.HDRB || OASPI::parity(dev.rx.chunk.footer)) { // drop tx/rx packets on error
+            if (dev.tx.len) {
+                dev.tx.len = 0;
+                Eth::pkt_free(dev.tx.pkt);
+                dev.tx.pkt = nullptr;
             }
-            data.rx.len = 0;
+            dev.rx.len = 0;
             continue;
         }
 
         // process rx chunk
-        if (data.rx.chunk.SYNC == 0) {
-            oaspi_configure();
-            data.rx.chunk.TXC = 31;
+        if (dev.rx.chunk.SYNC == 0) {
+            dev.oaspi.configure();
+            dev.rx.chunk.TXC = 31;
             continue;
-        } else if (data.rx.chunk.EXST) {
+        } else if (dev.rx.chunk.EXST) {
             configASSERT(false); // all status masked, not needed yet
         }
 
         bool rx_copy = false;
-        if (data.rx.chunk.SV && data.rx.chunk.DV) {
+        if (dev.rx.chunk.SV && dev.rx.chunk.DV) {
             rx_copy = true;
-            data.rx.len = 0;
-        } else if (data.rx.chunk.DV && data.rx.len) {
+            dev.rx.len = 0;
+        } else if (dev.rx.chunk.DV && dev.rx.len) {
             rx_copy = true;
         }
         if (rx_copy) {
-            size_t len = data.rx.chunk.EV ? data.rx.chunk.EBO + 1 : 64;
-            if ((data.rx.len + len) <= data.rx.pkt->buf.size()) {
-                std::memcpy(&data.rx.pkt->buf[data.rx.len], data.rx.chunk.data.data(), len);
-                data.rx.len += len;
+            size_t len = dev.rx.chunk.EV ? dev.rx.chunk.EBO + 1 : 64;
+            if ((dev.rx.len + len) <= dev.rx.pkt->_buf.size()) {
+                std::memcpy(&dev.rx.pkt->_buf[dev.rx.len], dev.rx.chunk.data.data(), len);
+                dev.rx.len += len;
             } else {
-                data.rx.len = 0;
+                dev.rx.len = 0;
             }
         }
-        if (data.rx.chunk.EV && data.rx.len >= (ETH_HDR_LEN + 4)) {
-            data.rx.pkt->len = data.rx.len - ETH_HDR_LEN - 4;
-            if (oaspi_fcs_check(*data.rx.pkt)) {
-                eth_pkt *rx_new = eth_pkt_alloc(false);
+        if (dev.rx.chunk.EV && dev.rx.len >= (Packet::HDR_LEN + 4)) {
+            dev.rx.pkt->_len = dev.rx.len - Packet::HDR_LEN - 4;
+            if (OASPI::fcs_check(*dev.rx.pkt)) {
+                Packet *rx_new = Eth::pkt_alloc(false);
                 if (rx_new) {
                     bool taken = false;
-                    xSemaphoreTake(data.callbacks.lock, portMAX_DELAY);
-                    for (auto &[cb, arg]: data.callbacks.cbs) {
-                        if (cb == NULL) {
+                    xSemaphoreTake(dev.callbacks.lock, portMAX_DELAY);
+                    for (auto &[cb, arg]: dev.callbacks.cbs) {
+                        if (cb == nullptr) {
                             continue;
                         }
-                        if (cb(data.rx.pkt, arg)) {
+                        if (cb(dev.rx.pkt, arg)) {
                             taken = true;
                             break;
                         }
                     }
-                    xSemaphoreGive(data.callbacks.lock);
+                    xSemaphoreGive(dev.callbacks.lock);
                     if (!taken) {
-                        eth_pkt_free(data.rx.pkt);
+                        Eth::pkt_free(dev.rx.pkt);
                     }
-                    data.rx.pkt = rx_new;
+                    dev.rx.pkt = rx_new;
                 } else {
-                    data.rx.drops++;
+                    dev.rx.drops++;
                 }
             }
-            data.rx.len = 0;
+            dev.rx.len = 0;
         }
 
         // wait if both tx/rx want wait
-        if ((uxQueueMessagesWaiting(data.tx.reqs) == 0) && // no queued tx
-            (data.tx.len == 0 || data.rx.chunk.TXC == 0) && // no current tx or tx buffer full
-            (data.rx.chunk.RCA == 0)) { // no rx
+        if ((uxQueueMessagesWaiting(dev.tx.reqs) == 0) && // no queued tx
+            (dev.tx.len == 0 || dev.rx.chunk.TXC == 0) && // no current tx or tx buffer full
+            (dev.rx.chunk.RCA == 0)) { // no rx
             wait = true;
         }
     }
 }
 
+}; // Eth::Helper
+
 /* public functions */
-void eth_init(void) {
-    data.pool.pool      = xQueueCreate(data.pool.buf.size(), sizeof(eth_pkt*));
-    data.callbacks.lock = xSemaphoreCreateMutex();
-    data.tx.reqs        = xQueueCreate(data.pool.buf.size() / 2, sizeof(eth_pkt*));
-    configASSERT(data.pool.pool && data.callbacks.lock && data.tx.reqs);
-    for (auto &pkt: data.pool.buf) {
-        eth_pkt *ptr = &pkt;
-        configASSERT(xQueueSend(data.pool.pool, &ptr, 0) == pdTRUE);
+Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb) {
+    if (data.pool == nullptr) {
+        data.pool = xQueueCreate(data.pool_buf.size(), sizeof(Packet*));
+        configASSERT(data.pool);
+        for (auto &pkt: data.pool_buf) {
+            Packet *ptr = &pkt;
+            configASSERT(xQueueSend(data.pool, &ptr, 0) == pdTRUE);
+        }
     }
-    data.rx.pkt = eth_pkt_alloc();
 
-#ifdef CONFIG_ADIN1110
-    Chip_GPIO_SetPinDIRInput(LPC_GPIO, 0, 12);
-    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 12, IOCON_MODE_PULLUP);
-    Chip_INMUX_PinIntSel(0, 0, 12);
-#elifdef CONFIG_NCN26010
-    Chip_GPIO_SetPinDIRInput(LPC_GPIO, 0, 18);
-    Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 18, IOCON_MODE_PULLUP);
-    Chip_INMUX_PinIntSel(0, 0, 18);
-#endif
+    callbacks.lock = xSemaphoreCreateMutex();
+    tx.reqs        = xQueueCreate(TX_REQ_SIZE, sizeof(Packet*));
+    rx.pkt         = pkt_alloc();
+    configASSERT(callbacks.lock && tx.reqs && rx.pkt);
 
-    Chip_PININT_Init(LPC_GPIO_PIN_INT);
-    Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
-    Chip_PININT_SetPinModeEdge(LPC_GPIO_PIN_INT, PININTCH(0));
-    Chip_PININT_EnableIntLow(LPC_GPIO_PIN_INT, PININTCH(0));
-
-    NVIC_SetVector(PIN_INT0_IRQn, reinterpret_cast<uint32_t>(eth_int_handler));
-    NVIC_SetPriority(PIN_INT0_IRQn, configMAX_SYSCALL_INTERRUPT_PRIORITY >> (8 - __NVIC_PRIO_BITS));
-    NVIC_EnableIRQ(PIN_INT0_IRQn);
-
-    configASSERT(xTaskCreate(eth_task, "eth_task", configMINIMAL_STACK_SIZE, NULL, configMAX_PRIORITIES - 1, &data.handle) == pdPASS);
+    int_set_cb(EthHelper::int_handler, this);
+    configASSERT(xTaskCreate(EthHelper::task, "eth_task", configMINIMAL_STACK_SIZE, this, configMAX_PRIORITIES - 1, &handle) == pdPASS);
 }
 
-eth_pkt *eth_pkt_alloc(bool wait) {
-    eth_pkt *pkt = NULL;
-    xQueueReceive(data.pool.pool, &pkt, wait ? portMAX_DELAY : 0);
+Eth::~Eth() {
+    vTaskDelete(handle);
+    int_set_cb(nullptr, nullptr);
+    vQueueDelete(tx.reqs);
+    vSemaphoreDelete(callbacks.lock);
+}
+
+Packet *Eth::pkt_alloc(bool wait) {
+    Packet *pkt = nullptr;
+    xQueueReceive(data.pool, &pkt, wait ? portMAX_DELAY : 0);
     if (pkt) {
-        pkt->len = 0;
+        pkt->_len = 0;
     }
     return pkt;
 }
 
-void eth_pkt_free(eth_pkt *pkt) {
-    configASSERT(pkt != NULL);
-    configASSERT(xQueueSend(data.pool.pool, &pkt, 0) == pdTRUE); // should be immediate
+void Eth::pkt_free(Packet *pkt) {
+    configASSERT(pkt != nullptr);
+    configASSERT(xQueueSend(data.pool, &pkt, 0) == pdTRUE); // should be immediate
 }
 
-void eth_set_cb(size_t idx, eth_callback cb, void *arg) {
-    configASSERT(idx < data.callbacks.cbs.size());
-    xSemaphoreTake(data.callbacks.lock, portMAX_DELAY);
-    data.callbacks.cbs[idx] = {cb, arg};
-    xSemaphoreGive(data.callbacks.lock);
+void Eth::set_cb(size_t idx, rx_callback cb, void *arg) {
+    configASSERT(idx < callbacks.cbs.size());
+    xSemaphoreTake(callbacks.lock, portMAX_DELAY);
+    callbacks.cbs[idx] = {cb, arg};
+    xSemaphoreGive(callbacks.lock);
 }
 
-void eth_send(eth_pkt *pkt) {
-    configASSERT(pkt != NULL);
-    configASSERT(pkt->len <= ETH_MTU);
-    if ((ETH_HDR_LEN + pkt->len) < 60) { // short packet, need zero pad
-        std::memset(&pkt->buf[ETH_HDR_LEN + pkt->len], 0, 60 - pkt->len - ETH_HDR_LEN);
-        pkt->len = 60 - ETH_HDR_LEN;
+void Eth::send(Packet *pkt) {
+    configASSERT(pkt != nullptr);
+    configASSERT(pkt->_len <= Packet::MTU);
+    if ((Packet::HDR_LEN + pkt->_len) < 60) { // short packet, need zero pad
+        std::memset(&pkt->_buf[Packet::HDR_LEN + pkt->_len], 0, 60 - pkt->_len - Packet::HDR_LEN);
+        pkt->_len = 60 - Packet::HDR_LEN;
     }
-    oaspi_fcs_add(*pkt);
-    if (xQueueSend(data.tx.reqs, &pkt, 0) == pdTRUE) {
-        xTaskNotifyGiveIndexed(data.handle, configNOTIF_ETH);
+    OASPI::fcs_add(*pkt);
+    if (xQueueSend(tx.reqs, &pkt, 0) == pdTRUE) {
+        xTaskNotifyGiveIndexed(handle, configNOTIF_ETH);
     } else {
-        eth_pkt_free(pkt);
-        data.tx.drops++;
+        pkt_free(pkt);
+        tx.drops++;
     }
 }
 
-void eth_get_error(uint32_t &tx_drop, uint32_t &rx_drop) {
+std::tuple<uint32_t, uint32_t> Eth::get_error(void) {
     // not important, no locks
-    tx_drop = data.tx.drops;
-    rx_drop = data.rx.drops;
+    return {tx.drops, rx.drops};
 }
+
+};

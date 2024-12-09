@@ -7,6 +7,7 @@
 
 /* private data */
 static struct {
+    SPI *dev;
     SemaphoreHandle_t lock;
     TaskHandle_t waiter;
 } data;
@@ -21,7 +22,10 @@ static void spi_dma_handler(void) {
 }
 
 /* public functions */
-void spi_init(void) {
+SPI::SPI(void) {
+    configASSERT(data.dev == nullptr);
+    data.dev = this;
+
     data.lock = xSemaphoreCreateMutex();
     configASSERT(data.lock);
 
@@ -77,7 +81,11 @@ void spi_init(void) {
     Chip_DMA_EnableIntChannel(LPC_DMA, DMAREQ_SPI0_RX);
 }
 
-void spi_transceive(uint8_t *tx, uint8_t *rx, size_t len) {
+SPI::~SPI() {
+    configASSERT(false); // not supporting for now
+}
+
+void SPI::transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     xSemaphoreTake(data.lock, portMAX_DELAY);
     data.waiter = xTaskGetCurrentTaskHandle();
     DMA_CHDESC_T tx_desc = {

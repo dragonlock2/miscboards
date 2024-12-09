@@ -1,4 +1,19 @@
 #pragma once
 
-void usb_init(void);
-void usb_eth_get_error(uint32_t &tx_drop, uint32_t &rx_drop);
+#include <cstdint>
+#include <tuple>
+#include "eth.h"
+
+class USB {
+public:
+    USB(eth::OASPI &oaspi, eth::Eth &dev); // singleton!
+    ~USB();
+
+    USB(USB&) = delete;
+    USB(USB&&) = delete;
+
+    std::tuple<uint32_t, uint32_t> get_error(void); // tx drop, rx drop
+
+    eth::OASPI &oaspi;
+    eth::Eth &dev;
+};

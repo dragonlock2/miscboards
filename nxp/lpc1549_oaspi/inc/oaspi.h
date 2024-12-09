@@ -1,7 +1,14 @@
 #pragma once
 
 #include <span>
-#include "eth.h"
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
+#include "spi.h"
+
+namespace eth {
+
+struct Packet; // forward declaration
 
 enum class oaspi_mms {
     STANDARD   = 0,
@@ -64,17 +71,36 @@ struct __attribute__((packed)) oaspi_rx_chunk {
 static_assert(sizeof(oaspi_tx_chunk) == 68);
 static_assert(sizeof(oaspi_rx_chunk) == 68);
 
-void oaspi_init(void);
-void oaspi_configure(void);
+typedef void (*rst_set)(bool assert);
 
-bool oaspi_parity(std::span<uint8_t, 4> hdr);
-void oaspi_fcs_add(eth_pkt &pkt);
-bool oaspi_fcs_check(eth_pkt &pkt);
-void oaspi_data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx);
+class OASPI {
+public:
+    OASPI(SPI &spi, rst_set rst);
+    ~OASPI();
 
-void oaspi_reg_write(oaspi_mms mms, uint16_t reg, uint32_t val);
-uint32_t oaspi_reg_read(oaspi_mms mms, uint16_t reg);
-void oaspi_mdio_write(uint8_t reg, uint16_t val);
-uint16_t oaspi_mdio_read(uint8_t reg);
-void oaspi_mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
-uint16_t oaspi_mdio_c45_read(uint8_t devad, uint16_t reg);
+    OASPI(OASPI&) = delete;
+    OASPI(OASPI&&) = delete;
+
+    static bool parity(std::span<uint8_t, 4> hdr);
+    static void fcs_add(Packet &pkt);
+    static bool fcs_check(Packet &pkt);
+
+    void configure(void);
+    void data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx);
+
+    void reg_write(oaspi_mms mms, uint16_t reg, uint32_t val);
+    uint32_t reg_read(oaspi_mms mms, uint16_t reg);
+    void mdio_write(uint8_t reg, uint16_t val);
+    uint16_t mdio_read(uint8_t reg);
+    void mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
+    uint16_t mdio_c45_read(uint8_t devad, uint16_t reg);
+
+private:
+    friend void oaspi_configure(OASPI &dev);
+
+    SPI &spi;
+    rst_set rst;
+    SemaphoreHandle_t mdio_lock;
+};
+
+};

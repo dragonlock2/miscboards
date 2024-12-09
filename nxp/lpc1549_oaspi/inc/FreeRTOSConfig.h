@@ -3,8 +3,11 @@
 
 #include <FreeRTOSConfig_template.h>
 
+#undef  configTOTAL_HEAP_SIZE
+#define configTOTAL_HEAP_SIZE (5 * 1024)
+
 #define configAPP_MAIN_PRIORITY   (tskIDLE_PRIORITY + 1)
-#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE)
+#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE + 64) // extra 256-bytes for Eth
 
 // tasks can't block on bits, must use entire index
 #define configNOTIF_USB_ETH (0) // task never uses SPI
