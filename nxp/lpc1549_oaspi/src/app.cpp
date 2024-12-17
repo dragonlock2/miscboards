@@ -10,6 +10,7 @@ extern "C" void app_main(void*) {
     eth::OASPI oaspi(spi, usr::phyrst);
     eth::Eth eth(oaspi, usr::phyint);
     USB usb(oaspi, eth);
+    printf("booted! 0x%02x\r\n", usr::id());
 
     bool t = 0, r = 0, g = 0, b = 1;
     while (true) {

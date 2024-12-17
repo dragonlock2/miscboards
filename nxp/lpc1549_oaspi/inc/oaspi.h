@@ -71,11 +71,11 @@ struct __attribute__((packed)) oaspi_rx_chunk {
 static_assert(sizeof(oaspi_tx_chunk) == 68);
 static_assert(sizeof(oaspi_rx_chunk) == 68);
 
-typedef void (*rst_set)(bool assert);
+typedef void (*rst_set_callback)(bool assert);
 
 class OASPI {
 public:
-    OASPI(SPI &spi, rst_set rst);
+    OASPI(SPI &spi, rst_set_callback rst);
     ~OASPI();
 
     OASPI(OASPI&) = delete;
@@ -99,7 +99,7 @@ private:
     friend void oaspi_configure(OASPI &dev);
 
     SPI &spi;
-    rst_set rst;
+    rst_set_callback rst;
     SemaphoreHandle_t mdio_lock;
 };
 

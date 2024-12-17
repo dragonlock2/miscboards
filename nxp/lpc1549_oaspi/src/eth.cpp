@@ -6,11 +6,11 @@
 namespace eth {
 
 /* private constants */
-static constexpr size_t TX_REQ_SIZE = POOL_SIZE / 2; // can adjust
+static constexpr size_t TX_REQ_SIZE = Eth::POOL_SIZE / 2; // can adjust
 
 /* private data */
 static struct {
-    std::array<Packet, POOL_SIZE> pool_buf;
+    std::array<Packet, Eth::POOL_SIZE> pool_buf;
     QueueHandle_t pool;
 } data;
 
@@ -86,7 +86,9 @@ static void task(void *arg) {
             dev.rx.chunk.TXC = 31;
             continue;
         } else if (dev.rx.chunk.EXST) {
-            configASSERT(false); // all status masked, not needed yet
+            dev.oaspi.configure(); // all status masked, shouldn't happen
+            dev.rx.chunk.TXC = 31;
+            continue;
         }
 
         bool rx_copy = false;
@@ -145,7 +147,7 @@ static void task(void *arg) {
 }; // Eth::Helper
 
 /* public functions */
-Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb) {
+Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb), callbacks(), tx(), rx() {
     if (data.pool == nullptr) {
         data.pool = xQueueCreate(data.pool_buf.size(), sizeof(Packet*));
         configASSERT(data.pool);

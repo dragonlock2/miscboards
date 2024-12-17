@@ -8,8 +8,6 @@
 
 namespace eth {
 
-constexpr size_t POOL_SIZE = 12; // global pool
-
 struct Packet {
     static constexpr size_t HDR_LEN = 6 + 6 + 2;
     static constexpr size_t MTU     = 1500;
@@ -31,6 +29,8 @@ typedef bool (*rx_callback)(Packet *pkt, void *arg); // return true if taking ow
 
 class Eth {
 public:
+    static constexpr size_t POOL_SIZE = 10; // global pool
+
     Eth(OASPI &oaspi, int_set_callback cb);
     ~Eth();
 

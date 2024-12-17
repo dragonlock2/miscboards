@@ -196,7 +196,7 @@ static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
 }
 
 /* public functions */
-OASPI::OASPI(SPI &spi, rst_set rst) : spi(spi), rst(rst) {
+OASPI::OASPI(SPI &spi, rst_set_callback rst) : spi(spi), rst(rst) {
     mdio_lock = xSemaphoreCreateMutex();
     configASSERT(mdio_lock);
     configure();

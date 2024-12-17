@@ -8,10 +8,10 @@
 #include "usb.h"
 
 /* private defines */
-#define EP_NET_NOTIF (0x81) // interrupt
-#define EP_NET_OUT   (0x02) // bulk
-#define EP_NET_IN    (0x82) // bulk
-#define EP_HID       (0x04) // interrupt
+static constexpr uint8_t EP_NET_NOTIF = 0x81; // interrupt
+static constexpr uint8_t EP_NET_OUT   = 0x02; // bulk
+static constexpr uint8_t EP_NET_IN    = 0x82; // bulk
+static constexpr uint8_t EP_HID       = 0x04; // interrupt
 
 enum class usb_string {
     LANGID,
@@ -30,16 +30,10 @@ enum class usb_itf {
     COUNT
 };
 
-enum class usb_config {
-    RNDIS,
-    ECM,
-    COUNT
-};
-
 static const tusb_desc_device_t device_descriptor = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
-    .bcdUSB             = 0x0200,
+    .bcdUSB             = 0x0201,
     .bDeviceClass       = TUSB_CLASS_MISC,
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
@@ -50,26 +44,17 @@ static const tusb_desc_device_t device_descriptor = {
     .iManufacturer      = static_cast<uint8_t>(usb_string::MANUFACTURER),
     .iProduct           = static_cast<uint8_t>(usb_string::PRODUCT),
     .iSerialNumber      = static_cast<uint8_t>(usb_string::SERIAL_NUMBER),
-    .bNumConfigurations = static_cast<uint8_t>(usb_config::COUNT),
+    .bNumConfigurations = 0x01,
 };
 
 static const uint8_t hid_descriptor[] = {
     TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE),
 };
 
-static const uint8_t rndis_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(static_cast<uint8_t>(usb_config::RNDIS) + 1, static_cast<uint8_t>(usb_itf::COUNT), 0,
-        TUD_CONFIG_DESC_LEN + TUD_RNDIS_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
-    TUD_RNDIS_DESCRIPTOR(static_cast<uint8_t>(usb_itf::CDC), static_cast<uint8_t>(usb_string::INTERFACE),
-        EP_NET_NOTIF, 8, EP_NET_OUT, EP_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE),
-    TUD_HID_INOUT_DESCRIPTOR(static_cast<uint8_t>(usb_itf::HID), 0, HID_ITF_PROTOCOL_NONE, sizeof(hid_descriptor),
-        EP_HID, 0x80 | EP_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
-};
-
-static const uint8_t ecm_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(static_cast<uint8_t>(usb_config::ECM) + 1, static_cast<uint8_t>(usb_itf::COUNT), 0,
-        TUD_CONFIG_DESC_LEN + TUD_CDC_ECM_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
-    TUD_CDC_ECM_DESCRIPTOR(static_cast<uint8_t>(usb_itf::CDC), static_cast<uint8_t>(usb_string::INTERFACE),
+static const uint8_t ncm_configuration[] = {
+    TUD_CONFIG_DESCRIPTOR(1, static_cast<uint8_t>(usb_itf::COUNT), 0,
+        TUD_CONFIG_DESC_LEN + TUD_CDC_NCM_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
+    TUD_CDC_NCM_DESCRIPTOR(static_cast<uint8_t>(usb_itf::CDC), static_cast<uint8_t>(usb_string::INTERFACE),
         static_cast<uint8_t>(usb_string::MAC), EP_NET_NOTIF, 64, EP_NET_OUT, EP_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE, CFG_TUD_NET_MTU),
     TUD_HID_INOUT_DESCRIPTOR(static_cast<uint8_t>(usb_itf::HID), 0, HID_ITF_PROTOCOL_NONE, sizeof(hid_descriptor),
         EP_HID, 0x80 | EP_HID, CFG_TUD_HID_EP_BUFSIZE, 1),
@@ -111,12 +96,13 @@ static void usb_task(void*) {
 static void usb_eth_task(void*) {
     while (true) {
         xQueueReceive(data.reqs, &data.pkt, portMAX_DELAY);
-        while (!tud_network_can_xmit(0)) {
+        auto raw = data.pkt->raw();
+        auto len = raw.size() - 4;
+        while (!tud_network_can_xmit(len)) {
             // driver doesn't have callback when can_xmit=true, so must try on every event
             ulTaskNotifyTakeIndexed(configNOTIF_USB_ETH, true, pdMS_TO_TICKS(10));
         }
-        auto raw = data.pkt->raw();
-        tud_network_xmit(raw.data(), raw.size() - 4); // freed in callback below
+        tud_network_xmit(raw.data(), len); // freed in callback below
     }
     vTaskDelete(nullptr);
 }
@@ -135,7 +121,7 @@ static bool usb_eth_cb(eth::Packet *pkt, void *arg) {
 USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     configASSERT(data.dev == nullptr);
     data.dev  = this;
-    data.reqs = xQueueCreate(eth::POOL_SIZE / 2, sizeof(eth::Packet*));
+    data.reqs = xQueueCreate(eth::Eth::POOL_SIZE / 2, sizeof(eth::Packet*));
     configASSERT(data.reqs);
     tud_network_mac_address[5] = usr::id(); // randomize mac
 
@@ -167,11 +153,8 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
 }
 
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
-    switch (static_cast<usb_config>(index)) {
-        case usb_config::RNDIS: return rndis_configuration;
-        case usb_config::ECM:   return ecm_configuration;
-        default: return nullptr;
-    }
+    (void) index;
+    return ncm_configuration;
 }
 
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
@@ -199,6 +182,47 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     }
     str[0] = (TUSB_DESC_STRING << 8) | (2 + 2 * count);
     return str;
+}
+
+static constexpr uint8_t MS_OS_20_DESC_LEN = 0xB2;
+
+uint8_t const *tud_descriptor_bos_cb(void) {
+    static const uint8_t desc_bos[] = {
+        TUD_BOS_DESCRIPTOR(TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN, 1),
+        TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, 1),
+    };
+    return desc_bos;
+}
+
+bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const* request) {
+    static const uint8_t desc_ms_os_20[] = {
+        U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+        U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
+        U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), static_cast<uint8_t>(usb_itf::CDC), 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
+        U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'N', 'C', 'M', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+        U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A),
+        'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
+        'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+        U16_TO_U8S_LE(0x0050),
+        '{', 0x00, '1', 0x00, '2', 0x00, '3', 0x00, '4', 0x00, '5', 0x00, '6', 0x00, '7', 0x00, '8', 0x00, '-', 0x00,
+        '0', 0x00, 'D', 0x00, '0', 0x00, '8', 0x00, '-', 0x00, '4', 0x00, '3', 0x00, 'F', 0x00, 'D', 0x00, '-', 0x00,
+        '8', 0x00, 'B', 0x00, '3', 0x00, 'E', 0x00, '-', 0x00, '1', 0x00, '2', 0x00, '7', 0x00, 'C', 0x00, 'A', 0x00,
+        '8', 0x00, 'A', 0x00, 'F', 0x00, 'F', 0x00, 'F', 0x00, '9', 0x00, 'D', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00,
+    };
+    static_assert(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN);
+
+    if (stage != CONTROL_STAGE_SETUP) {
+        return true;
+    }
+    if (request->bmRequestType_bit.type == TUSB_REQ_TYPE_VENDOR && request->bRequest == 1) {
+        if (request->wIndex == 7) {
+            uint16_t total_len;
+            std::memcpy(&total_len, desc_ms_os_20 + 8, 2);
+            return tud_control_xfer(rhport, request, const_cast<uint8_t*>(desc_ms_os_20), total_len);
+        }
+    }
+    return false;
 }
 
 void tud_network_init_cb(void) {}
