@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <chip.h>
 
 // adapted from https://github.com/ARM-software/CMSIS_6/blob/v6.1.0/CMSIS/Core/Include/core_cm3.h

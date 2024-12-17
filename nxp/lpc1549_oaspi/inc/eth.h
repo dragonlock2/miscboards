@@ -10,8 +10,6 @@ namespace eth {
 
 constexpr size_t POOL_SIZE = 12; // global pool
 
-struct EthHelper; // forward declaration
-
 struct Packet {
     static constexpr size_t HDR_LEN = 6 + 6 + 2;
     static constexpr size_t MTU     = 1500;
@@ -22,7 +20,6 @@ struct Packet {
 
 private:
     friend class Eth;
-    friend struct EthHelper;
 
     std::array<uint8_t, MAX_LEN> _buf;
     size_t _len; // excludes header and CRC
@@ -48,7 +45,7 @@ public:
     std::tuple<uint32_t, uint32_t> get_error(void); // tx drop, rx drop
 
 private:
-    friend struct EthHelper;
+    struct Helper;
 
     OASPI &oaspi;
     int_set_callback int_set_cb;

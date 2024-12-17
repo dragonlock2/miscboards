@@ -15,7 +15,7 @@ static struct {
 } data;
 
 /* private helpers */
-struct EthHelper {
+struct Eth::Helper {
 
 static void int_handler(void *arg) {
     Eth &dev = *reinterpret_cast<Eth*>(arg);
@@ -160,8 +160,8 @@ Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb) {
     rx.pkt         = pkt_alloc();
     configASSERT(callbacks.lock && tx.reqs && rx.pkt);
 
-    int_set_cb(EthHelper::int_handler, this);
-    configASSERT(xTaskCreate(EthHelper::task, "eth_task", configMINIMAL_STACK_SIZE, this, configMAX_PRIORITIES - 1, &handle) == pdPASS);
+    int_set_cb(Helper::int_handler, this);
+    configASSERT(xTaskCreate(Helper::task, "eth_task", configMINIMAL_STACK_SIZE, this, configMAX_PRIORITIES - 1, &handle) == pdPASS);
 }
 
 Eth::~Eth() {
