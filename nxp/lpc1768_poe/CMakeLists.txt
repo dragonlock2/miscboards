@@ -6,7 +6,7 @@ set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 project(lpc1768_poe C CXX ASM)
 
 add_compile_options(
-    $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
+    $<$<COMPILE_LANGUAGE:C>:-std=c23>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++23>
     -Wall
     -Wextra

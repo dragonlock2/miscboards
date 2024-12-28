@@ -17,7 +17,7 @@ target_link_libraries(freertos_tcp freertos)
 
 set_source_files_properties( # disable warnings for some files
     ../../../shared/FreeRTOS-Plus-TCP/source/FreeRTOS_DNS.c
-    ../../../shared/FreeRTOS-Plus-TCP/source/FreeRTOS_Routing.c
+    ../../../shared/FreeRTOS-Plus-TCP/source/FreeRTOS_DNS_Cache.c
     ../../../shared/FreeRTOS-Plus-TCP/source/FreeRTOS_Sockets.c
     PROPERTIES APPEND_STRING PROPERTY COMPILE_FLAGS " -w"
 )

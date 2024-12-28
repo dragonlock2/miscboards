@@ -11,7 +11,7 @@ add_compile_definitions(
 )
 
 add_compile_options(
-    $<$<COMPILE_LANGUAGE:C>:-std=gnu18>
+    $<$<COMPILE_LANGUAGE:C>:-std=c23>
     $<$<COMPILE_LANGUAGE:CXX>:-std=c++23>
     -Wall
     -Wextra

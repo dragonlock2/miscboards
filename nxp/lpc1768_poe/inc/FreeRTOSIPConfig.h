@@ -7,9 +7,6 @@
 #define ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS (21) // fills up 32K
 
 #undef  ipconfigSUPPORT_SELECT_FUNCTION
-#define ipconfigSUPPORT_SELECT_FUNCTION  (1) // needed by mongoose
-
-#undef  ipconfigIPv4_BACKWARD_COMPATIBLE
-#define ipconfigIPv4_BACKWARD_COMPATIBLE (1) // needed by mongoose, disables IPv6
+#define ipconfigSUPPORT_SELECT_FUNCTION (1) // needed by mongoose
 
 #endif /* FREERTOS_IP_CONFIG_H */
