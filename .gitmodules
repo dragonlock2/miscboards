@@ -1,5 +1,5 @@
 [submodule "raspberrypi/pico-sdk"]
-	path = raspberrypi/pico-sdk
+	path = raspberrypi/SDK/pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk.git
 [submodule "microchip/pic/cmake-microchip"]
 	path = microchip/pic/cmake-microchip
@@ -25,3 +25,6 @@
 [submodule "shared/mongoose"]
 	path = shared/mongoose
 	url = https://github.com/cesanta/mongoose.git
+[submodule "shared/FreeRTOS-Kernel-Community-Supported-Ports"]
+	path = shared/FreeRTOS-Kernel-Community-Supported-Ports
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel-Community-Supported-Ports.git

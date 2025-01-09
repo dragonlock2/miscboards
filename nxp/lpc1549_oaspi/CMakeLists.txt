@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 set(MCU lpc1549)
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 
-project(lpc1549_oaspi C CXX ASM)
+project(lpc1549_oaspi)
 
 add_compile_definitions(
     # CONFIG_ADIN1110

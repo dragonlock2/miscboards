@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 set(MCU lpc1768)
 set(CMAKE_TOOLCHAIN_FILE ../SDK/${MCU}/toolchain.cmake)
 
-project(lpc1768_poe C CXX ASM)
+project(lpc1768_poe)
 
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C>:-std=c23>
