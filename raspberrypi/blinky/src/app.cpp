@@ -3,8 +3,7 @@
 #include <task.h>
 #include <pico/stdlib.h>
 
-void core_task(void*) {
-    // TODO on RISC-V, affinity doesn't work well?
+static void core_task(void*) {
     bool core = false;
     while (1) {
         core = !core;
@@ -19,7 +18,13 @@ extern "C" void app_main(void*) {
     gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
     printf("booted!\r\n");
 
-    xTaskCreate(core_task, "core_task", configMINIMAL_STACK_SIZE, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    /*
+     * On RISC-V, must be tskIDLE_PRIORITY or else never runs because core0 stuck in idle, at least
+     * until next USB event. This is probably because some ISR is not yielding properly. Might be
+     * explained by RISC-V port not supporting nested interrupts. Still, this sometimes gets stuck
+     * with taskYIELD() not working...
+     */
+    xTaskCreate(core_task, "core_task", configMINIMAL_STACK_SIZE, nullptr, tskIDLE_PRIORITY, nullptr);
 
     while (1) {
         gpio_xor_mask(1 << PICO_DEFAULT_LED_PIN);

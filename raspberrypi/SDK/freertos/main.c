@@ -3,10 +3,6 @@
 #include <task.h>
 #include <pico/stdlib.h>
 
-#if LIB_PICO_STDIO_USB
-#include <tusb.h>
-#endif
-
 extern void app_main(void*);
 
 void *malloc(size_t size) {
@@ -20,7 +16,7 @@ void free(void *ptr) {
 int main(void) {
     stdio_init_all();
 #if LIB_PICO_STDIO_USB
-    while (!tud_cdc_connected());
+    while (!stdio_usb_connected());
 #endif
 
     xTaskCreate(app_main, "app_main", configAPP_MAIN_STACK_SIZE, NULL, configAPP_MAIN_PRIORITY, NULL);
