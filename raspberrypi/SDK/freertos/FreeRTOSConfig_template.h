@@ -14,7 +14,7 @@
 #define configUSE_TASK_NOTIFICATIONS              (1)
 #define configTASK_NOTIFICATION_ARRAY_ENTRIES     (3)
 #define configUSE_MUTEXES                         (1)
-#define configUSE_RECURSIVE_MUTEXES               (0)
+#define configUSE_RECURSIVE_MUTEXES               (1)
 #define configUSE_COUNTING_SEMAPHORES             (1)
 #define configQUEUE_REGISTRY_SIZE                 (8)
 #define configUSE_QUEUE_SETS                      (0)
@@ -78,6 +78,7 @@
 #define INCLUDE_xTaskAbortDelay              (0)
 #define INCLUDE_xTaskGetHandle               (0)
 #define INCLUDE_xTaskResumeFromISR           (1)
+#define INCLUDE_xSemaphoreGetMutexHolder     (1)
 
 // SMP-specific
 #define configNUMBER_OF_CORES                (2)

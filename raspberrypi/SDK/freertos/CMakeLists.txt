@@ -38,6 +38,10 @@ target_compile_definitions(freertos PUBLIC
     LIB_FREERTOS_KERNEL=1
     FREE_RTOS_KERNEL_SMP=1
     PICO_CONFIG_RTOS_ADAPTER_HEADER=${FREERTOS_KERNEL_PORT_INC}/freertos_sdk_config.h
+
+    CYW43_TASK_STACK_SIZE=1024
+    NO_SYS=0
+    CYW43_LWIP=0
 )
 
 target_link_libraries(freertos PUBLIC
@@ -47,11 +51,5 @@ target_link_libraries(freertos PUBLIC
     hardware_exception
     pico_multicore
     $<$<STREQUAL:${PICO_PLATFORM},rp2350-riscv>:hardware_riscv_platform_timer>
-)
-
-set_source_files_properties( # TODO remove once fixed
-    ${FREERTOS_KERNEL_PATH}/tasks.c
-    ${FREERTOS_KERNEL_COMMUNITY_PATH}/GCC/RP2350_ARM_NTZ/non_secure/port.c
-    ${FREERTOS_KERNEL_COMMUNITY_PATH}/GCC/RP2350_RISC-V/port.c
-    PROPERTIES APPEND_STRING PROPERTY COMPILE_FLAGS " -w"
+    $<$<BOOL:${PICO_CYW43_SUPPORTED}>:pico_cyw43_arch_sys_freertos>
 )
