@@ -39,7 +39,7 @@ target_compile_definitions(freertos PUBLIC
     FREE_RTOS_KERNEL_SMP=1
     PICO_CONFIG_RTOS_ADAPTER_HEADER=${FREERTOS_KERNEL_PORT_INC}/freertos_sdk_config.h
 
-    CYW43_TASK_STACK_SIZE=1024
+    CYW43_TASK_STACK_SIZE=2048
     NO_SYS=0
     CYW43_LWIP=0
 )

@@ -41,5 +41,6 @@ endfunction()
 set_source_files_properties( # disable warnings for some files
     ${PICO_SDK_PATH}/src/rp2_common/pico_async_context/async_context_freertos.c
     ${PICO_SDK_PATH}/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
+    ${PICO_SDK_PATH}/lib/btstack/src/ble/sm.c
     PROPERTIES APPEND_STRING PROPERTY COMPILE_FLAGS " -w"
 )

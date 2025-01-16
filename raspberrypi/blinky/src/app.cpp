@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <pico/stdlib.h>

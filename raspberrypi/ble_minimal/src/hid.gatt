@@ -1,0 +1,13 @@
+// adapted from https://github.com/bluekitchen/btstack/blob/master/example/hog_keyboard_demo.gatt
+
+PRIMARY_SERVICE, GAP_SERVICE
+CHARACTERISTIC, GAP_DEVICE_NAME, READ, "keyboard"
+
+#import <battery_service.gatt>
+#import <device_information_service.gatt>
+#import <hids.gatt>
+
+// TODO add additional report for mouse
+
+PRIMARY_SERVICE, GATT_SERVICE
+CHARACTERISTIC, GATT_DATABASE_HASH, READ,

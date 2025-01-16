@@ -17,7 +17,6 @@ void app_init(void) {
 #endif
 
 #ifdef CYW43_WL_GPIO_LED_PIN
-    // TODO update SDK once merged https://github.com/raspberrypi/pico-sdk/pull/2106
     configASSERT(cyw43_arch_init() == 0);
 #endif
 }
