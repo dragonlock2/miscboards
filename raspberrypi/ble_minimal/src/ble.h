@@ -29,11 +29,10 @@ public:
     bool connected(void);
     std::optional<uint32_t> passkey(void);
 
+    uint8_t led(void); // fails on macOS
     void set_batt(uint8_t level);
 
     bool send(hid_keyboard_report_t &report);
     bool send(hid_mouse_report_t &report);
     bool send(hid_consumer_report_t &report);
-
-    // TODO caps lock?
 };

@@ -20,6 +20,7 @@ static struct {
     bool connected;
     std::optional<uint32_t> passkey;
     BLE::passkey_get_cb passkey_get;
+    uint8_t led;
     hci_con_handle_t handle;
     bool boot_mode;
     TaskHandle_t waiter;
@@ -68,6 +69,7 @@ static void hci_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
         case HCI_EVENT_DISCONNECTION_COMPLETE:
             xSemaphoreTake(data.lock, portMAX_DELAY);
             data.connected = false;
+            data.led = 0;
             data.handle = HCI_CON_HANDLE_INVALID;
             xSemaphoreGive(data.lock);
             break;
@@ -112,6 +114,7 @@ static void sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *pa
             data.passkey = std::nullopt;
             if (sm_event_pairing_complete_get_status(packet) == ERROR_CODE_SUCCESS) {
                 data.connected = true;
+                data.led = 0;
                 data.handle = HCI_CON_HANDLE_INVALID;
                 data.boot_mode = false;
             }
@@ -123,6 +126,7 @@ static void sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *pa
                 case ERROR_CODE_SUCCESS:
                     xSemaphoreTake(data.lock, portMAX_DELAY);
                     data.connected = true;
+                    data.led = 0;
                     data.handle = HCI_CON_HANDLE_INVALID;
                     data.boot_mode = false;
                     xSemaphoreGive(data.lock);
@@ -172,6 +176,16 @@ static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *
             xSemaphoreTake(data.lock, portMAX_DELAY);
             data.boot_mode = hids_subevent_protocol_mode_get_protocol_mode(packet) == 0;
             xSemaphoreGive(data.lock);
+            break;
+
+        case HIDS_SUBEVENT_SET_REPORT:
+            if ((hids_subevent_set_report_get_report_id(packet) == static_cast<uint8_t>(report_id::KEYBOARD)) &&
+                (hids_subevent_set_report_get_report_type(packet) == HID_REPORT_TYPE_OUTPUT) &&
+                (hids_subevent_set_report_get_report_length(packet) == 1)) {
+                xSemaphoreTake(data.lock, portMAX_DELAY);
+                data.led = hids_subevent_set_report_get_report_data(packet)[0];
+                xSemaphoreGive(data.lock);
+            }
             break;
 
         case HIDS_SUBEVENT_CAN_SEND_NOW: {
@@ -225,6 +239,7 @@ BLE::BLE(conn_type ct, passkey_get_cb cb) {
     data.lock = xSemaphoreCreateMutex();
     data.rep_lock = xSemaphoreCreateMutex();
     data.passkey_get = cb;
+    data.led = 0;
     data.handle = HCI_CON_HANDLE_INVALID;
     configASSERT(data.lock && data.rep_lock);
 
@@ -283,6 +298,10 @@ bool BLE::connected(void) {
 
 std::optional<uint32_t> BLE::passkey(void) {
     return data.passkey;
+}
+
+uint8_t BLE::led(void) {
+    return data.led;
 }
 
 void BLE::set_batt(uint8_t level) {

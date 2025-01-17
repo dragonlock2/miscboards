@@ -17,7 +17,7 @@ extern "C" void app_main(void*) {
         bool conn = ble.connected();
         if (!prev_conn && conn) {
             // wait settle, may be too short right after pairing
-            // if doesn't work still, may need to repair
+            // if doesn't work still, may need to re-pair
             vTaskDelay(pdMS_TO_TICKS(1000));
 
             // keyboard
@@ -59,6 +59,9 @@ extern "C" void app_main(void*) {
             press();
             vTaskDelay(pdMS_TO_TICKS(1000));
             press();
+
+            // battery
+            ble.set_batt(69);
         }
         prev_conn = conn;
 
@@ -68,10 +71,21 @@ extern "C" void app_main(void*) {
             printf("passkey: %06ld\r\n", pkey.value());
         }
 
-        // blinky
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-        vTaskDelay(pdMS_TO_TICKS(250));
-        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-        vTaskDelay(pdMS_TO_TICKS(250));
+        if (ble.connected()) {
+            // LED status
+            hid_keyboard_report_t report {};
+            report.keycode[0] = HID_KEY_CAPS_LOCK;
+            ble.send(report);
+            report.keycode[0] = 0;
+            ble.send(report);
+            vTaskDelay(pdMS_TO_TICKS(500));
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, ble.led() & tinyusb::KEYBOARD_LED_CAPSLOCK);
+        } else {
+            // blinky
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
     }
 }
