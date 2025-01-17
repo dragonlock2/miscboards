@@ -1,14 +1,62 @@
+#include <array>
+#include <variant>
 #include <btstack.h>
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <task.h>
 #include <pico/stdlib.h>
 #include "ble_minimal_gatt_header/hid.h"
 #include "ble.h"
 
+enum class report_id {
+    KEYBOARD = 1, // matches hid.gatt
+    MOUSE    = 4,
+    CONSUMER = 5,
+};
+
 static struct {
     BLE *inst;
+    SemaphoreHandle_t lock, rep_lock;
     bool connected;
     std::optional<uint32_t> passkey;
     BLE::passkey_get_cb passkey_get;
+    hci_con_handle_t handle;
+    bool boot_mode;
+    TaskHandle_t waiter;
+    std::variant<hid_keyboard_report_t, hid_mouse_report_t,
+        hid_consumer_report_t> report;
 } data;
+
+template<typename T>
+bool report_send(T& report) {
+    bool ret = false;
+    xSemaphoreTake(data.rep_lock, portMAX_DELAY);
+
+    // attach waiter
+    xSemaphoreTake(data.lock, portMAX_DELAY);
+    bool send = data.handle != HCI_CON_HANDLE_INVALID;
+    if (send) {
+        data.waiter = xTaskGetCurrentTaskHandle();
+        data.report = report;
+    }
+    xSemaphoreGive(data.lock);
+
+    // wait send
+    if (send) {
+        ulTaskNotifyTakeIndexed(configNOTIF_BLE, true, 0); // clear notif in case
+        hids_device_request_can_send_now_event(data.handle);
+        if (ulTaskNotifyTakeIndexed(configNOTIF_BLE, true, pdMS_TO_TICKS(1000)) != 0) {
+            ret = true;
+        } else {
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            data.waiter = nullptr;
+            xSemaphoreGive(data.lock);
+        }
+    }
+
+    xSemaphoreGive(data.rep_lock);
+    return ret;
+}
 
 static void hci_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     (void) channel;
@@ -18,7 +66,10 @@ static void hci_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
     }
     switch (hci_event_packet_get_type(packet)) {
         case HCI_EVENT_DISCONNECTION_COMPLETE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
             data.connected = false;
+            data.handle = HCI_CON_HANDLE_INVALID;
+            xSemaphoreGive(data.lock);
             break;
     }
 }
@@ -35,32 +86,46 @@ static void sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *pa
             break;
 
         case SM_EVENT_PASSKEY_DISPLAY_NUMBER:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
             data.passkey = sm_event_passkey_display_number_get_passkey(packet);
+            xSemaphoreGive(data.lock);
             break;
 
         case SM_EVENT_PASSKEY_INPUT_NUMBER:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
             if (data.passkey_get) {
                 auto pkey = data.passkey_get();
                 sm_passkey_input(sm_event_passkey_input_number_get_handle(packet), pkey);
             }
+            xSemaphoreGive(data.lock);
             break;
 
         case SM_EVENT_NUMERIC_COMPARISON_REQUEST:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
             data.passkey = sm_event_numeric_comparison_request_get_passkey(packet);
+            xSemaphoreGive(data.lock);
             sm_numeric_comparison_confirm(sm_event_passkey_display_number_get_handle(packet));
             break;
 
         case SM_EVENT_PAIRING_COMPLETE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
             data.passkey = std::nullopt;
             if (sm_event_pairing_complete_get_status(packet) == ERROR_CODE_SUCCESS) {
                 data.connected = true;
+                data.handle = HCI_CON_HANDLE_INVALID;
+                data.boot_mode = false;
             }
+            xSemaphoreGive(data.lock);
             break;
 
         case SM_EVENT_REENCRYPTION_COMPLETE:
             switch (sm_event_reencryption_complete_get_status(packet)) {
                 case ERROR_CODE_SUCCESS:
+                    xSemaphoreTake(data.lock, portMAX_DELAY);
                     data.connected = true;
+                    data.handle = HCI_CON_HANDLE_INVALID;
+                    data.boot_mode = false;
+                    xSemaphoreGive(data.lock);
                     break;
 
                 case ERROR_CODE_PIN_OR_KEY_MISSING: {
@@ -80,18 +145,88 @@ static void sm_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *pa
 static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size) {
     (void) channel;
     (void) size;
-    if (packet_type != HCI_EVENT_PACKET) {
+    if ((packet_type != HCI_EVENT_PACKET) ||
+        (hci_event_packet_get_type(packet) != HCI_EVENT_HIDS_META)) {
         return;
     }
-    // TODO implement
-    auto type = hci_event_packet_get_type(packet);
-    printf("hids %d\r\n", type);
+    switch (hci_event_hids_meta_get_subevent_code(packet)) {
+        case HIDS_SUBEVENT_INPUT_REPORT_ENABLE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            data.handle = hids_subevent_input_report_enable_get_con_handle(packet);
+            xSemaphoreGive(data.lock);
+            break;
+
+        case HIDS_SUBEVENT_BOOT_MOUSE_INPUT_REPORT_ENABLE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            data.handle = hids_subevent_boot_mouse_input_report_enable_get_con_handle(packet);
+            xSemaphoreGive(data.lock);
+            break;
+
+        case HIDS_SUBEVENT_BOOT_KEYBOARD_INPUT_REPORT_ENABLE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            data.handle = hids_subevent_boot_keyboard_input_report_enable_get_con_handle(packet);
+            xSemaphoreGive(data.lock);
+            break;
+
+        case HIDS_SUBEVENT_PROTOCOL_MODE:
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            data.boot_mode = hids_subevent_protocol_mode_get_protocol_mode(packet) == 0;
+            xSemaphoreGive(data.lock);
+            break;
+
+        case HIDS_SUBEVENT_CAN_SEND_NOW: {
+            // BTstack functions may recursively call handler => no lock holding => copy fields
+            xSemaphoreTake(data.lock, portMAX_DELAY);
+            auto handle = data.handle;
+            auto boot_mode = data.boot_mode;
+            auto report = data.report;
+            bool send = false;
+            if (data.waiter) {
+                send = true;
+                xTaskNotifyGiveIndexed(data.waiter, configNOTIF_BLE);
+                data.waiter = nullptr;
+            }
+            xSemaphoreGive(data.lock);
+
+            // send packet now
+            if (send) {
+                if (std::holds_alternative<hid_keyboard_report_t>(report)) {
+                    auto &rep = std::get<hid_keyboard_report_t>(report);
+                    if (boot_mode) {
+                        hids_device_send_boot_keyboard_input_report(handle,
+                            reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
+                    } else {
+                        hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::KEYBOARD),
+                            reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
+                    }
+                } else if (std::holds_alternative<hid_mouse_report_t>(report)) {
+                    auto &rep = std::get<hid_mouse_report_t>(report);
+                    if (boot_mode) {
+                        hids_device_send_boot_mouse_input_report(handle,
+                            reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
+                    } else {
+                        hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::MOUSE),
+                            reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
+                    }
+                } else if (std::holds_alternative<hid_consumer_report_t>(report)) {
+                    auto &rep = std::get<hid_consumer_report_t>(report);
+                    hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::CONSUMER),
+                        reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
+                }
+            }
+            break;
+        }
+    }
 }
 
 BLE::BLE(conn_type ct, passkey_get_cb cb) {
     configASSERT(data.inst == nullptr);
     data.inst = this;
+    data.lock = xSemaphoreCreateMutex();
+    data.rep_lock = xSemaphoreCreateMutex();
     data.passkey_get = cb;
+    data.handle = HCI_CON_HANDLE_INVALID;
+    configASSERT(data.lock && data.rep_lock);
 
     l2cap_init();
     sm_init();
@@ -107,11 +242,14 @@ BLE::BLE(conn_type ct, passkey_get_cb cb) {
 
     using namespace tinyusb;
     static const uint8_t HID_DESC[] = {
-        TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)), // matches hid.gatt
+        TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(static_cast<uint8_t>(report_id::KEYBOARD))),
+        TUD_HID_REPORT_DESC_MOUSE   (HID_REPORT_ID(static_cast<uint8_t>(report_id::MOUSE))),
+        TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(static_cast<uint8_t>(report_id::CONSUMER))),
     };
+    static std::array<hids_device_report_t, 5> reports; // 3 input, 1 output, 1 feature
     battery_service_server_init(100);
     device_information_service_server_init();
-    hids_device_init(0, HID_DESC, sizeof(HID_DESC));
+    hids_device_init_with_storage(0, HID_DESC, sizeof(HID_DESC), reports.size(), reports.data());
 
     static const uint8_t ADV_DATA[] = {
         0x02, BLUETOOTH_DATA_TYPE_FLAGS, 0x06,
@@ -149,4 +287,16 @@ std::optional<uint32_t> BLE::passkey(void) {
 
 void BLE::set_batt(uint8_t level) {
     battery_service_server_set_battery_value(level);
+}
+
+bool BLE::send(hid_keyboard_report_t &report) {
+    return report_send(report);
+}
+
+bool BLE::send(hid_mouse_report_t &report) {
+    return report_send(report);
+}
+
+bool BLE::send(hid_consumer_report_t &report) {
+    return report_send(report);
 }

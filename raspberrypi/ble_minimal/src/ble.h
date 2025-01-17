@@ -3,12 +3,13 @@
 #include <optional>
 
 namespace tinyusb {
-#include <class/hid/hid.h>
+#include <class/hid/hid.h> // key codes here
 #include <class/hid/hid_device.h>
 };
 
 using tinyusb::hid_keyboard_report_t;
 using tinyusb::hid_mouse_report_t;
+typedef uint16_t hid_consumer_report_t;
 
 class BLE {
 public:
@@ -30,9 +31,9 @@ public:
 
     void set_batt(uint8_t level);
 
-    bool idle(void);
-    void send(hid_keyboard_report_t &report);
-    void send(hid_mouse_report_t &report);
+    bool send(hid_keyboard_report_t &report);
+    bool send(hid_mouse_report_t &report);
+    bool send(hid_consumer_report_t &report);
 
     // TODO caps lock?
 };
