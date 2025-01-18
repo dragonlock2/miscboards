@@ -6,3 +6,4 @@
 #define configAPP_MAIN_STACK_SIZE (4096) // need more for BTstack
 
 #define configNOTIF_BLE (0)
+#define configNOTIF_USB (1)

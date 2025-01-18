@@ -5,15 +5,21 @@
 #include <semphr.h>
 #include <task.h>
 #include <pico/stdlib.h>
-#include "ble_minimal_gatt_header/hid.h"
+#include "hid_minimal_gatt_header/hid.h"
 #include "ble.h"
 
+namespace tinyusb {
+#include <class/hid/hid_device.h>
+};
+
+/* private defines */
 enum class report_id {
     KEYBOARD = 1, // matches hid.gatt
     MOUSE    = 4,
     CONSUMER = 5,
 };
 
+/* private data */
 static struct {
     BLE *inst;
     SemaphoreHandle_t lock, rep_lock;
@@ -24,12 +30,13 @@ static struct {
     hci_con_handle_t handle;
     bool boot_mode;
     TaskHandle_t waiter;
-    std::variant<hid_keyboard_report_t, hid_mouse_report_t,
-        hid_consumer_report_t> report;
+    std::variant<HID::keyboard_report_t, HID::mouse_report_t,
+        HID::consumer_report_t> report;
 } data;
 
+/* private helpers */
 template<typename T>
-bool report_send(T& report) {
+static bool report_send(T& report) {
     bool ret = false;
     xSemaphoreTake(data.rep_lock, portMAX_DELAY);
 
@@ -204,8 +211,8 @@ static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *
 
             // send packet now
             if (send) {
-                if (std::holds_alternative<hid_keyboard_report_t>(report)) {
-                    auto &rep = std::get<hid_keyboard_report_t>(report);
+                if (std::holds_alternative<HID::keyboard_report_t>(report)) {
+                    auto &rep = std::get<HID::keyboard_report_t>(report);
                     if (boot_mode) {
                         hids_device_send_boot_keyboard_input_report(handle,
                             reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
@@ -213,8 +220,8 @@ static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *
                         hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::KEYBOARD),
                             reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
                     }
-                } else if (std::holds_alternative<hid_mouse_report_t>(report)) {
-                    auto &rep = std::get<hid_mouse_report_t>(report);
+                } else if (std::holds_alternative<HID::mouse_report_t>(report)) {
+                    auto &rep = std::get<HID::mouse_report_t>(report);
                     if (boot_mode) {
                         hids_device_send_boot_mouse_input_report(handle,
                             reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
@@ -222,8 +229,8 @@ static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *
                         hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::MOUSE),
                             reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
                     }
-                } else if (std::holds_alternative<hid_consumer_report_t>(report)) {
-                    auto &rep = std::get<hid_consumer_report_t>(report);
+                } else if (std::holds_alternative<HID::consumer_report_t>(report)) {
+                    auto &rep = std::get<HID::consumer_report_t>(report);
                     hids_device_send_input_report_for_id(handle, static_cast<uint16_t>(report_id::CONSUMER),
                         reinterpret_cast<uint8_t*>(&rep), sizeof(rep));
                 }
@@ -233,6 +240,7 @@ static void hids_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *
     }
 }
 
+/* public functions */
 BLE::BLE(conn_type ct, passkey_get_cb cb) {
     configASSERT(data.inst == nullptr);
     data.inst = this;
@@ -308,14 +316,14 @@ void BLE::set_batt(uint8_t level) {
     battery_service_server_set_battery_value(level);
 }
 
-bool BLE::send(hid_keyboard_report_t &report) {
+bool BLE::send(keyboard_report_t &report) {
     return report_send(report);
 }
 
-bool BLE::send(hid_mouse_report_t &report) {
+bool BLE::send(mouse_report_t &report) {
     return report_send(report);
 }
 
-bool BLE::send(hid_consumer_report_t &report) {
+bool BLE::send(consumer_report_t &report) {
     return report_send(report);
 }
