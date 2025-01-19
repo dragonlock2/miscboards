@@ -82,11 +82,11 @@ static void task(void *arg) {
 
         // process rx chunk
         if (dev.rx.chunk.SYNC == 0) {
-            dev.oaspi.configure();
+            dev.oaspi.reset();
             dev.rx.chunk.TXC = 31;
             continue;
         } else if (dev.rx.chunk.EXST) {
-            dev.oaspi.configure(); // all status masked, shouldn't happen
+            dev.oaspi.reset(); // all status masked, shouldn't happen
             dev.rx.chunk.TXC = 31;
             continue;
         }
@@ -162,6 +162,7 @@ Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb), call
     rx.pkt         = pkt_alloc();
     configASSERT(callbacks.lock && tx.reqs && rx.pkt);
 
+    oaspi.reset();
     int_set_cb(Helper::int_handler, this);
     configASSERT(xTaskCreate(Helper::task, "eth_task", configMINIMAL_STACK_SIZE, this, configMAX_PRIORITIES - 1, &handle) == pdPASS);
 }

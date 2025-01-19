@@ -41,7 +41,8 @@ endif()
 if (NOT TARGET flash)
     add_custom_target(flash  pyocd load ${PROJECT_NAME}.elf -f 4MHz -t lpc1549jbd48 DEPENDS ${PROJECT_NAME}.elf)
     add_custom_target(server pyocd gdbserver --persist -f 4MHz -t lpc1549jbd48 DEPENDS ${PROJECT_NAME}.elf)
-    add_custom_target(gdb    arm-none-eabi-gdb ${PROJECT_NAME}.elf -ex "tar ext localhost:3333" -ex "load" -ex "mon reset halt" DEPENDS ${PROJECT_NAME}.txt)
+    add_custom_target(gdb    arm-none-eabi-gdb ${PROJECT_NAME}.elf -ex "tar ext localhost:3333" -ex "load"
+        -ex "mon reset halt" -ex "set mem inaccessible-by-default off" DEPENDS ${PROJECT_NAME}.txt)
     # starts in boot ROM, need to set breakpoint before continue
     # use "mon reset halt" instead of "starti" to halt at first instruction
 endif()

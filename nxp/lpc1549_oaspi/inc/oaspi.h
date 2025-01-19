@@ -85,7 +85,7 @@ public:
     static void fcs_add(Packet &pkt);
     static bool fcs_check(Packet &pkt);
 
-    void configure(void);
+    void reset(void);
     void data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx);
 
     void reg_write(oaspi_mms mms, uint16_t reg, uint32_t val);
@@ -95,12 +95,26 @@ public:
     void mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
     uint16_t mdio_c45_read(uint8_t devad, uint16_t reg);
 
-private:
-    friend void oaspi_configure(OASPI &dev);
+protected:
+    virtual void configure(void) = 0;
 
     SPI &spi;
     rst_set_callback rst;
     SemaphoreHandle_t mdio_lock;
+};
+
+class OASPI_ADIN1110 : public OASPI {
+    using OASPI::OASPI;
+
+protected:
+    void configure(void) override;
+};
+
+class OASPI_NCN26010 : public OASPI {
+    using OASPI::OASPI;
+
+protected:
+    void configure(void) override;
 };
 
 };

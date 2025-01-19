@@ -7,7 +7,13 @@
 
 extern "C" void app_main(void*) {
     SPI spi;
-    eth::OASPI oaspi(spi, usr::phyrst);
+#ifdef CONFIG_ADIN1110
+    eth::OASPI_ADIN1110 oaspi(spi, usr::phyrst);
+#elifdef CONFIG_NCN26010
+    eth::OASPI_NCN26010 oaspi(spi, usr::phyrst);
+#else
+    #error "define MACPHY pls"
+#endif
     eth::Eth eth(oaspi, usr::phyint);
     USB usb(oaspi, eth);
     printf("booted! 0x%02x\r\n", usr::id());

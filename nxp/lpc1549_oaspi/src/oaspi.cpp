@@ -51,119 +51,6 @@ static std::array<uint32_t, 256> FCS_TABLE {
     0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
 };
 
-/* MACPHY-specific helpers */
-#ifdef CONFIG_ADIN1110
-
-static void oaspi_mac_filter(OASPI &dev, uint8_t slot, std::span<uint8_t, 6> addr, std::span<uint8_t, 6> mask) {
-    uint8_t offset = slot * 2;
-    uint32_t val;
-    val = 0x40090000 | (addr[0] << 8) | (addr[1] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x50 + offset, val);
-    val = (addr[2] << 24) | (addr[3] << 16) | (addr[4] << 8) | (addr[5] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x51 + offset, val);
-    if (offset > 2) {
-        return; // only 2 mask registers, rest need exact match
-    }
-    val = (mask[0] << 8) | (mask[1] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x70 + offset, val);
-    val = (mask[2] << 24) | (mask[3] << 16) | (mask[4] << 8) | (mask[5] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x71 + offset, val);
-}
-
-void oaspi_configure(OASPI &dev) {
-    // software reset
-    dev.reg_write(oaspi_mms::STANDARD, 0x03, 0x00000001);
-    while (dev.reg_read(oaspi_mms::STANDARD, 0x01) != 0x0283BC91);
-    dev.reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
-
-    // MAC settings
-    uint32_t t0;
-    t0 = dev.reg_read(oaspi_mms::STANDARD, 0x04);
-    dev.reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
-
-    // MAC filter
-    t0 = dev.reg_read(oaspi_mms::STANDARD, 0x06);
-    dev.reg_write(oaspi_mms::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
-    (void) oaspi_mac_filter;
-    // std::array<uint8_t, 6> bcast_addr {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    // oaspi_mac_filter(dev, 2, bcast_addr, bcast_addr);
-    // std::array<uint8_t, 6> mcast_addr {0x01, 0x00, 0x00, 0x00, 0x00, 0x00};
-    // oaspi_mac_filter(dev, 0, mcast_addr, mcast_addr);
-    // std::array<uint8_t, 6> ucast_addr;
-    // extern uint8_t tud_network_mac_address[6];
-    // std::memcpy(ucast_addr.data(), tud_network_mac_address, 6);
-    // std::array<uint8_t, 6> ucast_mask {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    // oaspi_mac_filter(dev, 1, ucast_addr, ucast_mask);
-
-    // PHY led setting
-    uint16_t t1;
-    t1 = dev.mdio_c45_read(0x1E, 0x8C56);
-    dev.mdio_c45_write(0x1E, 0x8C56, t1 & ~0x000E); // enable LED1
-    t1 = dev.mdio_c45_read(0x1E, 0x8C83);
-    dev.mdio_c45_write(0x1E, 0x8C83, t1 | 0x0005); // active-high
-    t1 = dev.mdio_c45_read(0x1E, 0x8C82);
-    dev.mdio_c45_write(0x1E, 0x8C82, (t1 & ~(0x1F1F)) | 0x0304); // LED0: act, LED1: link
-
-    // PHY turn on
-    dev.mdio_c45_write(0x1E, 0x8812, 0x0000);
-    while (dev.mdio_c45_read(0x1E, 0x8818) & 0x0002);
-}
-
-#elifdef CONFIG_NCN26010
-
-static void oaspi_mac_filter(OASPI &dev, uint8_t slot, std::span<uint8_t, 6> addr, std::span<uint8_t, 6> mask) {
-    uint8_t offset = slot * 2;
-    uint32_t val;
-    val = (addr[2] << 24) | (addr[3] << 16) | (addr[4] << 8) | (addr[5] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x10 + offset, val);
-    val = 0x80000000 | (addr[0] << 8) | (addr[1] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x11 + offset, val);
-    val = (mask[2] << 24) | (mask[3] << 16) | (mask[4] << 8) | (mask[5] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x20 + offset, val);
-    val = 0x80000000 | (mask[0] << 8) | (mask[1] << 0);
-    dev.reg_write(oaspi_mms::MAC, 0x21 + offset, val);
-}
-
-void oaspi_configure(OASPI &dev) {
-    // enable protected control transactions
-    std::array<uint8_t, 12> tx {}, rx;
-    tx[0] = 0x20;
-    tx[2] = 0x04;
-    tx[3] |= OASPI::parity(std::span<uint8_t, 4>(&tx[0], 4));
-    tx[7] = 0x26; // PROTE=1, CPS=64bytes
-    dev.spi.transceive(tx.data(), rx.data(), 12);
-
-    // clear reset
-    dev.reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
-
-    // MAC settings
-    uint32_t t0;
-    t0 = dev.reg_read(oaspi_mms::STANDARD, 0x04);
-    dev.reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
-    t0 = dev.reg_read(oaspi_mms::STANDARD, 0xFF00);
-    dev.reg_write(oaspi_mms::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
-    t0 = dev.reg_read(oaspi_mms::MAC, 0x0000);
-    dev.reg_write(oaspi_mms::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
-
-    // MAC filter
-    t0 = dev.reg_read(oaspi_mms::MAC, 0x0000);
-    dev.reg_write(oaspi_mms::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
-    (void) oaspi_mac_filter;
-    // dev.reg_write(oaspi_mms::MAC, 0x0000, t0 | 0x00010000); // ADRF=1
-    // std::array<uint8_t, 6> ucast_addr;
-    // extern uint8_t tud_network_mac_address[6];
-    // std::memcpy(ucast_addr.data(), tud_network_mac_address, 6);
-    // std::array<uint8_t, 6> ucast_mask {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    // oaspi_mac_filter(dev, 0, ucast_addr, ucast_mask);
-
-    // PHY led setting
-    dev.reg_write(oaspi_mms::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
-}
-
-#else
-#error "define MACPHY pls"
-#endif
-
 /* private helpers */
 static uint32_t oaspi_fcs(Packet &pkt, bool check) {
     uint32_t fcs = 0xFFFFFFFF;
@@ -199,14 +86,14 @@ static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
 OASPI::OASPI(SPI &spi, rst_set_callback rst) : spi(spi), rst(rst) {
     mdio_lock = xSemaphoreCreateMutex();
     configASSERT(mdio_lock);
-    configure();
+    // no calling reset() bc it calls virtual function!
 }
 
 OASPI::~OASPI() {
     vSemaphoreDelete(mdio_lock);
 }
 
-void OASPI::configure(void) {
+void OASPI::reset(void) {
     // hardware reset
     rst(true);
     vTaskDelay(pdMS_TO_TICKS(1));
@@ -214,7 +101,7 @@ void OASPI::configure(void) {
     vTaskDelay(pdMS_TO_TICKS(100));
 
     // MACPHY-specific configuration
-    oaspi_configure(*this);
+    configure();
 
     // mark configured
     uint32_t t0 = reg_read(oaspi_mms::STANDARD, 0x04);
@@ -328,6 +215,64 @@ uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
     uint16_t ret = oaspi_mdio_cmd(*this, cmd);
     xSemaphoreGive(mdio_lock);
     return ret;
+}
+
+void OASPI_ADIN1110::configure(void) {
+    // software reset
+    reg_write(oaspi_mms::STANDARD, 0x03, 0x00000001);
+    while (reg_read(oaspi_mms::STANDARD, 0x01) != 0x0283BC91);
+    reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+
+    // MAC settings
+    uint32_t t0;
+    t0 = reg_read(oaspi_mms::STANDARD, 0x04);
+    reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+
+    // MAC filter
+    t0 = reg_read(oaspi_mms::STANDARD, 0x06);
+    reg_write(oaspi_mms::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
+
+    // PHY led setting
+    uint16_t t1;
+    t1 = mdio_c45_read(0x1E, 0x8C56);
+    mdio_c45_write(0x1E, 0x8C56, t1 & ~0x000E); // enable LED1
+    t1 = mdio_c45_read(0x1E, 0x8C83);
+    mdio_c45_write(0x1E, 0x8C83, t1 | 0x0005); // active-high
+    t1 = mdio_c45_read(0x1E, 0x8C82);
+    mdio_c45_write(0x1E, 0x8C82, (t1 & ~(0x1F1F)) | 0x0304); // LED0: act, LED1: link
+
+    // PHY turn on
+    mdio_c45_write(0x1E, 0x8812, 0x0000);
+    while (mdio_c45_read(0x1E, 0x8818) & 0x0002);
+}
+
+void OASPI_NCN26010::configure(void) {
+    // enable protected control transactions
+    std::array<uint8_t, 12> tx {}, rx;
+    tx[0] = 0x20;
+    tx[2] = 0x04;
+    tx[3] |= OASPI::parity(std::span<uint8_t, 4>(&tx[0], 4));
+    tx[7] = 0x26; // PROTE=1, CPS=64bytes
+    spi.transceive(tx.data(), rx.data(), 12);
+
+    // clear reset
+    reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+
+    // MAC settings
+    uint32_t t0;
+    t0 = reg_read(oaspi_mms::STANDARD, 0x04);
+    reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+    t0 = reg_read(oaspi_mms::STANDARD, 0xFF00);
+    reg_write(oaspi_mms::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
+    t0 = reg_read(oaspi_mms::MAC, 0x0000);
+    reg_write(oaspi_mms::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
+
+    // MAC filter
+    t0 = reg_read(oaspi_mms::MAC, 0x0000);
+    reg_write(oaspi_mms::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
+
+    // PHY led setting
+    reg_write(oaspi_mms::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
 }
 
 };

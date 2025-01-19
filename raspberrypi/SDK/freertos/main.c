@@ -39,7 +39,8 @@ void free(void *ptr) {
 }
 
 int main(void) {
-    xTaskCreate(app_trampoline, "app_main", configAPP_MAIN_STACK_SIZE, NULL, configAPP_MAIN_PRIORITY, NULL);
+    configASSERT(xTaskCreate(app_trampoline, "app_main", configAPP_MAIN_STACK_SIZE,
+        NULL, configAPP_MAIN_PRIORITY, NULL) == pdPASS);
     vTaskStartScheduler();
     while (1);
 }
