@@ -1,10 +1,39 @@
 <!DOCTYPE html>
 <html lang="en-US">
-<head>
-    <title>WebHID OASPI Access</title>
-</head>
 
-<button id="open">open</button>
+<h1>WebHID OASPI Access</h1>
+<button id="device">open</button>
+
+
+<div id="reg">
+    <h2>Register Ops</h2>
+    <div id="reg-id"></div>
+    <div id="reg-write">
+        <input id="reg-write-mms" type="text" placeholder="mms">
+        <input id="reg-write-reg" type="text" placeholder="reg">
+        <input id="reg-write-val" type="text" placeholder="val">
+        <button id="reg-write-do">write</button>
+        <a id="reg-write-result"></a>
+    </div>
+    <div id="reg-read">
+        <input id="reg-read-mms" type="text" placeholder="mms">
+        <input id="reg-read-reg" type="text" placeholder="reg">
+        <button id="reg-read-do">read</button>
+        <a id="reg-read-val">val:</a>
+    </div>
+</div>
+
+<div id="plca">
+    <h2>PLCA Config</h2>
+    <div id="plca">
+        <label>enable: <input id="plca-enable" type="checkbox" checked></label>
+        <label>leader: <input id="plca-leader" type="checkbox" checked></label>
+        <input id="plca-node-id" type="text" placeholder="node_id">
+        <input id="plca-node-cnt" type="text" placeholder="node_cnt">
+        <button id="plca-do">set</button>
+        <a id="plca-result"></a>
+    </div>
+</div>
 
 <script src="usb.js"></script>
 </html>
