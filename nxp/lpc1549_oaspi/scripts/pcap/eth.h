@@ -1,10 +1,11 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
+// macOS implementation of Eth class
+
+#include <mutex>
 #include <span>
-#include <tuple>
-#include "oaspi.h"
+#include <thread>
+#include <pcap.h>
 
 namespace eth {
 
@@ -12,6 +13,8 @@ struct Packet {
     static constexpr size_t HDR_LEN = 6 + 6 + 2;
     static constexpr size_t MTU     = 1500;
     static constexpr size_t MAX_LEN = HDR_LEN + MTU + 4; // includes FCS
+
+    Packet(void) : _len(0) {}
 
     std::span<uint8_t> raw(void) { return std::span<uint8_t>(_buf.data(), HDR_LEN + _len + 4); }
     void set_len(size_t len) { _len = len; }
@@ -25,13 +28,11 @@ private:
 
 class Eth {
 public:
-    typedef void (*int_callback)(void *arg);
-    typedef void (*int_set_callback)(int_callback cb, void *arg);
     typedef bool (*rx_callback)(Packet *pkt, void *arg); // return true if taking ownership
 
-    static constexpr size_t POOL_SIZE = 10; // global pool
-
-    Eth(OASPI &oaspi, int_set_callback cb);
+    // matches if substring of "Hardware Port" from "networksetup -listallhardwareports"
+    // if iface (ex. "en0") specified, ignores name and matches iface exactly
+    Eth(const char *name="lpc1549_oaspi", const char *iface=nullptr);
     ~Eth();
 
     Eth(Eth&) = delete;
@@ -42,31 +43,17 @@ public:
 
     void set_cb(size_t idx, rx_callback cb, void *arg);
     void send(Packet *pkt); // takes ownership
-    std::tuple<uint32_t, uint32_t> get_error(void); // tx drop, rx drop
 
 private:
-    struct Helper;
-
-    OASPI &oaspi;
-    int_set_callback int_set_cb;
-    TaskHandle_t handle;
+    pcap_t *dev;
     struct {
-        SemaphoreHandle_t lock;
-        std::array<std::tuple<rx_callback, void*>, 2> cbs;
-    } callbacks;
-    struct {
-        QueueHandle_t reqs;
-        bool start;
-        Packet *pkt;
-        size_t idx, len;
-        oaspi_tx_chunk chunk;
-        uint32_t drops;
+        std::mutex lock;
     } tx;
     struct {
-        Packet *pkt;
-        size_t len;
-        oaspi_rx_chunk chunk;
-        uint32_t drops;
+        std::thread thread;
+        std::mutex cbs_lock;
+        std::array<std::tuple<rx_callback, void*>, 8> cbs;
+        bool run;
     } rx;
 };
 
