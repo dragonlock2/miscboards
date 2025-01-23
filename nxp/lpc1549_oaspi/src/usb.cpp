@@ -66,7 +66,7 @@ static char const *STRING_DESCRIPTOR[] = { // keep <= 127 chars due to encoding
     [static_cast<size_t>(string_id::MANUFACTURER)]  = "miscboards",
     [static_cast<size_t>(string_id::PRODUCT)]       = "lpc1549_oaspi",
     [static_cast<size_t>(string_id::SERIAL_NUMBER)] = "69420",
-    [static_cast<size_t>(string_id::INTERFACE)]     = "lpc1649_oaspi interface",
+    [static_cast<size_t>(string_id::INTERFACE)]     = "lpc1549_oaspi interface",
 };
 
 static constexpr uint8_t MS_OS_20_DESC_LEN = 0xB2;

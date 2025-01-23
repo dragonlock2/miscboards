@@ -1,0 +1,10 @@
+[Unit]
+Description=Setup USB networking
+
+[Service]
+Type=oneshot
+ExecStart=/opt/setup_usb.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
