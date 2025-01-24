@@ -27,10 +27,8 @@ echo "piusb config" > configs/c.1/strings/0x409/configuration
 echo 250 > configs/c.1/MaxPower
 ln -s functions/ncm.usb0 configs/c.1
 
-# works on Pi Zero W, may need to adjust for others
-echo "20980000.usb" > UDC
+echo $(ls /sys/class/udc) > UDC
 
 # enable network interface
 ip link set usb0 up
-ip addr add 169.254.69.42/16 dev usb0
 dhclient -nw usb0
