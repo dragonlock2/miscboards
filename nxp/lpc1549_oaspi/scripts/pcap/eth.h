@@ -28,6 +28,7 @@ private:
 
 class Eth {
 public:
+    typedef void (*tx_callback)(void);
     typedef bool (*rx_callback)(Packet *pkt, void *arg); // return true if taking ownership
 
     // matches if substring of "Hardware Port" from "networksetup -listallhardwareports"
@@ -38,21 +39,23 @@ public:
     Eth(Eth&) = delete;
     Eth(Eth&&) = delete;
 
-    static Packet *pkt_alloc(bool wait=true);
-    static void pkt_free(Packet *pkt);
+    Packet *pkt_alloc(bool wait=true);
+    void pkt_free(Packet *pkt);
 
-    void set_cb(size_t idx, rx_callback cb, void *arg);
-    void send(Packet *pkt); // takes ownership
+    void set_tx_cb(tx_callback cb);
+    void set_rx_cb(rx_callback cb, void *arg);
+    bool send(Packet *pkt, bool wait=true); // always takes ownership
 
 private:
-    pcap_t *dev;
+    pcap_t *dev, *tx_dev;
     struct {
         std::mutex lock;
+        tx_callback cb;
     } tx;
     struct {
         std::thread thread;
-        std::mutex cbs_lock;
-        std::array<std::tuple<rx_callback, void*>, 8> cbs;
+        std::mutex cb_lock;
+        std::tuple<rx_callback, void*> cb;
         bool run;
     } rx;
 };

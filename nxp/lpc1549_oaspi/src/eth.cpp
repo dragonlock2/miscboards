@@ -5,9 +5,6 @@
 
 namespace eth {
 
-/* private constants */
-static constexpr size_t TX_REQ_SIZE = Eth::POOL_SIZE / 2; // can adjust
-
 /* private data */
 static struct {
     std::array<Packet, Eth::POOL_SIZE> pool_buf;
@@ -59,8 +56,12 @@ static void task(void *arg) {
                     dev.tx.len -= 64;
                 }
                 if (dev.tx.len == 0) {
-                    Eth::pkt_free(dev.tx.pkt);
+                    dev.pkt_free(dev.tx.pkt);
                     dev.tx.pkt = nullptr;
+                    volatile auto tx_cb = dev.callbacks.tx_cb;
+                    if (tx_cb) {
+                        tx_cb();
+                    }
                 }
                 dev.tx.start = false;
             }
@@ -73,8 +74,13 @@ static void task(void *arg) {
         if (dev.rx.chunk.HDRB || OASPI::parity(dev.rx.chunk.footer)) { // drop tx/rx packets on error
             if (dev.tx.len) {
                 dev.tx.len = 0;
-                Eth::pkt_free(dev.tx.pkt);
+                dev.pkt_free(dev.tx.pkt);
                 dev.tx.pkt = nullptr;
+                dev.tx.drops++;
+                volatile auto tx_cb = dev.callbacks.tx_cb;
+                if (tx_cb) {
+                    tx_cb();
+                }
             }
             dev.rx.len = 0;
             continue;
@@ -110,22 +116,17 @@ static void task(void *arg) {
         if (dev.rx.chunk.EV && dev.rx.len >= (Packet::HDR_LEN + 4)) {
             dev.rx.pkt->_len = dev.rx.len - Packet::HDR_LEN - 4;
             if (OASPI::fcs_check(*dev.rx.pkt)) {
-                Packet *rx_new = Eth::pkt_alloc(false);
+                Packet *rx_new = dev.pkt_alloc(false);
                 if (rx_new) {
                     bool taken = false;
                     xSemaphoreTake(dev.callbacks.lock, portMAX_DELAY);
-                    for (auto &[cb, arg]: dev.callbacks.cbs) {
-                        if (cb == nullptr) {
-                            continue;
-                        }
-                        if (cb(dev.rx.pkt, arg)) {
-                            taken = true;
-                            break;
-                        }
+                    auto &[cb, arg] = dev.callbacks.rx_cb;
+                    if (cb && cb(dev.rx.pkt, arg)) {
+                        taken = true;
                     }
                     xSemaphoreGive(dev.callbacks.lock);
                     if (!taken) {
-                        Eth::pkt_free(dev.rx.pkt);
+                        dev.pkt_free(dev.rx.pkt);
                     }
                     dev.rx.pkt = rx_new;
                 } else {
@@ -147,7 +148,7 @@ static void task(void *arg) {
 }; // Eth::Helper
 
 /* public functions */
-Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb), callbacks(), tx(), rx() {
+Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_cb), callbacks(), tx(), rx() {
     if (data.pool == nullptr) {
         data.pool = xQueueCreate(data.pool_buf.size(), sizeof(Packet*));
         configASSERT(data.pool);
@@ -158,7 +159,7 @@ Eth::Eth(OASPI &oaspi, int_set_callback cb) : oaspi(oaspi), int_set_cb(cb), call
     }
 
     callbacks.lock = xSemaphoreCreateMutex();
-    tx.reqs        = xQueueCreate(TX_REQ_SIZE, sizeof(Packet*));
+    tx.reqs        = xQueueCreate(REQ_SIZE, sizeof(Packet*));
     rx.pkt         = pkt_alloc();
     configASSERT(callbacks.lock && tx.reqs && rx.pkt);
 
@@ -188,14 +189,19 @@ void Eth::pkt_free(Packet *pkt) {
     configASSERT(xQueueSend(data.pool, &pkt, 0) == pdTRUE); // should be immediate
 }
 
-void Eth::set_cb(size_t idx, rx_callback cb, void *arg) {
-    configASSERT(idx < callbacks.cbs.size());
+void Eth::set_tx_cb(tx_callback cb) {
     xSemaphoreTake(callbacks.lock, portMAX_DELAY);
-    callbacks.cbs[idx] = {cb, arg};
+    callbacks.tx_cb = cb;
     xSemaphoreGive(callbacks.lock);
 }
 
-void Eth::send(Packet *pkt) {
+void Eth::set_rx_cb(rx_callback cb, void *arg) {
+    xSemaphoreTake(callbacks.lock, portMAX_DELAY);
+    callbacks.rx_cb = {cb, arg};
+    xSemaphoreGive(callbacks.lock);
+}
+
+bool Eth::send(Packet *pkt, bool wait) {
     configASSERT(pkt != nullptr);
     configASSERT(pkt->_len <= Packet::MTU);
     if ((Packet::HDR_LEN + pkt->_len) < 60) { // short packet, need zero pad
@@ -203,11 +209,12 @@ void Eth::send(Packet *pkt) {
         pkt->_len = 60 - Packet::HDR_LEN;
     }
     OASPI::fcs_add(*pkt);
-    if (xQueueSend(tx.reqs, &pkt, 0) == pdTRUE) {
+    if (xQueueSend(tx.reqs, &pkt, wait ? portMAX_DELAY : 0) == pdTRUE) {
         xTaskNotifyGiveIndexed(handle, configNOTIF_ETH);
+        return true;
     } else {
         pkt_free(pkt);
-        tx.drops++;
+        return false;
     }
 }
 

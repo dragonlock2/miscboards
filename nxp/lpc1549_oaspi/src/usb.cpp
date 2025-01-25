@@ -131,11 +131,17 @@ static void usb_eth_task(void*) {
     vTaskDelete(nullptr);
 }
 
-static bool usb_eth_cb(eth::Packet *pkt, void *arg) {
+static void usb_eth_tx_cb(void) {
+    // ready to try receiving from host again
+    tud_network_recv_renew();
+}
+
+static bool usb_eth_rx_cb(eth::Packet *pkt, void *arg) {
     (void) arg;
     if (xQueueSend(data.reqs, &pkt, 0) == pdTRUE) {
         return true;
     } else {
+        // OS doesn't query in time
         data.rx_drop++;
         return false;
     }
@@ -145,7 +151,7 @@ static bool usb_eth_cb(eth::Packet *pkt, void *arg) {
 USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     configASSERT(data.dev == nullptr);
     data.dev  = this;
-    data.reqs = xQueueCreate(eth::Eth::POOL_SIZE / 2, sizeof(eth::Packet*));
+    data.reqs = xQueueCreate(eth::Eth::REQ_SIZE, sizeof(eth::Packet*));
     configASSERT(data.reqs);
     tud_network_mac_address[5] = usr::id(); // randomize mac
 
@@ -156,7 +162,8 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     tusb_init();
     configASSERT(xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, nullptr, configMAX_PRIORITIES - 1, nullptr) == pdPASS);
     configASSERT(xTaskCreate(usb_eth_task, "usb_eth_task", configMINIMAL_STACK_SIZE, nullptr, configMAX_PRIORITIES - 2, &data.usb_eth) == pdPASS);
-    dev.set_cb(0, usb_eth_cb, nullptr);
+    dev.set_tx_cb(usb_eth_tx_cb);
+    dev.set_rx_cb(usb_eth_rx_cb, nullptr);
 }
 
 USB::~USB() {
@@ -230,19 +237,18 @@ void tud_network_init_cb(void) {}
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
     if (size < eth::Packet::HDR_LEN || size > (eth::Packet::HDR_LEN + eth::Packet::MTU)) {
-        return false;
+        // silently drop incorrectly sized packets
+        data.tx_drop++;
+        return true;
     }
+    // if can't send immediately, stall until next TX done which calls usb_eth_tx_cb()
     eth::Packet *pkt = data.dev->dev.pkt_alloc(false);
     if (pkt) {
         std::memcpy(pkt->raw().data(), src, size);
         pkt->set_len(size - eth::Packet::HDR_LEN);
-        data.dev->dev.send(pkt);
-        tud_network_recv_renew();
-        return true;
-    } else {
-        data.tx_drop++;
-        return false;
+        return data.dev->dev.send(pkt, false);
     }
+    return false;
 }
 
 uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg) {

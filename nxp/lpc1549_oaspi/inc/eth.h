@@ -27,21 +27,24 @@ class Eth {
 public:
     typedef void (*int_callback)(void *arg);
     typedef void (*int_set_callback)(int_callback cb, void *arg);
+    typedef void (*tx_callback)(void);
     typedef bool (*rx_callback)(Packet *pkt, void *arg); // return true if taking ownership
 
     static constexpr size_t POOL_SIZE = 10; // global pool
+    static constexpr size_t REQ_SIZE  = POOL_SIZE / 2; // can adjust if >1 instance
 
-    Eth(OASPI &oaspi, int_set_callback cb);
+    Eth(OASPI &oaspi, int_set_callback int_cb);
     ~Eth();
 
     Eth(Eth&) = delete;
     Eth(Eth&&) = delete;
 
-    static Packet *pkt_alloc(bool wait=true);
-    static void pkt_free(Packet *pkt);
+    Packet *pkt_alloc(bool wait=true);
+    void pkt_free(Packet *pkt);
 
-    void set_cb(size_t idx, rx_callback cb, void *arg);
-    void send(Packet *pkt); // takes ownership
+    void set_tx_cb(tx_callback cb);
+    void set_rx_cb(rx_callback cb, void *arg);
+    bool send(Packet *pkt, bool wait=true); // always takes ownership
     std::tuple<uint32_t, uint32_t> get_error(void); // tx drop, rx drop
 
 private:
@@ -52,7 +55,8 @@ private:
     TaskHandle_t handle;
     struct {
         SemaphoreHandle_t lock;
-        std::array<std::tuple<rx_callback, void*>, 2> cbs;
+        tx_callback tx_cb;
+        std::tuple<rx_callback, void*> rx_cb;
     } callbacks;
     struct {
         QueueHandle_t reqs;
