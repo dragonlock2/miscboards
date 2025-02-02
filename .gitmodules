@@ -28,3 +28,6 @@
 [submodule "shared/FreeRTOS-Kernel-Community-Supported-Ports"]
 	path = shared/FreeRTOS-Kernel-Community-Supported-Ports
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel-Community-Supported-Ports.git
+[submodule "raspberrypi/SDK/openocd"]
+	path = raspberrypi/SDK/openocd
+	url = https://github.com/raspberrypi/openocd.git
