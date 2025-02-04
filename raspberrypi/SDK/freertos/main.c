@@ -22,10 +22,14 @@ void app_init(void) {
 }
 
 void app_trampoline(void*) {
+#if configNUMBER_OF_CORES > 1
     // init must run on one core
     vTaskCoreAffinitySet(NULL, 0b01);
     app_init();
     vTaskCoreAffinitySet(NULL, 0b11);
+#else
+    app_init();
+#endif
 
     app_main(NULL);
 }

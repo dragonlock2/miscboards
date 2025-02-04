@@ -31,3 +31,6 @@
 [submodule "raspberrypi/SDK/openocd"]
 	path = raspberrypi/SDK/openocd
 	url = https://github.com/raspberrypi/openocd.git
+[submodule "raspberrypi/SDK/pico-extras"]
+	path = raspberrypi/SDK/pico-extras
+	url = https://github.com/raspberrypi/pico-extras.git

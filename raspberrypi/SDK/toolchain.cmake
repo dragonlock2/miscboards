@@ -1,6 +1,9 @@
-set(PICO_SDK_PATH ${CMAKE_CURRENT_LIST_DIR}/pico-sdk)
+set(PICO_SDK_PATH    ${CMAKE_CURRENT_LIST_DIR}/pico-sdk)
+set(PICO_EXTRAS_PATH ${CMAKE_CURRENT_LIST_DIR}/pico-extras)
 include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+include(${PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
 
+# OpenOCD settings
 set(OPENOCD_PATH ${CMAKE_CURRENT_LIST_DIR}/openocd)
 set(OPENOCD_BIN  ${OPENOCD_PATH}/src/openocd -s ${OPENOCD_PATH}/tcl -f interface/cmsis-dap.cfg)
 
@@ -15,9 +18,11 @@ else()
     message(FATAL_ERROR "unknown platform")
 endif()
 
+# boilerplate options
 set(CMAKE_C_STANDARD   23)
 set(CMAKE_CXX_STANDARD 23)
 
+# call at end
 function(pico_finalize)
     # stdio usb helpers
     get_target_property(PICO_TARGET_STDIO_USB ${PROJECT_NAME} PICO_TARGET_STDIO_USB)
@@ -56,9 +61,11 @@ function(pico_finalize)
     add_custom_target(gdb gdb ${PROJECT_NAME}.elf -ex "tar ext localhost:3333" -ex "set mem inaccessible-by-default on" DEPEND ${PROJECT_NAME})
 endfunction()
 
-set_source_files_properties( # disable warnings for some files
+# disable warnings for some files
+set_source_files_properties(
     ${PICO_SDK_PATH}/src/rp2_common/pico_async_context/async_context_freertos.c
     ${PICO_SDK_PATH}/src/rp2_common/pico_cyw43_driver/cyw43_driver.c
     ${PICO_SDK_PATH}/lib/btstack/src/ble/sm.c
+    ${PICO_EXTRAS_PATH}/src/rp2_common/pico_sleep/sleep.c
     PROPERTIES APPEND_STRING PROPERTY COMPILE_FLAGS " -w"
 )
