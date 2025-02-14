@@ -20,7 +20,7 @@ static void fn(struct mg_connection* c, int ev, void* ev_data) {
     }
 }
 
-extern "C" void app_main(void*) {
+void app_main(void*) {
     eth_init();
     usb_init();
     printf("booted!\r\n");

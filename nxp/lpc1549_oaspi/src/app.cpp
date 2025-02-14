@@ -5,7 +5,7 @@
 #include "usb.h"
 #include "usr.h"
 
-extern "C" void app_main(void*) {
+void app_main(void*) {
     SPI spi;
 #ifdef CONFIG_ADIN1110
     eth::OASPI_ADIN1110 oaspi(spi, usr::phyrst);

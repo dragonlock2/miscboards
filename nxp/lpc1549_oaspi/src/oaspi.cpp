@@ -74,8 +74,8 @@ static bool oaspi_control_check(std::span<uint8_t, 16> rx) {
 static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
     uint32_t ret;
     while (true) {
-        dev.reg_write(oaspi_mms::STANDARD, 0x20, cmd);
-        while (((ret = dev.reg_read(oaspi_mms::STANDARD, 0x20)) & 0x80000000) == 0);
+        dev.reg_write(OASPI::MMS::STANDARD, 0x20, cmd);
+        while (((ret = dev.reg_read(OASPI::MMS::STANDARD, 0x20)) & 0x80000000) == 0);
         if (!(ret & 0x40000000)) { // turnaround error
             return ret & 0xFFFF;
         }
@@ -104,8 +104,8 @@ void OASPI::reset(void) {
     configure();
 
     // mark configured
-    uint32_t t0 = reg_read(oaspi_mms::STANDARD, 0x04);
-    reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x8000); // SYNC=1
+    uint32_t t0 = reg_read(MMS::STANDARD, 0x04);
+    reg_write(MMS::STANDARD, 0x04, t0 | 0x8000); // SYNC=1
 }
 
 bool OASPI::parity(std::span<uint8_t, 4> hdr) {
@@ -131,11 +131,11 @@ bool OASPI::fcs_check(Packet &pkt) {
     return oaspi_fcs(pkt, true) == 0x2144DF1C;
 }
 
-void OASPI::data_transfer(oaspi_tx_chunk &tx, oaspi_rx_chunk &rx) {
-    spi.transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(oaspi_tx_chunk));
+void OASPI::data_transfer(tx_chunk &tx, rx_chunk &rx) {
+    spi.transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(tx_chunk));
 }
 
-void OASPI::reg_write(oaspi_mms mms, uint16_t reg, uint32_t val) {
+void OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
     while (true) {
         std::array<uint8_t, 16> tx, rx;
         tx[0]  = 0x20 | static_cast<uint8_t>(mms);
@@ -158,7 +158,7 @@ void OASPI::reg_write(oaspi_mms mms, uint16_t reg, uint32_t val) {
     }
 }
 
-uint32_t OASPI::reg_read(oaspi_mms mms, uint16_t reg) {
+uint32_t OASPI::reg_read(MMS mms, uint16_t reg) {
     while (true) {
         std::array<uint8_t, 16> tx, rx;
         tx[0] = 0x00 | static_cast<uint8_t>(mms);
@@ -219,18 +219,18 @@ uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
 
 void OASPI_ADIN1110::configure(void) {
     // software reset
-    reg_write(oaspi_mms::STANDARD, 0x03, 0x00000001);
-    while (reg_read(oaspi_mms::STANDARD, 0x01) != 0x0283BC91);
-    reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+    reg_write(MMS::STANDARD, 0x03, 0x00000001);
+    while (reg_read(MMS::STANDARD, 0x01) != 0x0283BC91);
+    reg_write(MMS::STANDARD, 0x08, 0x00000040);
 
     // MAC settings
     uint32_t t0;
-    t0 = reg_read(oaspi_mms::STANDARD, 0x04);
-    reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+    t0 = reg_read(MMS::STANDARD, 0x04);
+    reg_write(MMS::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
 
     // MAC filter
-    t0 = reg_read(oaspi_mms::STANDARD, 0x06);
-    reg_write(oaspi_mms::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
+    t0 = reg_read(MMS::STANDARD, 0x06);
+    reg_write(MMS::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
 
     // PHY led setting
     uint16_t t1;
@@ -256,23 +256,23 @@ void OASPI_NCN26010::configure(void) {
     spi.transceive(tx.data(), rx.data(), 12);
 
     // clear reset
-    reg_write(oaspi_mms::STANDARD, 0x08, 0x00000040);
+    reg_write(MMS::STANDARD, 0x08, 0x00000040);
 
     // MAC settings
     uint32_t t0;
-    t0 = reg_read(oaspi_mms::STANDARD, 0x04);
-    reg_write(oaspi_mms::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
-    t0 = reg_read(oaspi_mms::STANDARD, 0xFF00);
-    reg_write(oaspi_mms::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
-    t0 = reg_read(oaspi_mms::MAC, 0x0000);
-    reg_write(oaspi_mms::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
+    t0 = reg_read(MMS::STANDARD, 0x04);
+    reg_write(MMS::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+    t0 = reg_read(MMS::STANDARD, 0xFF00);
+    reg_write(MMS::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
+    t0 = reg_read(MMS::MAC, 0x0000);
+    reg_write(MMS::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
 
     // MAC filter
-    t0 = reg_read(oaspi_mms::MAC, 0x0000);
-    reg_write(oaspi_mms::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
+    t0 = reg_read(MMS::MAC, 0x0000);
+    reg_write(MMS::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
 
     // PHY led setting
-    reg_write(oaspi_mms::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
+    reg_write(MMS::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
 }
 
 };

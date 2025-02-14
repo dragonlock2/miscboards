@@ -287,7 +287,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
             uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-            data.dev->oaspi.reg_write(static_cast<eth::oaspi_mms>(mms), reg, val);
+            data.dev->oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val);
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             break;
         }
@@ -296,7 +296,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             if (bufsize < 4) { return; }
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
-            uint32_t val = data.dev->oaspi.reg_read(static_cast<eth::oaspi_mms>(mms), reg);
+            uint32_t val = data.dev->oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             resp[1] = (val >> 24) & 0xFF;
             resp[2] = (val >> 16) & 0xFF;

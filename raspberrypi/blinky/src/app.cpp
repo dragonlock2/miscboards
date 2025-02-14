@@ -12,7 +12,7 @@ static void core_task(void*) {
     }
 }
 
-extern "C" void app_main(void*) {
+void app_main(void*) {
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
     printf("booted!\r\n");

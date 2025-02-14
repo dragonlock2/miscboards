@@ -80,7 +80,7 @@ static void sleep(void) {
 #error "unknown board"
 #endif
 
-extern "C" void app_main(void*) {
+void app_main(void*) {
     board_init();
     gpio_init(WAKE_PIN);
     gpio_pull_up(WAKE_PIN);

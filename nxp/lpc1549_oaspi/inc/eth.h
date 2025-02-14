@@ -63,13 +63,13 @@ private:
         bool start;
         Packet *pkt;
         size_t idx, len;
-        oaspi_tx_chunk chunk;
+        OASPI::tx_chunk chunk;
         uint32_t drops;
     } tx;
     struct {
         Packet *pkt;
         size_t len;
-        oaspi_rx_chunk chunk;
+        OASPI::rx_chunk chunk;
         uint32_t drops;
     } rx;
 };

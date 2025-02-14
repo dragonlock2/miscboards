@@ -18,26 +18,32 @@ else()
     message(FATAL_ERROR "unknown platform")
 endif()
 
-# boilerplate options
+# default options
 set(CMAKE_C_STANDARD   23)
 set(CMAKE_CXX_STANDARD 23)
 
-# call at end
-function(pico_finalize)
+# add libraries
+include(${CMAKE_CURRENT_LIST_DIR}/freertos/lib.cmake)
+
+# SDK functions
+function(sdk_init)
+    pico_sdk_init()
+endfunction()
+
+function(sdk_finish)
     # stdio usb helpers
     get_target_property(PICO_TARGET_STDIO_USB ${PROJECT_NAME} PICO_TARGET_STDIO_USB)
-    if(PICO_TARGET_STDIO_USB EQUAL 1 AND TARGET freertos)
+    sdk_freertos_enabled(FREERTOS_ENABLED)
+    if(PICO_TARGET_STDIO_USB EQUAL 1 AND FREERTOS_ENABLED)
         pico_enable_stdio_usb(freertos 1)
     endif()
 
     # pico_w helpers
-    if(PICO_CYW43_SUPPORTED AND TARGET freertos)
-        target_link_libraries(${PROJECT_NAME}
-            pico_cyw43_arch_sys_freertos
-        )
+    if(PICO_CYW43_SUPPORTED AND FREERTOS_ENABLED)
+        target_link_libraries(${PROJECT_NAME} pico_cyw43_arch_sys_freertos)
     endif()
 
-    # boilerplate options
+    # default options
     target_compile_options(${PROJECT_NAME} PRIVATE
         -Wall
         -Wextra
@@ -49,9 +55,9 @@ function(pico_finalize)
     target_link_libraries(${PROJECT_NAME}
         pico_stdlib
     )
-    pico_add_extra_outputs(${PROJECT_NAME})
 
-    # boilerplate helpers
+    # helpers
+    pico_add_extra_outputs(${PROJECT_NAME})
     add_custom_target(flash picotool load -f ${PROJECT_NAME}.uf2 DEPENDS ${PROJECT_NAME})
     add_custom_target(flash_dbg ${OPENOCD_BIN} -f target/${OPENOCD_TARGET} -c "adapter speed 5000"
         -c "program ${PROJECT_NAME}.elf verify reset exit" DEPENDS ${PROJECT_NAME})

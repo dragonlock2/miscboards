@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdio.h>
 
 // options from https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_TCP/TCP_IP_Configuration.html

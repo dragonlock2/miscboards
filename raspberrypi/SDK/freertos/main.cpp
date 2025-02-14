@@ -9,7 +9,7 @@
 
 extern void app_main(void*);
 
-void app_init(void) {
+static void app_init(void) {
     stdio_init_all();
 
 #if LIB_PICO_STDIO_USB
@@ -21,7 +21,7 @@ void app_init(void) {
 #endif
 }
 
-void app_trampoline(void*) {
+static void app_trampoline(void*) {
 #if configNUMBER_OF_CORES > 1
     // init must run on one core
     vTaskCoreAffinitySet(NULL, 0b01);
@@ -33,6 +33,8 @@ void app_trampoline(void*) {
 
     app_main(NULL);
 }
+
+extern "C" {
 
 void *malloc(size_t size) {
     return pvPortMalloc(size);
@@ -47,4 +49,6 @@ int main(void) {
         NULL, configAPP_MAIN_PRIORITY, NULL) == pdPASS);
     vTaskStartScheduler();
     while (1);
+}
+
 }

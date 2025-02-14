@@ -84,7 +84,7 @@ static void usb_demo(void*) {
     vTaskDelete(nullptr);
 }
 
-extern "C" void app_main(void*) {
+void app_main(void*) {
     configASSERT(xTaskCreate(usb_demo, "usb_demo", configMINIMAL_STACK_SIZE,
         NULL, configAPP_MAIN_PRIORITY, NULL) == pdPASS);
     BLE ble(BLE::conn_type::PASSKEY_CONFIRM);

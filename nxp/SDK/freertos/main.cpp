@@ -2,10 +2,13 @@
 #include <FreeRTOS.h>
 #include <task.h>
 
+extern void app_main(void*);
+
+extern "C" {
+
 extern void vPortSVCHandler(void);
 extern void xPortPendSVHandler(void);
 extern void xPortSysTickHandler(void);
-extern void app_main(void*);
 
 __attribute__((used))
 void *_malloc_r(struct _reent*, size_t size) {
@@ -26,4 +29,6 @@ int main(void) {
         NULL, configAPP_MAIN_PRIORITY, NULL) == pdPASS);
     vTaskStartScheduler();
     while (1);
+}
+
 }
