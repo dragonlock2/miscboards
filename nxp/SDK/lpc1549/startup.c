@@ -38,7 +38,7 @@ static void (*const rom_vectors[8])(void) = {
 
 static void (*ram_vectors[16 + 47])(void) __attribute__((aligned(1024)));
 
-__attribute__((used, naked, optimize("O1"), section(".reset_handler")))
+__attribute__((used, naked, optimize("O0"), section(".reset_handler")))
 void reset_handler(void) {
     memcpy(&_data, &_data_rom, &_edata - &_data);
     memset(&_bss, 0, &_ebss - &_bss);

@@ -1,7 +1,9 @@
+#include <array>
 #include <cstring>
 #include <FreeRTOS.h>
 #include <task.h>
 #include <tusb.h>
+#include <device/usbd_pvt.h>
 #include "eth.h"
 #include "oaspi.h"
 #include "usr.h"
@@ -98,7 +100,8 @@ uint8_t tud_network_mac_address[6] = {0x00, 0x50, 0xC2, 0x4B, 0x20, 0x00};
 /* private data */
 static struct {
     USB *dev;
-    TaskHandle_t usb_eth;
+    std::array<eth::Packet*, eth::Eth::REQ_SIZE> reqs_buf;
+    StaticQueue_t reqs_data;
     QueueHandle_t reqs;
     eth::Packet *pkt;
     uint32_t tx_drop, rx_drop;
@@ -112,33 +115,36 @@ static void usb_handler(void) {
 static void usb_task(void*) {
     while (true) {
         tud_task();
-        xTaskNotifyGiveIndexed(data.usb_eth, configNOTIF_USB_ETH);
+
+        // send packet if available and able
+        if (data.pkt == nullptr) {
+            xQueueReceive(data.reqs, &data.pkt, 0);
+        }
+        if (data.pkt) {
+            auto raw = data.pkt->raw();
+            auto len = raw.size() - 4;
+            if (tud_network_can_xmit(len)) {
+                tud_network_xmit(raw.data(), len); // freed in tud_network_xmit_cb()
+            }
+        }
     }
     vTaskDelete(nullptr);
 }
 
-static void usb_eth_task(void*) {
-    while (true) {
-        xQueueReceive(data.reqs, &data.pkt, portMAX_DELAY);
-        auto raw = data.pkt->raw();
-        auto len = raw.size() - 4;
-        while (!tud_network_can_xmit(len)) {
-            // driver doesn't have callback when can_xmit=true, so must try on every event
-            ulTaskNotifyTakeIndexed(configNOTIF_USB_ETH, true, pdMS_TO_TICKS(10));
-        }
-        tud_network_xmit(raw.data(), len); // freed in callback below
-    }
-    vTaskDelete(nullptr);
+static void usb_eth_tx_renew(void*) {
+    // driver not thread safe must run in tud_task()
+    tud_network_recv_renew();
 }
 
 static void usb_eth_tx_cb(void) {
     // ready to try receiving from host again
-    tud_network_recv_renew();
+    usbd_defer_func(usb_eth_tx_renew, nullptr, false);
 }
 
-static bool usb_eth_rx_cb(eth::Packet *pkt, void *arg) {
-    (void) arg;
+static bool usb_eth_rx_cb(eth::Packet *pkt, void*) {
     if (xQueueSend(data.reqs, &pkt, 0) == pdTRUE) {
+        // driver not thread safe must run in tud_task()
+        usbd_defer_func(nullptr, nullptr, false);
         return true;
     } else {
         // OS doesn't query in time
@@ -151,7 +157,9 @@ static bool usb_eth_rx_cb(eth::Packet *pkt, void *arg) {
 USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     configASSERT(data.dev == nullptr);
     data.dev  = this;
-    data.reqs = xQueueCreate(eth::Eth::REQ_SIZE, sizeof(eth::Packet*));
+    data.reqs = xQueueCreateStatic(data.reqs_buf.size(), sizeof(eth::Packet*),
+        reinterpret_cast<uint8_t*>(data.reqs_buf.data()), &data.reqs_data);
+    data.pkt  = nullptr;
     configASSERT(data.reqs);
     tud_network_mac_address[5] = usr::id(); // randomize mac
 
@@ -161,7 +169,6 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
 
     tusb_init();
     configASSERT(xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, nullptr, configMAX_PRIORITIES - 1, nullptr) == pdPASS);
-    configASSERT(xTaskCreate(usb_eth_task, "usb_eth_task", configMINIMAL_STACK_SIZE, nullptr, configMAX_PRIORITIES - 2, &data.usb_eth) == pdPASS);
     dev.set_tx_cb(usb_eth_tx_cb);
     dev.set_rx_cb(usb_eth_rx_cb, nullptr);
 }

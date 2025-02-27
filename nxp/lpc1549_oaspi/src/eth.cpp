@@ -7,7 +7,9 @@ namespace eth {
 
 /* private data */
 static struct {
-    std::array<Packet, Eth::POOL_SIZE> pool_buf;
+    std::array<Packet, Eth::POOL_SIZE> pool_items;
+    std::array<Packet*, Eth::POOL_SIZE> pool_buf;
+    StaticQueue_t pool_data;
     QueueHandle_t pool;
 } data;
 
@@ -150,17 +152,19 @@ static void task(void *arg) {
 /* public functions */
 Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_cb), callbacks(), tx(), rx() {
     if (data.pool == nullptr) {
-        data.pool = xQueueCreate(data.pool_buf.size(), sizeof(Packet*));
+        data.pool = xQueueCreateStatic(data.pool_buf.size(), sizeof(Packet*),
+            reinterpret_cast<uint8_t*>(data.pool_buf.data()), &data.pool_data);
         configASSERT(data.pool);
-        for (auto &pkt: data.pool_buf) {
+        for (auto &pkt: data.pool_items) {
             Packet *ptr = &pkt;
             configASSERT(xQueueSend(data.pool, &ptr, 0) == pdTRUE);
         }
     }
 
     callbacks.lock = xSemaphoreCreateMutex();
-    tx.reqs        = xQueueCreate(REQ_SIZE, sizeof(Packet*));
-    rx.pkt         = pkt_alloc();
+    tx.reqs = xQueueCreateStatic(tx.reqs_buf.size(), sizeof(Packet*),
+        reinterpret_cast<uint8_t*>(tx.reqs_buf.data()), &tx.reqs_data);
+    rx.pkt = pkt_alloc();
     configASSERT(callbacks.lock && tx.reqs && rx.pkt);
 
     oaspi.reset();

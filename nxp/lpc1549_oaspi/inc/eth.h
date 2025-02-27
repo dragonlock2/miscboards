@@ -59,6 +59,8 @@ private:
         std::tuple<rx_callback, void*> rx_cb;
     } callbacks;
     struct {
+        std::array<Packet*, REQ_SIZE> reqs_buf;
+        StaticQueue_t reqs_data;
         QueueHandle_t reqs;
         bool start;
         Packet *pkt;
