@@ -16,6 +16,21 @@ static constexpr uint8_t EP_NET_IN    = 0x82; // bulk
 static constexpr uint8_t EP_HID_OUT   = 0x03; // interrupt
 static constexpr uint8_t EP_HID_IN    = 0x83; // interrupt
 
+// modified from usbd.h to set bmNetworkCapabilities=0x01 instead of 0x00
+#undef  TUD_CDC_NCM_DESCRIPTOR
+#define TUD_CDC_NCM_DESCRIPTOR(_itfnum, _desc_stridx, _mac_stridx, _ep_notif, _ep_notif_size, _epout, _epin, _epsize, _maxsegmentsize) \
+    8, TUSB_DESC_INTERFACE_ASSOCIATION, _itfnum, 2, TUSB_CLASS_CDC, CDC_COMM_SUBCLASS_NETWORK_CONTROL_MODEL, 0, 0,\
+    9, TUSB_DESC_INTERFACE, _itfnum, 0, 1, TUSB_CLASS_CDC, CDC_COMM_SUBCLASS_NETWORK_CONTROL_MODEL, 0, _desc_stridx,\
+    5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_HEADER, U16_TO_U8S_LE(0x0110),\
+    5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_UNION, _itfnum, (uint8_t)((_itfnum) + 1),\
+    13, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_ETHERNET_NETWORKING, _mac_stridx, 0, 0, 0, 0, U16_TO_U8S_LE(_maxsegmentsize), U16_TO_U8S_LE(0), 0, \
+    6, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_NCM, U16_TO_U8S_LE(0x0100), 0x01, \
+    7, TUSB_DESC_ENDPOINT, _ep_notif, TUSB_XFER_INTERRUPT, U16_TO_U8S_LE(_ep_notif_size), 50,\
+    9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 0, 0, TUSB_CLASS_CDC_DATA, 0, NCM_DATA_PROTOCOL_NETWORK_TRANSFER_BLOCK, 0,\
+    9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 1, 2, TUSB_CLASS_CDC_DATA, 0, NCM_DATA_PROTOCOL_NETWORK_TRANSFER_BLOCK, 0,\
+    7, TUSB_DESC_ENDPOINT, _epin, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0,\
+    7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0
+
 enum class string_id {
     LANGID,
     MANUFACTURER,
@@ -66,9 +81,9 @@ static const uint8_t CONFIG_DESCRIPTOR[] = {
 static char const *STRING_DESCRIPTOR[] = { // keep <= 127 chars due to encoding
     [static_cast<size_t>(string_id::LANGID)]        = (const char[]) { 0x09, 0x04 }, // English (0x0409)
     [static_cast<size_t>(string_id::MANUFACTURER)]  = "miscboards",
-    [static_cast<size_t>(string_id::PRODUCT)]       = "lpc1549_oaspi",
+    [static_cast<size_t>(string_id::PRODUCT)]       = "lpc1549_oaspi 10BASE-T1S/T1L",
     [static_cast<size_t>(string_id::SERIAL_NUMBER)] = "69420",
-    [static_cast<size_t>(string_id::INTERFACE)]     = "lpc1549_oaspi interface",
+    [static_cast<size_t>(string_id::INTERFACE)]     = "lpc1549_oaspi 10BASE-T1S/T1L",
 };
 
 static constexpr uint8_t MS_OS_20_DESC_LEN = 0xB2;
