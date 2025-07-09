@@ -52,8 +52,11 @@ private:
 
     OASPI &oaspi;
     int_set_callback int_set_cb;
+    StaticTask_t handle_buffer;
+    std::array<StackType_t, configMINIMAL_STACK_SIZE> handle_stack;
     TaskHandle_t handle;
     struct {
+        StaticSemaphore_t lock_buffer;
         SemaphoreHandle_t lock;
         tx_callback tx_cb;
         std::tuple<rx_callback, void*> rx_cb;

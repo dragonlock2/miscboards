@@ -120,6 +120,8 @@ static struct {
     QueueHandle_t reqs;
     eth::Packet *pkt;
     uint32_t tx_drop, rx_drop;
+    StaticTask_t task_buffer;
+    std::array<StackType_t, configMINIMAL_STACK_SIZE> task_stack;
 } data;
 
 /* private helpers */
@@ -183,7 +185,8 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     Chip_USB_Init();
 
     tusb_init();
-    configASSERT(xTaskCreate(usb_task, "usb_task", configMINIMAL_STACK_SIZE, nullptr, configMAX_PRIORITIES - 1, nullptr) == pdPASS);
+    configASSERT(xTaskCreateStatic(usb_task, "usb_task", data.task_stack.size(),
+        nullptr, configMAX_PRIORITIES - 1, data.task_stack.data(), &data.task_buffer));
     dev.set_tx_cb(usb_eth_tx_cb);
     dev.set_rx_cb(usb_eth_rx_cb, nullptr);
 }

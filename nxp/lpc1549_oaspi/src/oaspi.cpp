@@ -75,16 +75,19 @@ static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
     uint32_t ret;
     while (true) {
         dev.reg_write(OASPI::MMS::STANDARD, 0x20, cmd);
-        while (((ret = dev.reg_read(OASPI::MMS::STANDARD, 0x20)) & 0x80000000) == 0);
+        while (((ret = dev.reg_read(OASPI::MMS::STANDARD, 0x20)) & 0x80000000) == 0) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
         if (!(ret & 0x40000000)) { // turnaround error
             return ret & 0xFFFF;
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
 /* public functions */
 OASPI::OASPI(SPI &spi, rst_set_callback rst) : spi(spi), rst(rst) {
-    mdio_lock = xSemaphoreCreateMutex();
+    mdio_lock = xSemaphoreCreateMutexStatic(&mdio_lock_buffer);
     configASSERT(mdio_lock);
     // no calling reset() bc it calls virtual function!
 }
@@ -155,6 +158,7 @@ void OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
         if (oaspi_control_check(rx)) {
             break;
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
@@ -170,6 +174,7 @@ uint32_t OASPI::reg_read(MMS mms, uint16_t reg) {
         if (oaspi_control_check(rx)) {
             return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);
         }
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
@@ -220,7 +225,9 @@ uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
 void OASPI_ADIN1110::configure(void) {
     // software reset
     reg_write(MMS::STANDARD, 0x03, 0x00000001);
-    while (reg_read(MMS::STANDARD, 0x01) != 0x0283BC91);
+    while (reg_read(MMS::STANDARD, 0x01) != 0x0283BC91) {
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
     reg_write(MMS::STANDARD, 0x08, 0x00000040);
 
     // MAC settings
@@ -243,7 +250,9 @@ void OASPI_ADIN1110::configure(void) {
 
     // PHY turn on
     mdio_c45_write(0x1E, 0x8812, 0x0000);
-    while (mdio_c45_read(0x1E, 0x8818) & 0x0002);
+    while (mdio_c45_read(0x1E, 0x8818) & 0x0002) {
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
 }
 
 void OASPI_NCN26010::configure(void) {

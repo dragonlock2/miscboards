@@ -1,3 +1,4 @@
+#include <array>
 #include <stdio.h>
 #include <FreeRTOS.h>
 #include <task.h>
@@ -25,8 +26,10 @@ int main(void) {
     NVIC_SetVector(PendSV_IRQn,  (uint32_t) xPortPendSVHandler);
     NVIC_SetVector(SysTick_IRQn, (uint32_t) xPortSysTickHandler);
 
-    configASSERT(xTaskCreate(app_main, "app_main", configAPP_MAIN_STACK_SIZE,
-        NULL, configAPP_MAIN_PRIORITY, NULL) == pdPASS);
+    static StaticTask_t task_buffer;
+    static std::array<StackType_t, configAPP_MAIN_STACK_SIZE> task_stack;
+    configASSERT(xTaskCreateStatic(app_main, "app_main", task_stack.size(),
+        nullptr, configAPP_MAIN_PRIORITY, task_stack.data(), &task_buffer));
     vTaskStartScheduler();
     while (1);
 }

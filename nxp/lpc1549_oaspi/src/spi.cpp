@@ -8,6 +8,7 @@
 /* private data */
 static struct {
     SPI *dev;
+    StaticSemaphore_t lock_buffer;
     SemaphoreHandle_t lock;
     TaskHandle_t waiter;
 } data;
@@ -26,7 +27,7 @@ SPI::SPI(void) {
     configASSERT(data.dev == nullptr);
     data.dev = this;
 
-    data.lock = xSemaphoreCreateMutex();
+    data.lock = xSemaphoreCreateMutexStatic(&data.lock_buffer);
     configASSERT(data.lock);
 
 #ifdef CONFIG_ADIN1110

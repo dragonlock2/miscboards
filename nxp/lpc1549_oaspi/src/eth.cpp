@@ -161,7 +161,7 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_c
         }
     }
 
-    callbacks.lock = xSemaphoreCreateMutex();
+    callbacks.lock = xSemaphoreCreateMutexStatic(&callbacks.lock_buffer);
     tx.reqs = xQueueCreateStatic(tx.reqs_buf.size(), sizeof(Packet*),
         reinterpret_cast<uint8_t*>(tx.reqs_buf.data()), &tx.reqs_data);
     rx.pkt = pkt_alloc();
@@ -169,7 +169,8 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_c
 
     oaspi.reset();
     int_set_cb(Helper::int_handler, this);
-    configASSERT(xTaskCreate(Helper::task, "eth_task", configMINIMAL_STACK_SIZE, this, configMAX_PRIORITIES - 1, &handle) == pdPASS);
+    handle = xTaskCreateStatic(Helper::task, "eth_task", handle_stack.size(), this, configMAX_PRIORITIES - 1, handle_stack.data(), &handle_buffer);
+    configASSERT(handle);
 }
 
 Eth::~Eth() {

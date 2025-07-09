@@ -97,6 +97,7 @@ protected:
 
     SPI &spi;
     rst_set_callback rst;
+    StaticSemaphore_t mdio_lock_buffer;
     SemaphoreHandle_t mdio_lock;
 };
 
