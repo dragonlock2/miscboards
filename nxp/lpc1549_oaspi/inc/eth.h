@@ -30,8 +30,9 @@ public:
     using tx_callback      = void (*)();
     using rx_callback      = bool (*)(Packet *pkt, void *arg); // return true if taking ownership
 
-    static constexpr size_t POOL_SIZE = 10; // global pool
-    static constexpr size_t REQ_SIZE  = POOL_SIZE / 2; // can adjust if >1 instance
+    static constexpr size_t POOL_SIZE  = 10; // global pool
+    static constexpr size_t REQ_SIZE   = POOL_SIZE / 2; // can adjust if >1 instance
+    static constexpr size_t MAX_CHUNKS = 8;
 
     Eth(OASPI &oaspi, int_set_callback int_set);
     ~Eth();
@@ -71,16 +72,18 @@ private:
         std::array<Packet*, REQ_SIZE> reqs_buf;
         StaticQueue_t reqs_data;
         QueueHandle_t reqs;
-        bool start;
         Packet *pkt;
+        bool start;
         size_t idx, len;
-        OASPI::tx_chunk chunk;
+        std::array<OASPI::tx_chunk, MAX_CHUNKS> chunks;
+        size_t free_chunks;
         uint32_t total, drops;
     } _tx{};
     struct {
         Packet *pkt;
         size_t len;
-        OASPI::rx_chunk chunk;
+        std::array<OASPI::rx_chunk, MAX_CHUNKS> chunks;
+        size_t pend_chunks;
         uint32_t total, drops;
     } _rx{};
 };

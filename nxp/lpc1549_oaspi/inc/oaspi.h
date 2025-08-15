@@ -84,7 +84,7 @@ public:
     static bool fcs_check(Packet &pkt);
 
     bool reset();
-    void data_transfer(tx_chunk &tx, rx_chunk &rx);
+    void data_transfer(std::span<tx_chunk> tx, std::span<rx_chunk> rx);
 
     bool reg_write(MMS mms, uint16_t reg, uint32_t val);
     std::optional<uint32_t> reg_read(MMS mms, uint16_t reg);

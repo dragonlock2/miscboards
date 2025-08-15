@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include "usr.h"
@@ -23,6 +24,133 @@ static void int_handler(void *arg) {
     portYIELD_FROM_ISR(woke);
 }
 
+static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk) {
+    // pull next packet
+    if (dev._tx.pkt == nullptr) {
+        if (xQueueReceive(dev._tx.reqs, &dev._tx.pkt, 0) == pdTRUE) {
+            dev._tx.start = true;
+            dev._tx.idx   = 0;
+            dev._tx.len   = Packet::HDR_LEN + dev._tx.pkt->_len + 4; // include CRC
+        }
+    }
+
+    // setup chunk
+    chunk.header.fill(0);
+    if ((dev._tx.pkt != nullptr) && (dev._tx.free_chunks != 0)) {
+        chunk.DV  = 1;
+        chunk.SV  = dev._tx.start;
+        chunk.SWO = 0;
+        if (dev._tx.len <= chunk.data.size()) {
+            chunk.EV  = 1;
+            chunk.EBO = dev._tx.len - 1;
+            std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], dev._tx.len);
+            dev._tx.len = 0;
+        } else {
+            std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], chunk.data.size());
+            dev._tx.idx += chunk.data.size();
+            dev._tx.len -= chunk.data.size();
+        }
+        if (dev._tx.len == 0) {
+            dev.pkt_free(dev._tx.pkt);
+            dev._tx.pkt = nullptr;
+            volatile auto tx_cb = dev._callbacks.tx_cb;
+            if (tx_cb) {
+                tx_cb();
+            }
+            dev._tx.total++;
+        }
+        dev._tx.start = false;
+        dev._tx.free_chunks--;
+    }
+    chunk.DNC = 1;
+    chunk.P   = OASPI::parity(chunk.header);
+}
+
+static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
+    // validate chunk
+    auto handle_error = [&dev]() {
+        // drop tx/rx packets on error
+        dev._task.error = true;
+        if (dev._tx.pkt != nullptr) {
+            dev.pkt_free(dev._tx.pkt);
+            dev._tx.pkt = nullptr;
+            volatile auto tx_cb = dev._callbacks.tx_cb;
+            if (tx_cb) {
+                tx_cb();
+            }
+            dev._tx.drops++;
+        }
+        dev._rx.len = 0;
+    };
+    auto handle_reset = [&dev]() {
+        dev._task.error = true;
+        dev._oaspi.reset();
+        dev._tx.free_chunks = 1; // assuming at least one chunk free after reset
+    };
+    if (OASPI::parity(chunk.footer)) {
+        handle_error(); // likely random bit error
+        return false;
+    } else if (chunk.SYNC == 0) {
+        handle_reset(); // likely reset
+        return false;
+    } else if (chunk.EXST) {
+        handle_reset(); // all status masked, shouldn't happen
+        return false;
+    } else if (chunk.HDRB) {
+        handle_error(); // likely random bit error, also set on reset
+        return false;
+    } else {
+        dev._task.error = false;
+    }
+
+    // append rx data
+    bool rx_copy = false;
+    if (chunk.SV && chunk.DV) {
+        rx_copy = true;
+        dev._rx.len = 0;
+    } else if (chunk.DV && dev._rx.len) {
+        rx_copy = true;
+    }
+    if (rx_copy) {
+        size_t len = chunk.EV ? chunk.EBO + 1 : chunk.data.size();
+        configASSERT(len <= chunk.data.size());
+        if ((dev._rx.len + len) <= dev._rx.pkt->_buf.size()) {
+            std::memcpy(&dev._rx.pkt->_buf[dev._rx.len], chunk.data.data(), len);
+            dev._rx.len += len;
+        } else {
+            dev._rx.len = 0;
+        }
+    }
+
+    // callback if ready
+    if (chunk.EV && dev._rx.len >= (Packet::HDR_LEN + 4)) {
+        dev._rx.pkt->_len = dev._rx.len - Packet::HDR_LEN - 4;
+        if (OASPI::fcs_check(*dev._rx.pkt)) {
+            Packet *rx_new = dev.pkt_alloc(false);
+            if (rx_new) {
+                bool taken = false;
+                xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
+                auto &[cb, arg] = dev._callbacks.rx_cb;
+                if (cb && cb(dev._rx.pkt, arg)) {
+                    taken = true;
+                }
+                xSemaphoreGive(dev._callbacks.lock);
+                if (!taken) {
+                    dev.pkt_free(dev._rx.pkt);
+                }
+                dev._rx.pkt = rx_new;
+                dev._rx.total++;
+            } else {
+                dev._rx.drops++;
+            }
+        }
+        dev._rx.len = 0;
+    }
+    dev._tx.free_chunks = chunk.TXC;
+    dev._rx.pend_chunks = chunk.RCA;
+    return true;
+}
+
 static void task(void *arg) {
     configASSERT(arg != nullptr);
     Eth &dev = *reinterpret_cast<Eth*>(arg);
@@ -35,129 +163,31 @@ static void task(void *arg) {
             wait = false;
         }
 
-        // setup tx chunk
-        dev._tx.chunk.header.fill(0);
-        if (dev._rx.chunk.TXC != 0) {
-            if (dev._tx.len == 0) {
-                if (xQueueReceive(dev._tx.reqs, &dev._tx.pkt, 0) == pdTRUE) {
-                    dev._tx.start = true;
-                    dev._tx.idx   = 0;
-                    dev._tx.len   = Packet::HDR_LEN + dev._tx.pkt->_len + 4; // include CRC
-                }
-            }
-            if (dev._tx.len) {
-                dev._tx.chunk.DV  = 1;
-                dev._tx.chunk.SV  = dev._tx.start;
-                dev._tx.chunk.SWO = 0;
-                if (dev._tx.len <= 64) {
-                    dev._tx.chunk.EV  = 1;
-                    dev._tx.chunk.EBO = dev._tx.len - 1;
-                    std::memcpy(dev._tx.chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], dev._tx.len);
-                    dev._tx.len = 0;
-                } else {
-                    std::memcpy(dev._tx.chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], 64);
-                    dev._tx.idx += 64;
-                    dev._tx.len -= 64;
-                }
-                if (dev._tx.len == 0) {
-                    dev.pkt_free(dev._tx.pkt);
-                    dev._tx.pkt = nullptr;
-                    volatile auto tx_cb = dev._callbacks.tx_cb;
-                    if (tx_cb) {
-                        tx_cb();
-                    }
-                    dev._tx.total++;
-                }
-                dev._tx.start = false;
-            }
-        }
-        dev._tx.chunk.DNC = 1;
-        dev._tx.chunk.P   = OASPI::parity(dev._tx.chunk.header);
+        // compute number of chunks
+        auto cs = dev._tx.chunks[0].data.size();
+        size_t tx_chunks = std::min(dev._tx.free_chunks, (dev._tx.pkt == nullptr) ? 0 : ((dev._tx.len + cs - 1) / cs));
+        size_t rx_chunks = dev._rx.pend_chunks;
+        size_t num_chunks = std::clamp<size_t>(std::max(tx_chunks, rx_chunks), 1, MAX_CHUNKS);
 
-        // perform data transfer (one chunk only to minimize latency and memory overhead)
-        dev._oaspi.data_transfer(dev._tx.chunk, dev._rx.chunk);
-        
-        // process rx chunk
-        auto handle_error = [&dev]() {
-            // drop tx/rx packets on error
-            dev._task.error = true;
-            if (dev._tx.len) {
-                dev._tx.len = 0;
-                dev.pkt_free(dev._tx.pkt);
-                dev._tx.pkt = nullptr;
-                dev._tx.drops++;
-                volatile auto tx_cb = dev._callbacks.tx_cb;
-                if (tx_cb) {
-                    tx_cb();
-                }
-            }
-            dev._rx.len = 0;
-        };
-        auto handle_reset = [&dev]() {
-            dev._task.error = true;
-            dev._oaspi.reset();
-            dev._rx.chunk.TXC = 31;
-        };
-        if (OASPI::parity(dev._rx.chunk.footer)) {
-            handle_error(); // likely random bit error
-            continue;
-        } else if (dev._rx.chunk.SYNC == 0) {
-            handle_reset(); // likely reset
-            continue;
-        } else if (dev._rx.chunk.EXST) {
-            handle_reset(); // all status masked, shouldn't happen
-            continue;
-        } else if (dev._rx.chunk.HDRB) {
-            handle_error(); // likely random bit error, also set on reset
-            continue;
-        } else {
-            dev._task.error = false;
+        // setup tx chunks
+        for (size_t i = 0; i < num_chunks; i++) {
+            fill_tx_chunk(dev, dev._tx.chunks[i]);
         }
 
-        bool rx_copy = false;
-        if (dev._rx.chunk.SV && dev._rx.chunk.DV) {
-            rx_copy = true;
-            dev._rx.len = 0;
-        } else if (dev._rx.chunk.DV && dev._rx.len) {
-            rx_copy = true;
-        }
-        if (rx_copy) {
-            size_t len = dev._rx.chunk.EV ? dev._rx.chunk.EBO + 1 : 64;
-            if ((dev._rx.len + len) <= dev._rx.pkt->_buf.size()) {
-                std::memcpy(&dev._rx.pkt->_buf[dev._rx.len], dev._rx.chunk.data.data(), len);
-                dev._rx.len += len;
-            } else {
-                dev._rx.len = 0;
+        // perform data transfer
+        dev._oaspi.data_transfer(std::span(dev._tx.chunks).subspan(0, num_chunks), std::span(dev._rx.chunks).subspan(0, num_chunks));
+
+        // process rx chunks
+        for (size_t i = 0; i < num_chunks; i++) {
+            if (!process_rx_chunk(dev, dev._rx.chunks[i])) {
+                break;
             }
-        }
-        if (dev._rx.chunk.EV && dev._rx.len >= (Packet::HDR_LEN + 4)) {
-            dev._rx.pkt->_len = dev._rx.len - Packet::HDR_LEN - 4;
-            if (OASPI::fcs_check(*dev._rx.pkt)) {
-                Packet *rx_new = dev.pkt_alloc(false);
-                if (rx_new) {
-                    bool taken = false;
-                    xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
-                    auto &[cb, arg] = dev._callbacks.rx_cb;
-                    if (cb && cb(dev._rx.pkt, arg)) {
-                        taken = true;
-                    }
-                    xSemaphoreGive(dev._callbacks.lock);
-                    if (!taken) {
-                        dev.pkt_free(dev._rx.pkt);
-                    }
-                    dev._rx.pkt = rx_new;
-                } else {
-                    dev._rx.drops++;
-                }
-                dev._rx.total++;
-            }
-            dev._rx.len = 0;
         }
 
         // wait if both tx/rx want wait
         if ((uxQueueMessagesWaiting(dev._tx.reqs) == 0) && // no queued tx
-            (dev._tx.len == 0 || dev._rx.chunk.TXC == 0) && // no current tx or tx buffer full
-            (dev._rx.chunk.RCA == 0)) { // no rx
+            ((dev._tx.pkt != nullptr) || (dev._tx.free_chunks == 0)) && // no current tx or tx buffer full
+            (dev._rx.pend_chunks == 0)) { // no rx
             wait = true;
         }
     }
