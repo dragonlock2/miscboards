@@ -14,7 +14,7 @@ static struct {
 } data;
 
 /* private helpers */
-static void spi_dma_handler(void) {
+static void spi_dma_handler() {
     Chip_DMA_ClearActiveIntAChannel(LPC_DMA, DMAREQ_SPI0_RX);
     Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT); // end transfer
     BaseType_t woke = pdFALSE;
@@ -23,7 +23,7 @@ static void spi_dma_handler(void) {
 }
 
 /* public functions */
-SPI::SPI(void) {
+SPI::SPI() {
     configASSERT(data.dev == nullptr);
     data.dev = this;
 

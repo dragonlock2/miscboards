@@ -5,12 +5,12 @@
 
 namespace usr {
 
-typedef void (*int_callback)(void *arg);
+using int_callback = void (*)(void *arg);
 
-uint8_t id(void);
+uint8_t id();
 void phyint(int_callback cb, void *arg);
 void phyrst(bool assert);
 void rgb(bool r, bool g, bool b);
-bool btn(void);
+bool btn();
 
 };

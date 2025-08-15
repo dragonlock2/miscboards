@@ -86,21 +86,21 @@ static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
 }
 
 /* public functions */
-OASPI::OASPI(SPI &spi, rst_set_callback rst) : spi(spi), rst(rst) {
-    mdio_lock = xSemaphoreCreateMutexStatic(&mdio_lock_buffer);
-    configASSERT(mdio_lock);
+OASPI::OASPI(SPI &spi, rst_set_callback rst) : _spi(spi), _rst(rst) {
+    _mdio_lock = xSemaphoreCreateMutexStatic(&_mdio_lock_buffer);
+    configASSERT(_rst && _mdio_lock);
     // no calling reset() bc it calls virtual function!
 }
 
 OASPI::~OASPI() {
-    vSemaphoreDelete(mdio_lock);
+    vSemaphoreDelete(_mdio_lock);
 }
 
-void OASPI::reset(void) {
+void OASPI::reset() {
     // hardware reset
-    rst(true);
+    _rst(true);
     vTaskDelay(pdMS_TO_TICKS(1));
-    rst(false);
+    _rst(false);
     vTaskDelay(pdMS_TO_TICKS(100));
 
     // MACPHY-specific configuration
@@ -135,7 +135,7 @@ bool OASPI::fcs_check(Packet &pkt) {
 }
 
 void OASPI::data_transfer(tx_chunk &tx, rx_chunk &rx) {
-    spi.transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(tx_chunk));
+    _spi.transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(tx_chunk));
 }
 
 void OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
@@ -154,7 +154,7 @@ void OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
         tx[9]  = ~tx[5];
         tx[10] = ~tx[6];
         tx[11] = ~tx[7];
-        spi.transceive(tx.data(), rx.data(), tx.size());
+        _spi.transceive(tx.data(), rx.data(), tx.size());
         if (oaspi_control_check(rx)) {
             break;
         }
@@ -170,7 +170,7 @@ uint32_t OASPI::reg_read(MMS mms, uint16_t reg) {
         tx[2] = reg & 0xFF;
         tx[3] = 0;
         tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
-        spi.transceive(tx.data(), rx.data(), 16);
+        _spi.transceive(tx.data(), rx.data(), 16);
         if (oaspi_control_check(rx)) {
             return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);
         }
@@ -179,25 +179,25 @@ uint32_t OASPI::reg_read(MMS mms, uint16_t reg) {
 }
 
 void OASPI::mdio_write(uint8_t reg, uint16_t val) {
-    xSemaphoreTake(mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x14200000;
     cmd |= (reg & 0x1F) << 16;
     cmd |= val;
     oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(mdio_lock);
+    xSemaphoreGive(_mdio_lock);
 }
 
 uint16_t OASPI::mdio_read(uint8_t reg) {
-    xSemaphoreTake(mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x18200000;
     cmd |= (reg & 0x1F) << 16;
     uint16_t ret = oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(mdio_lock);
+    xSemaphoreGive(_mdio_lock);
     return ret;
 }
 
 void OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
-    xSemaphoreTake(mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x00200000;
     cmd |= (devad & 0x1F) << 16;
     cmd |= reg;
@@ -206,11 +206,11 @@ void OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
     cmd |= (devad & 0x1F) << 16;
     cmd |= val;
     oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(mdio_lock);
+    xSemaphoreGive(_mdio_lock);
 }
 
 uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
-    xSemaphoreTake(mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x00200000;
     cmd |= (devad & 0x1F) << 16;
     cmd |= reg;
@@ -218,11 +218,11 @@ uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
     cmd  = 0x0c200000;
     cmd |= (devad & 0x1F) << 16;
     uint16_t ret = oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(mdio_lock);
+    xSemaphoreGive(_mdio_lock);
     return ret;
 }
 
-void OASPI_ADIN1110::configure(void) {
+void OASPI_ADIN1110::configure() {
     // software reset
     reg_write(MMS::STANDARD, 0x03, 0x00000001);
     while (reg_read(MMS::STANDARD, 0x01) != 0x0283BC91) {
@@ -255,14 +255,14 @@ void OASPI_ADIN1110::configure(void) {
     }
 }
 
-void OASPI_NCN26010::configure(void) {
+void OASPI_NCN26010::configure() {
     // enable protected control transactions
     std::array<uint8_t, 12> tx {}, rx;
     tx[0] = 0x20;
     tx[2] = 0x04;
     tx[3] |= OASPI::parity(std::span<uint8_t, 4>(&tx[0], 4));
     tx[7] = 0x26; // PROTE=1, CPS=64bytes
-    spi.transceive(tx.data(), rx.data(), 12);
+    _spi.transceive(tx.data(), rx.data(), 12);
 
     // clear reset
     reg_write(MMS::STANDARD, 0x08, 0x00000040);

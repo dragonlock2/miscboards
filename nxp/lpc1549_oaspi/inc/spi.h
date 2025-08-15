@@ -5,7 +5,7 @@
 
 class SPI {
 public:
-    SPI(void);
+    SPI();
     ~SPI();
 
     SPI(SPI&) = delete;

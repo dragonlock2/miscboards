@@ -18,7 +18,7 @@ static struct {
     void *phyint_arg;
 } data;
 
-static void phyint_handler(void) {
+static void phyint_handler() {
     Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
     volatile auto cb  = data.phyint_cb;
     volatile auto arg = data.phyint_arg;
@@ -28,7 +28,7 @@ static void phyint_handler(void) {
 }
 
 __attribute__((constructor))
-static void init(void) {
+static void init() {
     Chip_GPIO_Init(LPC_GPIO);
 
     Chip_GPIO_SetPinDIRInput(LPC_GPIO, 0, PHYINT_PIN);
@@ -53,7 +53,7 @@ static void init(void) {
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 4, IOCON_MODE_PULLUP);
 }
 
-uint8_t id(void) {
+uint8_t id() {
     std::array<uint32_t, 4> uid;
     Chip_IAP_ReadUID(&uid[0]);
     uint8_t id = 0xFF;
@@ -78,7 +78,7 @@ void rgb(bool r, bool g, bool b) {
     Chip_GPIO_SetPinState(LPC_GPIO, 0, 26, !g);
 }
 
-bool btn(void) {
+bool btn() {
     return !Chip_GPIO_GetPinState(LPC_GPIO, 0, 4);
 }
 

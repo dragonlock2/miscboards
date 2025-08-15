@@ -13,7 +13,7 @@ static bool cb(eth::Packet *pkt, void*) {
     return false;
 }
 
-int main(void) {
+int main() {
     eth::Eth dev;
     dev.set_rx_cb(cb, nullptr);
 

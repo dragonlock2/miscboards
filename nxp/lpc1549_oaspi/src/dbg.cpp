@@ -23,7 +23,7 @@ static void abort_handler(int) {
 }
 
 __attribute__((constructor(101)))
-static void dbg_init(void) {
+static void dbg_init() {
     // setup 72MHz clock
     Chip_FMC_SetFLASHAccess(SYSCTL_FLASHTIM_72MHZ_CPU);
     Chip_SetupXtalClocking();
@@ -77,6 +77,6 @@ __attribute__((used)) int _fstat(int, struct stat*) { return -1; }
 __attribute__((used)) int _isatty(int) { return -1; }
 __attribute__((used)) int _lseek(int, int, int) { return -1; }
 __attribute__((used)) int _kill(pid_t, int) { return -1; }
-__attribute__((used)) pid_t _getpid(void) { return 0; }
+__attribute__((used)) pid_t _getpid() { return 0; }
 
 }

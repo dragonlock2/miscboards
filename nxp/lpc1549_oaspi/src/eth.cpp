@@ -19,7 +19,7 @@ struct Eth::Helper {
 static void int_handler(void *arg) {
     Eth &dev = *reinterpret_cast<Eth*>(arg);
     BaseType_t woke = pdFALSE;
-    vTaskNotifyGiveIndexedFromISR(dev.handle, configNOTIF_ETH, &woke);
+    vTaskNotifyGiveIndexedFromISR(dev._task.handle, configNOTIF_ETH, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
@@ -34,114 +34,114 @@ static void task(void *arg) {
         }
 
         // setup tx chunk
-        dev.tx.chunk.header.fill(0);
-        if (dev.rx.chunk.TXC != 0) {
-            if (dev.tx.len == 0) {
-                if (xQueueReceive(dev.tx.reqs, &dev.tx.pkt, 0) == pdTRUE) {
-                    dev.tx.start = true;
-                    dev.tx.idx   = 0;
-                    dev.tx.len   = Packet::HDR_LEN + dev.tx.pkt->_len + 4; // include CRC
+        dev._tx.chunk.header.fill(0);
+        if (dev._rx.chunk.TXC != 0) {
+            if (dev._tx.len == 0) {
+                if (xQueueReceive(dev._tx.reqs, &dev._tx.pkt, 0) == pdTRUE) {
+                    dev._tx.start = true;
+                    dev._tx.idx   = 0;
+                    dev._tx.len   = Packet::HDR_LEN + dev._tx.pkt->_len + 4; // include CRC
                 }
             }
-            if (dev.tx.len) {
-                dev.tx.chunk.DV  = 1;
-                dev.tx.chunk.SV  = dev.tx.start;
-                dev.tx.chunk.SWO = 0;
-                if (dev.tx.len <= 64) {
-                    dev.tx.chunk.EV  = 1;
-                    dev.tx.chunk.EBO = dev.tx.len - 1;
-                    std::memcpy(dev.tx.chunk.data.data(), &dev.tx.pkt->_buf[dev.tx.idx], dev.tx.len);
-                    dev.tx.len = 0;
+            if (dev._tx.len) {
+                dev._tx.chunk.DV  = 1;
+                dev._tx.chunk.SV  = dev._tx.start;
+                dev._tx.chunk.SWO = 0;
+                if (dev._tx.len <= 64) {
+                    dev._tx.chunk.EV  = 1;
+                    dev._tx.chunk.EBO = dev._tx.len - 1;
+                    std::memcpy(dev._tx.chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], dev._tx.len);
+                    dev._tx.len = 0;
                 } else {
-                    std::memcpy(dev.tx.chunk.data.data(), &dev.tx.pkt->_buf[dev.tx.idx], 64);
-                    dev.tx.idx += 64;
-                    dev.tx.len -= 64;
+                    std::memcpy(dev._tx.chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], 64);
+                    dev._tx.idx += 64;
+                    dev._tx.len -= 64;
                 }
-                if (dev.tx.len == 0) {
-                    dev.pkt_free(dev.tx.pkt);
-                    dev.tx.pkt = nullptr;
-                    volatile auto tx_cb = dev.callbacks.tx_cb;
+                if (dev._tx.len == 0) {
+                    dev.pkt_free(dev._tx.pkt);
+                    dev._tx.pkt = nullptr;
+                    volatile auto tx_cb = dev._callbacks.tx_cb;
                     if (tx_cb) {
                         tx_cb();
                     }
                 }
-                dev.tx.start = false;
+                dev._tx.start = false;
             }
         }
-        dev.tx.chunk.DNC = 1;
-        dev.tx.chunk.P   = OASPI::parity(dev.tx.chunk.header);
+        dev._tx.chunk.DNC = 1;
+        dev._tx.chunk.P   = OASPI::parity(dev._tx.chunk.header);
 
         // perform data transfer (one chunk only to minimize latency and memory overhead)
-        dev.oaspi.data_transfer(dev.tx.chunk, dev.rx.chunk);
-        if (dev.rx.chunk.HDRB || OASPI::parity(dev.rx.chunk.footer)) { // drop tx/rx packets on error
-            if (dev.tx.len) {
-                dev.tx.len = 0;
-                dev.pkt_free(dev.tx.pkt);
-                dev.tx.pkt = nullptr;
-                dev.tx.drops++;
-                volatile auto tx_cb = dev.callbacks.tx_cb;
+        dev._oaspi.data_transfer(dev._tx.chunk, dev._rx.chunk);
+        if (dev._rx.chunk.HDRB || OASPI::parity(dev._rx.chunk.footer)) { // drop tx/rx packets on error
+            if (dev._tx.len) {
+                dev._tx.len = 0;
+                dev.pkt_free(dev._tx.pkt);
+                dev._tx.pkt = nullptr;
+                dev._tx.drops++;
+                volatile auto tx_cb = dev._callbacks.tx_cb;
                 if (tx_cb) {
                     tx_cb();
                 }
             }
-            dev.rx.len = 0;
+            dev._rx.len = 0;
             continue;
         }
 
         // process rx chunk
-        if (dev.rx.chunk.SYNC == 0) {
-            dev.oaspi.reset();
-            dev.rx.chunk.TXC = 31;
+        if (dev._rx.chunk.SYNC == 0) {
+            dev._oaspi.reset();
+            dev._rx.chunk.TXC = 31;
             continue;
-        } else if (dev.rx.chunk.EXST) {
-            dev.oaspi.reset(); // all status masked, shouldn't happen
-            dev.rx.chunk.TXC = 31;
+        } else if (dev._rx.chunk.EXST) {
+            dev._oaspi.reset(); // all status masked, shouldn't happen
+            dev._rx.chunk.TXC = 31;
             continue;
         }
 
         bool rx_copy = false;
-        if (dev.rx.chunk.SV && dev.rx.chunk.DV) {
+        if (dev._rx.chunk.SV && dev._rx.chunk.DV) {
             rx_copy = true;
-            dev.rx.len = 0;
-        } else if (dev.rx.chunk.DV && dev.rx.len) {
+            dev._rx.len = 0;
+        } else if (dev._rx.chunk.DV && dev._rx.len) {
             rx_copy = true;
         }
         if (rx_copy) {
-            size_t len = dev.rx.chunk.EV ? dev.rx.chunk.EBO + 1 : 64;
-            if ((dev.rx.len + len) <= dev.rx.pkt->_buf.size()) {
-                std::memcpy(&dev.rx.pkt->_buf[dev.rx.len], dev.rx.chunk.data.data(), len);
-                dev.rx.len += len;
+            size_t len = dev._rx.chunk.EV ? dev._rx.chunk.EBO + 1 : 64;
+            if ((dev._rx.len + len) <= dev._rx.pkt->_buf.size()) {
+                std::memcpy(&dev._rx.pkt->_buf[dev._rx.len], dev._rx.chunk.data.data(), len);
+                dev._rx.len += len;
             } else {
-                dev.rx.len = 0;
+                dev._rx.len = 0;
             }
         }
-        if (dev.rx.chunk.EV && dev.rx.len >= (Packet::HDR_LEN + 4)) {
-            dev.rx.pkt->_len = dev.rx.len - Packet::HDR_LEN - 4;
-            if (OASPI::fcs_check(*dev.rx.pkt)) {
+        if (dev._rx.chunk.EV && dev._rx.len >= (Packet::HDR_LEN + 4)) {
+            dev._rx.pkt->_len = dev._rx.len - Packet::HDR_LEN - 4;
+            if (OASPI::fcs_check(*dev._rx.pkt)) {
                 Packet *rx_new = dev.pkt_alloc(false);
                 if (rx_new) {
                     bool taken = false;
-                    xSemaphoreTake(dev.callbacks.lock, portMAX_DELAY);
-                    auto &[cb, arg] = dev.callbacks.rx_cb;
-                    if (cb && cb(dev.rx.pkt, arg)) {
+                    xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
+                    auto &[cb, arg] = dev._callbacks.rx_cb;
+                    if (cb && cb(dev._rx.pkt, arg)) {
                         taken = true;
                     }
-                    xSemaphoreGive(dev.callbacks.lock);
+                    xSemaphoreGive(dev._callbacks.lock);
                     if (!taken) {
-                        dev.pkt_free(dev.rx.pkt);
+                        dev.pkt_free(dev._rx.pkt);
                     }
-                    dev.rx.pkt = rx_new;
+                    dev._rx.pkt = rx_new;
                 } else {
-                    dev.rx.drops++;
+                    dev._rx.drops++;
                 }
             }
-            dev.rx.len = 0;
+            dev._rx.len = 0;
         }
 
         // wait if both tx/rx want wait
-        if ((uxQueueMessagesWaiting(dev.tx.reqs) == 0) && // no queued tx
-            (dev.tx.len == 0 || dev.rx.chunk.TXC == 0) && // no current tx or tx buffer full
-            (dev.rx.chunk.RCA == 0)) { // no rx
+        if ((uxQueueMessagesWaiting(dev._tx.reqs) == 0) && // no queued tx
+            (dev._tx.len == 0 || dev._rx.chunk.TXC == 0) && // no current tx or tx buffer full
+            (dev._rx.chunk.RCA == 0)) { // no rx
             wait = true;
         }
     }
@@ -150,7 +150,7 @@ static void task(void *arg) {
 }; // Eth::Helper
 
 /* public functions */
-Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_cb), callbacks(), tx(), rx() {
+Eth::Eth(OASPI &oaspi, int_set_callback int_set) : _oaspi(oaspi), _int_set(int_set) {
     if (data.pool == nullptr) {
         data.pool = xQueueCreateStatic(data.pool_buf.size(), sizeof(Packet*),
             reinterpret_cast<uint8_t*>(data.pool_buf.data()), &data.pool_data);
@@ -161,23 +161,24 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_cb) : oaspi(oaspi), int_set_cb(int_c
         }
     }
 
-    callbacks.lock = xSemaphoreCreateMutexStatic(&callbacks.lock_buffer);
-    tx.reqs = xQueueCreateStatic(tx.reqs_buf.size(), sizeof(Packet*),
-        reinterpret_cast<uint8_t*>(tx.reqs_buf.data()), &tx.reqs_data);
-    rx.pkt = pkt_alloc();
-    configASSERT(callbacks.lock && tx.reqs && rx.pkt);
+    _callbacks.lock = xSemaphoreCreateMutexStatic(&_callbacks.lock_buffer);
+    _tx.reqs = xQueueCreateStatic(_tx.reqs_buf.size(), sizeof(Packet*),
+        reinterpret_cast<uint8_t*>(_tx.reqs_buf.data()), &_tx.reqs_data);
+    _rx.pkt = pkt_alloc();
+    configASSERT(_callbacks.lock && _tx.reqs && _rx.pkt);
 
-    oaspi.reset();
-    int_set_cb(Helper::int_handler, this);
-    handle = xTaskCreateStatic(Helper::task, "eth_task", handle_stack.size(), this, configMAX_PRIORITIES - 1, handle_stack.data(), &handle_buffer);
-    configASSERT(handle);
+    _oaspi.reset();
+    _int_set(Helper::int_handler, this);
+    _task.handle = xTaskCreateStatic(Helper::task, "eth_task",
+        _task.stack.size(), this, configMAX_PRIORITIES - 1, _task.stack.data(), &_task.buffer);
+    configASSERT(_task.handle);
 }
 
 Eth::~Eth() {
-    vTaskDelete(handle);
-    int_set_cb(nullptr, nullptr);
-    vQueueDelete(tx.reqs);
-    vSemaphoreDelete(callbacks.lock);
+    vTaskDelete(_task.handle);
+    _int_set(nullptr, nullptr);
+    vQueueDelete(_tx.reqs);
+    vSemaphoreDelete(_callbacks.lock);
 }
 
 Packet *Eth::pkt_alloc(bool wait) {
@@ -195,15 +196,15 @@ void Eth::pkt_free(Packet *pkt) {
 }
 
 void Eth::set_tx_cb(tx_callback cb) {
-    xSemaphoreTake(callbacks.lock, portMAX_DELAY);
-    callbacks.tx_cb = cb;
-    xSemaphoreGive(callbacks.lock);
+    xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
+    _callbacks.tx_cb = cb;
+    xSemaphoreGive(_callbacks.lock);
 }
 
 void Eth::set_rx_cb(rx_callback cb, void *arg) {
-    xSemaphoreTake(callbacks.lock, portMAX_DELAY);
-    callbacks.rx_cb = {cb, arg};
-    xSemaphoreGive(callbacks.lock);
+    xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
+    _callbacks.rx_cb = {cb, arg};
+    xSemaphoreGive(_callbacks.lock);
 }
 
 bool Eth::send(Packet *pkt, bool wait) {
@@ -214,8 +215,8 @@ bool Eth::send(Packet *pkt, bool wait) {
         pkt->_len = 60 - Packet::HDR_LEN;
     }
     OASPI::fcs_add(*pkt);
-    if (xQueueSend(tx.reqs, &pkt, wait ? portMAX_DELAY : 0) == pdTRUE) {
-        xTaskNotifyGiveIndexed(handle, configNOTIF_ETH);
+    if (xQueueSend(_tx.reqs, &pkt, wait ? portMAX_DELAY : 0) == pdTRUE) {
+        xTaskNotifyGiveIndexed(_task.handle, configNOTIF_ETH);
         return true;
     } else {
         pkt_free(pkt);
@@ -223,9 +224,9 @@ bool Eth::send(Packet *pkt, bool wait) {
     }
 }
 
-std::tuple<uint32_t, uint32_t> Eth::get_error(void) {
+std::tuple<uint32_t, uint32_t> Eth::get_error() {
     // not important, no locks
-    return {tx.drops, rx.drops};
+    return {_tx.drops, _rx.drops};
 }
 
 };

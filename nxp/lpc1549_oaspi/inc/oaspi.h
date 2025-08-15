@@ -70,7 +70,7 @@ public:
         };
     };
 
-    typedef void (*rst_set_callback)(bool assert);
+    using rst_set_callback = void (*)(bool assert);
 
     OASPI(SPI &spi, rst_set_callback rst);
     ~OASPI();
@@ -82,7 +82,7 @@ public:
     static void fcs_add(Packet &pkt);
     static bool fcs_check(Packet &pkt);
 
-    void reset(void);
+    void reset();
     void data_transfer(tx_chunk &tx, rx_chunk &rx);
 
     void reg_write(MMS mms, uint16_t reg, uint32_t val);
@@ -93,12 +93,12 @@ public:
     uint16_t mdio_c45_read(uint8_t devad, uint16_t reg);
 
 protected:
-    virtual void configure(void) = 0;
+    virtual void configure() = 0;
 
-    SPI &spi;
-    rst_set_callback rst;
-    StaticSemaphore_t mdio_lock_buffer;
-    SemaphoreHandle_t mdio_lock;
+    SPI &_spi;
+    rst_set_callback _rst;
+    StaticSemaphore_t _mdio_lock_buffer{};
+    SemaphoreHandle_t _mdio_lock{};
 };
 
 static_assert(sizeof(OASPI::tx_chunk) == 68);
@@ -108,7 +108,7 @@ static_assert(sizeof(OASPI::rx_chunk) == 68);
     class OASPI_##name : public OASPI { \
         using OASPI::OASPI; \
     protected: \
-        void configure(void) override; \
+        void configure() override; \
     }
 
 OASPI_PART(ADIN1110);

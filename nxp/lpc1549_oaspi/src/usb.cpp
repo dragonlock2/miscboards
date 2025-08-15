@@ -125,7 +125,7 @@ static struct {
 } data;
 
 /* private helpers */
-static void usb_handler(void) {
+static void usb_handler() {
     tud_int_handler(0);
 }
 
@@ -153,7 +153,7 @@ static void usb_eth_tx_renew(void*) {
     tud_network_recv_renew();
 }
 
-static void usb_eth_tx_cb(void) {
+static void usb_eth_tx_cb() {
     // ready to try receiving from host again
     usbd_defer_func(usb_eth_tx_renew, nullptr, false);
 }
@@ -171,7 +171,7 @@ static bool usb_eth_rx_cb(eth::Packet *pkt, void*) {
 }
 
 /* public functions */
-USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
+USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : _oaspi(oaspi), _eth(eth) {
     configASSERT(data.dev == nullptr);
     data.dev  = this;
     data.reqs = xQueueCreateStatic(data.reqs_buf.size(), sizeof(eth::Packet*),
@@ -187,19 +187,19 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &dev) : oaspi(oaspi), dev(dev) {
     tusb_init();
     configASSERT(xTaskCreateStatic(usb_task, "usb_task", data.task_stack.size(),
         nullptr, configMAX_PRIORITIES - 1, data.task_stack.data(), &data.task_buffer));
-    dev.set_tx_cb(usb_eth_tx_cb);
-    dev.set_rx_cb(usb_eth_rx_cb, nullptr);
+    eth.set_tx_cb(usb_eth_tx_cb);
+    eth.set_rx_cb(usb_eth_rx_cb, nullptr);
 }
 
 USB::~USB() {
     configASSERT(false); // not supporting for now
 }
 
-std::tuple<uint32_t, uint32_t> USB::get_error(void) {
+std::tuple<uint32_t, uint32_t> USB::get_error() {
     return {data.tx_drop, data.rx_drop};
 }
 
-uint8_t const *tud_descriptor_device_cb(void) {
+uint8_t const *tud_descriptor_device_cb() {
     return reinterpret_cast<uint8_t const*>(&DEVICE_DESCRIPTOR);
 }
 
@@ -240,7 +240,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     return str;
 }
 
-uint8_t const *tud_descriptor_bos_cb(void) {
+uint8_t const *tud_descriptor_bos_cb() {
     return BOS_DESCRIPTOR;
 }
 
@@ -258,7 +258,7 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     return false;
 }
 
-void tud_network_init_cb(void) {}
+void tud_network_init_cb() {}
 
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
     if (size < eth::Packet::HDR_LEN || size > (eth::Packet::HDR_LEN + eth::Packet::MTU)) {
@@ -267,18 +267,18 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
         return true;
     }
     // if can't send immediately, stall until next TX done which calls usb_eth_tx_cb()
-    eth::Packet *pkt = data.dev->dev.pkt_alloc(false);
+    eth::Packet *pkt = data.dev->_eth.pkt_alloc(false);
     if (pkt) {
         std::memcpy(pkt->raw().data(), src, size);
         pkt->set_len(size - eth::Packet::HDR_LEN);
-        return data.dev->dev.send(pkt, false);
+        return data.dev->_eth.send(pkt, false);
     }
     return false;
 }
 
 uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg) {
     std::memcpy(dst, ref, arg);
-    data.dev->dev.pkt_free(data.pkt);
+    data.dev->_eth.pkt_free(data.pkt);
     data.pkt = nullptr;
     return arg;
 }
@@ -312,7 +312,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
             uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-            data.dev->oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val);
+            data.dev->_oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val);
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             break;
         }
@@ -321,7 +321,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             if (bufsize < 4) { return; }
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
-            uint32_t val = data.dev->oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
+            uint32_t val = data.dev->_oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             resp[1] = (val >> 24) & 0xFF;
             resp[2] = (val >> 16) & 0xFF;
