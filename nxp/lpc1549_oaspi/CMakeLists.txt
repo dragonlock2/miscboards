@@ -5,11 +5,6 @@ include(../SDK/init.cmake)
 
 project(lpc1549_oaspi)
 
-add_compile_definitions(
-    # CONFIG_ADIN1110
-    CONFIG_NCN26010
-)
-
 include_directories(
     inc
 )
@@ -19,4 +14,8 @@ file(GLOB SRCS
 )
 add_executable(${PROJECT_NAME} ${SRCS})
 target_link_libraries(${PROJECT_NAME} bootstrap freertos tinyusb)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    # CONFIG_ADIN1110
+    CONFIG_NCN26010
+)
 sdk_finish()

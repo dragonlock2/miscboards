@@ -17,7 +17,7 @@ static void abort_handler(int) {
      */
     uint32_t lr;
     asm volatile ("ldr %0, [sp, #28]" : "=r" (lr)); // byte offset
-    printf("std::abort() called! task: \"%s\", caller: 0x%08lx\r\n",
+    std::printf("std::abort() called! task: \"%s\", caller: 0x%08lx\r\n",
         pcTaskGetName(nullptr), (lr & 0xFFFFFFFE) - 4);
     __disable_irq();
 }

@@ -45,7 +45,10 @@ public:
     void set_tx_cb(tx_callback cb);
     void set_rx_cb(rx_callback cb, void *arg);
     bool send(Packet *pkt, bool wait=true); // always takes ownership
-    std::tuple<uint32_t, uint32_t> get_error(); // tx drop, rx drop
+
+    std::tuple<uint32_t, uint32_t> get_drops(); // tx, rx
+    std::tuple<uint32_t, uint32_t> get_total(); // tx, rx
+    bool error();
 
 private:
     struct Helper;
@@ -56,6 +59,7 @@ private:
         StaticTask_t buffer;
         std::array<StackType_t, configMINIMAL_STACK_SIZE> stack;
         TaskHandle_t handle;
+        bool error;
     } _task{};
     struct {
         StaticSemaphore_t lock_buffer;
@@ -71,13 +75,13 @@ private:
         Packet *pkt;
         size_t idx, len;
         OASPI::tx_chunk chunk;
-        uint32_t drops;
+        uint32_t total, drops;
     } _tx{};
     struct {
         Packet *pkt;
         size_t len;
         OASPI::rx_chunk chunk;
-        uint32_t drops;
+        uint32_t total, drops;
     } _rx{};
 };
 

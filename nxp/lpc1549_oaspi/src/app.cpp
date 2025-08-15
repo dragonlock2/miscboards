@@ -16,16 +16,22 @@ void app_main(void*) {
 #endif
     eth::Eth eth(oaspi, usr::phyint);
     USB usb(oaspi, eth);
-    printf("booted! 0x%02x\r\n", usr::id());
+    std::printf("booted! 0x%02x\r\n", usr::id());
 
-    bool t = 0, r = 0, g = 0, b = 1;
+    uint32_t tx_prev = 0, rx_prev = 0;
+    bool tx_state = false, rx_state = false;
     while (true) {
+        auto [tx, rx] = eth.get_total();
+        tx_state = tx_state ? false : (tx != tx_prev);
+        rx_state = rx_state ? false : (rx != rx_prev);
+        tx_prev = tx;
+        rx_prev = rx;
+
+        bool r = eth.error();
+        bool g = rx_state;
+        bool b = tx_state;
         usr::rgb(r, g, b);
-        t = r; r = g; g = b; b = t;
-        auto [txu, rxu] = usb.get_error();
-        auto [txe, rxe] = eth.get_error();
-        printf("time: 0x%08lx tx_drop: %ld rx_drop: %ld\r\n", xTaskGetTickCount(), txu + txe, rxu + rxe);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(25));
     }
     vTaskDelete(nullptr);
 }

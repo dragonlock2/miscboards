@@ -119,7 +119,6 @@ static struct {
     StaticQueue_t reqs_data;
     QueueHandle_t reqs;
     eth::Packet *pkt;
-    uint32_t tx_drop, rx_drop;
     StaticTask_t task_buffer;
     std::array<StackType_t, configMINIMAL_STACK_SIZE> task_stack;
 } data;
@@ -165,7 +164,6 @@ static bool usb_eth_rx_cb(eth::Packet *pkt, void*) {
         return true;
     } else {
         // OS doesn't query in time
-        data.rx_drop++;
         return false;
     }
 }
@@ -193,10 +191,6 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : _oaspi(oaspi), _eth(eth) {
 
 USB::~USB() {
     configASSERT(false); // not supporting for now
-}
-
-std::tuple<uint32_t, uint32_t> USB::get_error() {
-    return {data.tx_drop, data.rx_drop};
 }
 
 uint8_t const *tud_descriptor_device_cb() {
@@ -263,7 +257,6 @@ void tud_network_init_cb() {}
 bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
     if (size < eth::Packet::HDR_LEN || size > (eth::Packet::HDR_LEN + eth::Packet::MTU)) {
         // silently drop incorrectly sized packets
-        data.tx_drop++;
         return true;
     }
     // if can't send immediately, stall until next TX done which calls usb_eth_tx_cb()
@@ -312,7 +305,9 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
             uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-            data.dev->_oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val);
+            while (!data.dev->_oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val)) {
+                vTaskDelay(pdMS_TO_TICKS(5));
+            }
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             break;
         }
@@ -321,7 +316,15 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             if (bufsize < 4) { return; }
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
-            uint32_t val = data.dev->_oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
+            uint32_t val;
+            while (true) {
+                auto tmp = data.dev->_oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
+                if (tmp.has_value()) {
+                    val = tmp.value();
+                    break;
+                }
+                vTaskDelay(pdMS_TO_TICKS(5));
+            }
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
             resp[1] = (val >> 24) & 0xFF;
             resp[2] = (val >> 16) & 0xFF;

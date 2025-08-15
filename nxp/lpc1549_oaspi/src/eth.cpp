@@ -27,9 +27,11 @@ static void task(void *arg) {
     configASSERT(arg != nullptr);
     Eth &dev = *reinterpret_cast<Eth*>(arg);
     bool wait = false;
+    dev._oaspi.reset();
     while (true) {
         if (wait) {
-            ulTaskNotifyTakeIndexed(configNOTIF_ETH, true, portMAX_DELAY);
+            // fixed wait time to quickly detect unintended resets
+            ulTaskNotifyTakeIndexed(configNOTIF_ETH, true, pdMS_TO_TICKS(100));
             wait = false;
         }
 
@@ -64,6 +66,7 @@ static void task(void *arg) {
                     if (tx_cb) {
                         tx_cb();
                     }
+                    dev._tx.total++;
                 }
                 dev._tx.start = false;
             }
@@ -73,7 +76,11 @@ static void task(void *arg) {
 
         // perform data transfer (one chunk only to minimize latency and memory overhead)
         dev._oaspi.data_transfer(dev._tx.chunk, dev._rx.chunk);
-        if (dev._rx.chunk.HDRB || OASPI::parity(dev._rx.chunk.footer)) { // drop tx/rx packets on error
+        
+        // process rx chunk
+        auto handle_error = [&dev]() {
+            // drop tx/rx packets on error
+            dev._task.error = true;
             if (dev._tx.len) {
                 dev._tx.len = 0;
                 dev.pkt_free(dev._tx.pkt);
@@ -85,18 +92,26 @@ static void task(void *arg) {
                 }
             }
             dev._rx.len = 0;
-            continue;
-        }
-
-        // process rx chunk
-        if (dev._rx.chunk.SYNC == 0) {
+        };
+        auto handle_reset = [&dev]() {
+            dev._task.error = true;
             dev._oaspi.reset();
             dev._rx.chunk.TXC = 31;
+        };
+        if (OASPI::parity(dev._rx.chunk.footer)) {
+            handle_error(); // likely random bit error
+            continue;
+        } else if (dev._rx.chunk.SYNC == 0) {
+            handle_reset(); // likely reset
             continue;
         } else if (dev._rx.chunk.EXST) {
-            dev._oaspi.reset(); // all status masked, shouldn't happen
-            dev._rx.chunk.TXC = 31;
+            handle_reset(); // all status masked, shouldn't happen
             continue;
+        } else if (dev._rx.chunk.HDRB) {
+            handle_error(); // likely random bit error, also set on reset
+            continue;
+        } else {
+            dev._task.error = false;
         }
 
         bool rx_copy = false;
@@ -134,6 +149,7 @@ static void task(void *arg) {
                 } else {
                     dev._rx.drops++;
                 }
+                dev._rx.total++;
             }
             dev._rx.len = 0;
         }
@@ -167,7 +183,6 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_set) : _oaspi(oaspi), _int_set(int_s
     _rx.pkt = pkt_alloc();
     configASSERT(_callbacks.lock && _tx.reqs && _rx.pkt);
 
-    _oaspi.reset();
     _int_set(Helper::int_handler, this);
     _task.handle = xTaskCreateStatic(Helper::task, "eth_task",
         _task.stack.size(), this, configMAX_PRIORITIES - 1, _task.stack.data(), &_task.buffer);
@@ -224,9 +239,18 @@ bool Eth::send(Packet *pkt, bool wait) {
     }
 }
 
-std::tuple<uint32_t, uint32_t> Eth::get_error() {
+std::tuple<uint32_t, uint32_t> Eth::get_drops() {
     // not important, no locks
     return {_tx.drops, _rx.drops};
+}
+
+std::tuple<uint32_t, uint32_t> Eth::get_total() {
+    // not important, no locks
+    return {_tx.total, _rx.total};
+}
+
+bool Eth::error() {
+    return _task.error;
 }
 
 };

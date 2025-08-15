@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <span>
 #include <FreeRTOS.h>
 #include <semphr.h>
@@ -82,18 +83,19 @@ public:
     static void fcs_add(Packet &pkt);
     static bool fcs_check(Packet &pkt);
 
-    void reset();
+    bool reset();
     void data_transfer(tx_chunk &tx, rx_chunk &rx);
 
-    void reg_write(MMS mms, uint16_t reg, uint32_t val);
-    uint32_t reg_read(MMS mms, uint16_t reg);
-    void mdio_write(uint8_t reg, uint16_t val);
-    uint16_t mdio_read(uint8_t reg);
-    void mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
-    uint16_t mdio_c45_read(uint8_t devad, uint16_t reg);
+    bool reg_write(MMS mms, uint16_t reg, uint32_t val);
+    std::optional<uint32_t> reg_read(MMS mms, uint16_t reg);
+
+    bool mdio_write(uint8_t reg, uint16_t val);
+    std::optional<uint16_t> mdio_read(uint8_t reg);
+    bool mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
+    std::optional<uint16_t> mdio_c45_read(uint8_t devad, uint16_t reg);
 
 protected:
-    virtual void configure() = 0;
+    virtual bool configure() = 0;
 
     SPI &_spi;
     rst_set_callback _rst;
@@ -108,7 +110,7 @@ static_assert(sizeof(OASPI::rx_chunk) == 68);
     class OASPI_##name : public OASPI { \
         using OASPI::OASPI; \
     protected: \
-        void configure() override; \
+        bool configure() override; \
     }
 
 OASPI_PART(ADIN1110);

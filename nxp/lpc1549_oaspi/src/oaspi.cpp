@@ -65,24 +65,37 @@ static bool oaspi_control_check(std::span<uint8_t, 16> rx) {
     if ((rx[4] & 0x40) || OASPI::parity(rx.subspan<4, 4>())) {
         return false; // HDRB or parity error
     }
-    if ((*reinterpret_cast<uint32_t*>(&rx[8]) ^ *reinterpret_cast<uint32_t*>(&rx[12])) != 0xFFFFFFFF) {
+    uint32_t a, b;
+    std::memcpy(&a, &rx[8],  sizeof(a));
+    std::memcpy(&b, &rx[12], sizeof(b));
+    if ((a ^ b) != 0xFFFFFFFF) {
         return false; // protection error
     }
     return true;
 }
 
-static uint16_t oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
-    uint32_t ret;
-    while (true) {
-        dev.reg_write(OASPI::MMS::STANDARD, 0x20, cmd);
-        while (((ret = dev.reg_read(OASPI::MMS::STANDARD, 0x20)) & 0x80000000) == 0) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-        if (!(ret & 0x40000000)) { // turnaround error
-            return ret & 0xFFFF;
-        }
-        vTaskDelay(pdMS_TO_TICKS(5));
+static std::optional<uint16_t> oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
+    if (!dev.reg_write(OASPI::MMS::STANDARD, 0x20, cmd)) {
+        return std::nullopt;
     }
+    std::optional<uint32_t> ret;
+    bool timeout = true;
+    for (int i = 0; i < 100; i++) {
+        ret = dev.reg_read(OASPI::MMS::STANDARD, 0x20);
+        if (!ret.has_value()) {
+            return std::nullopt;
+        } else if ((ret.value() & 0x80000000) != 0) {
+            timeout = false;
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+    if (timeout) {
+        return std::nullopt;
+    } else if ((ret.value() & 0x40000000) != 0) { // turnaround error
+        return std::nullopt;
+    }
+    return ret.value() & 0xFFFF;
 }
 
 /* public functions */
@@ -96,23 +109,29 @@ OASPI::~OASPI() {
     vSemaphoreDelete(_mdio_lock);
 }
 
-void OASPI::reset() {
+bool OASPI::reset() {
+    bool ret = true;
+
     // hardware reset
     _rst(true);
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(2));
     _rst(false);
     vTaskDelay(pdMS_TO_TICKS(100));
 
     // MACPHY-specific configuration
-    configure();
+    ret = ret && configure();
 
     // mark configured
-    uint32_t t0 = reg_read(MMS::STANDARD, 0x04);
-    reg_write(MMS::STANDARD, 0x04, t0 | 0x8000); // SYNC=1
+    auto t0 = reg_read(MMS::STANDARD, 0x04);
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::STANDARD, 0x04, t0.value_or(0) | 0x8000); // SYNC=1
+
+    return ret;
 }
 
 bool OASPI::parity(std::span<uint8_t, 4> hdr) {
-    uint32_t val = *reinterpret_cast<uint32_t*>(hdr.data()); // endian-independent
+    uint32_t val;
+    std::memcpy(&val, hdr.data(), sizeof(val)); // endian-independent
     val = val ^ (val >> 1);
     val = val ^ (val >> 2);
     val = val ^ (val >> 4);
@@ -138,124 +157,137 @@ void OASPI::data_transfer(tx_chunk &tx, rx_chunk &rx) {
     _spi.transceive(reinterpret_cast<uint8_t*>(&tx), reinterpret_cast<uint8_t*>(&rx), sizeof(tx_chunk));
 }
 
-void OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
-    while (true) {
-        std::array<uint8_t, 16> tx, rx;
-        tx[0]  = 0x20 | static_cast<uint8_t>(mms);
-        tx[1]  = (reg >> 8) & 0xFF;
-        tx[2]  = reg & 0xFF;
-        tx[3]  = 0x00;
-        tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
-        tx[4]  = (val >> 24) & 0xFF;
-        tx[5]  = (val >> 16) & 0xFF;
-        tx[6]  = (val >> 8)  & 0xFF;
-        tx[7]  = (val >> 0)  & 0xFF;
-        tx[8]  = ~tx[4];
-        tx[9]  = ~tx[5];
-        tx[10] = ~tx[6];
-        tx[11] = ~tx[7];
-        _spi.transceive(tx.data(), rx.data(), tx.size());
-        if (oaspi_control_check(rx)) {
-            break;
-        }
-        vTaskDelay(pdMS_TO_TICKS(5));
-    }
+bool OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
+    std::array<uint8_t, 16> tx, rx;
+    tx[0]  = 0x20 | static_cast<uint8_t>(mms);
+    tx[1]  = (reg >> 8) & 0xFF;
+    tx[2]  = reg & 0xFF;
+    tx[3]  = 0x00;
+    tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
+    tx[4]  = (val >> 24) & 0xFF;
+    tx[5]  = (val >> 16) & 0xFF;
+    tx[6]  = (val >> 8)  & 0xFF;
+    tx[7]  = (val >> 0)  & 0xFF;
+    tx[8]  = ~tx[4];
+    tx[9]  = ~tx[5];
+    tx[10] = ~tx[6];
+    tx[11] = ~tx[7];
+    _spi.transceive(tx.data(), rx.data(), tx.size());
+    return oaspi_control_check(rx);
 }
 
-uint32_t OASPI::reg_read(MMS mms, uint16_t reg) {
-    while (true) {
-        std::array<uint8_t, 16> tx, rx;
-        tx[0] = 0x00 | static_cast<uint8_t>(mms);
-        tx[1] = (reg >> 8) & 0xFF;
-        tx[2] = reg & 0xFF;
-        tx[3] = 0;
-        tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
-        _spi.transceive(tx.data(), rx.data(), 16);
-        if (oaspi_control_check(rx)) {
-            return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);
-        }
-        vTaskDelay(pdMS_TO_TICKS(5));
+std::optional<uint32_t> OASPI::reg_read(MMS mms, uint16_t reg) {
+    std::array<uint8_t, 16> tx, rx;
+    tx[0] = 0x00 | static_cast<uint8_t>(mms);
+    tx[1] = (reg >> 8) & 0xFF;
+    tx[2] = reg & 0xFF;
+    tx[3] = 0;
+    tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
+    _spi.transceive(tx.data(), rx.data(), 16);
+    if (oaspi_control_check(rx)) {
+        return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);
     }
+    return std::nullopt;
 }
 
-void OASPI::mdio_write(uint8_t reg, uint16_t val) {
+bool OASPI::mdio_write(uint8_t reg, uint16_t val) {
     xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x14200000;
     cmd |= (reg & 0x1F) << 16;
     cmd |= val;
-    oaspi_mdio_cmd(*this, cmd);
+    bool ret = oaspi_mdio_cmd(*this, cmd).has_value();
     xSemaphoreGive(_mdio_lock);
+    return ret;
 }
 
-uint16_t OASPI::mdio_read(uint8_t reg) {
+std::optional<uint16_t> OASPI::mdio_read(uint8_t reg) {
     xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x18200000;
     cmd |= (reg & 0x1F) << 16;
-    uint16_t ret = oaspi_mdio_cmd(*this, cmd);
+    auto ret = oaspi_mdio_cmd(*this, cmd);
     xSemaphoreGive(_mdio_lock);
     return ret;
 }
 
-void OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
+bool OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
+    bool ret = false;
     xSemaphoreTake(_mdio_lock, portMAX_DELAY);
     uint32_t cmd = 0x00200000;
     cmd |= (devad & 0x1F) << 16;
     cmd |= reg;
-    oaspi_mdio_cmd(*this, cmd);
-    cmd  = 0x04200000;
-    cmd |= (devad & 0x1F) << 16;
-    cmd |= val;
-    oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(_mdio_lock);
-}
-
-uint16_t OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
-    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
-    uint32_t cmd = 0x00200000;
-    cmd |= (devad & 0x1F) << 16;
-    cmd |= reg;
-    oaspi_mdio_cmd(*this, cmd);
-    cmd  = 0x0c200000;
-    cmd |= (devad & 0x1F) << 16;
-    uint16_t ret = oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(_mdio_lock);
-    return ret;
-}
-
-void OASPI_ADIN1110::configure() {
-    // software reset
-    reg_write(MMS::STANDARD, 0x03, 0x00000001);
-    while (reg_read(MMS::STANDARD, 0x01) != 0x0283BC91) {
-        vTaskDelay(pdMS_TO_TICKS(1));
+    if (oaspi_mdio_cmd(*this, cmd).has_value()) {
+        cmd  = 0x04200000;
+        cmd |= (devad & 0x1F) << 16;
+        cmd |= val;
+        ret = oaspi_mdio_cmd(*this, cmd).has_value();
     }
-    reg_write(MMS::STANDARD, 0x08, 0x00000040);
+    xSemaphoreGive(_mdio_lock);
+    return ret;
+}
+
+std::optional<uint16_t> OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
+    std::optional<uint16_t> ret;
+    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
+    uint32_t cmd = 0x00200000;
+    cmd |= (devad & 0x1F) << 16;
+    cmd |= reg;
+    if (oaspi_mdio_cmd(*this, cmd).has_value()) {
+        cmd  = 0x0c200000;
+        cmd |= (devad & 0x1F) << 16;
+        ret = oaspi_mdio_cmd(*this, cmd);
+    }
+    xSemaphoreGive(_mdio_lock);
+    return ret;
+}
+
+bool OASPI_ADIN1110::configure() {
+    bool ret = true;
+
+    // clear reset
+    ret = ret && reg_write(MMS::STANDARD, 0x08, 0x00000040);
 
     // MAC settings
-    uint32_t t0;
-    t0 = reg_read(MMS::STANDARD, 0x04);
-    reg_write(MMS::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+    auto t0 = reg_read(MMS::STANDARD, 0x04);
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::STANDARD, 0x04, t0.value_or(0) | 0x5000); // TXFCSVE=1, ZARFE=1
 
     // MAC filter
     t0 = reg_read(MMS::STANDARD, 0x06);
-    reg_write(MMS::STANDARD, 0x06, t0 | 0x0004); // P1_FWD_UNK2HOST=1
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::STANDARD, 0x06, t0.value_or(0) | 0x0004); // P1_FWD_UNK2HOST=1
 
     // PHY led setting
-    uint16_t t1;
-    t1 = mdio_c45_read(0x1E, 0x8C56);
-    mdio_c45_write(0x1E, 0x8C56, t1 & ~0x000E); // enable LED1
+    auto t1 = mdio_c45_read(0x1E, 0x8C56);
+    ret = ret && t1.has_value();
+    ret = ret && mdio_c45_write(0x1E, 0x8C56, t1.value_or(0) & ~0x000E); // enable LED1
+    
     t1 = mdio_c45_read(0x1E, 0x8C83);
-    mdio_c45_write(0x1E, 0x8C83, t1 | 0x0005); // active-high
+    ret = ret && t1.has_value();
+    ret = ret && mdio_c45_write(0x1E, 0x8C83, t1.value_or(0) | 0x0005); // active-high
+    
     t1 = mdio_c45_read(0x1E, 0x8C82);
-    mdio_c45_write(0x1E, 0x8C82, (t1 & ~(0x1F1F)) | 0x0304); // LED0: act, LED1: link
+    ret = ret && t1.has_value();
+    ret = ret && mdio_c45_write(0x1E, 0x8C82, (t1.value_or(0) & ~(0x1F1F)) | 0x0304); // LED0: act, LED1: link
 
     // PHY turn on
-    mdio_c45_write(0x1E, 0x8812, 0x0000);
-    while (mdio_c45_read(0x1E, 0x8818) & 0x0002) {
-        vTaskDelay(pdMS_TO_TICKS(1));
+    ret = ret && mdio_c45_write(0x1E, 0x8812, 0x0000);
+    bool timeout = true;
+    for (int i = 0; i < 100; i++) {
+        auto tmp = mdio_c45_read(0x1E, 0x8818);
+        if (!tmp.has_value()) {
+            return false;
+        } else if ((tmp.value() & 0x0002) == 0) {
+            timeout = false;
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
+    return !timeout;
 }
 
-void OASPI_NCN26010::configure() {
+bool OASPI_NCN26010::configure() {
+    bool ret = true;
+
     // enable protected control transactions
     std::array<uint8_t, 12> tx {}, rx;
     tx[0] = 0x20;
@@ -265,23 +297,30 @@ void OASPI_NCN26010::configure() {
     _spi.transceive(tx.data(), rx.data(), 12);
 
     // clear reset
-    reg_write(MMS::STANDARD, 0x08, 0x00000040);
+    ret = ret && reg_write(MMS::STANDARD, 0x08, 0x00000040);
 
     // MAC settings
-    uint32_t t0;
-    t0 = reg_read(MMS::STANDARD, 0x04);
-    reg_write(MMS::STANDARD, 0x04, t0 | 0x5000); // TXFCSVE=1, ZARFE=1
+    auto t0 = reg_read(MMS::STANDARD, 0x04);
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::STANDARD, 0x04, t0.value_or(0) | 0x5000); // TXFCSVE=1, ZARFE=1
+    
     t0 = reg_read(MMS::STANDARD, 0xFF00);
-    reg_write(MMS::STANDARD, 0xFF00, (t0 & ~0x0400) | 0x1000); // no isolate, enable tx/rx
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::STANDARD, 0xFF00, (t0.value_or(0) & ~0x0400) | 0x1000); // no isolate, enable tx/rx
+
     t0 = reg_read(MMS::MAC, 0x0000);
-    reg_write(MMS::MAC, 0x0000, (t0 & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::MAC, 0x0000, (t0.value_or(0) & ~0x0100) | 0x0003); // FCSA=0, TXEN=1, RXEN=1
 
     // MAC filter
     t0 = reg_read(MMS::MAC, 0x0000);
-    reg_write(MMS::MAC, 0x0000, t0 & ~0x00010000); // ADRF=0
+    ret = ret && t0.has_value();
+    ret = ret && reg_write(MMS::MAC, 0x0000, t0.value_or(0) & ~0x00010000); // ADRF=0
 
     // PHY led setting
-    reg_write(MMS::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
+    ret = ret && reg_write(MMS::VENDOR12, 0x0012, 0x0F0D); // DIO0: TX, DIO1: RX
+
+    return ret;
 }
 
 };
