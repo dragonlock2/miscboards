@@ -24,6 +24,7 @@ def set_plca(enable=True, leader=True, node_id=0, node_cnt=8):
 if __name__ == "__main__":
     dev = hid.device()
     dev.open_path(hid.enumerate(0xcafe, 0x0069)[0]["path"])
+    print(f"id={hex(reg_read(0, 0x0001))}")
 
     set_plca()
     # set_plca(leader=False, node_id=1)

@@ -215,7 +215,7 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_set) : _oaspi(oaspi), _int_set(int_s
 
     _int_set(Helper::int_handler, this);
     _task.handle = xTaskCreateStatic(Helper::task, "eth_task",
-        _task.stack.size(), this, configMAX_PRIORITIES - 1, _task.stack.data(), &_task.buffer);
+        _task.stack.size(), this, configMAX_PRIORITIES - 2, _task.stack.data(), &_task.buffer);
     configASSERT(_task.handle);
 }
 
