@@ -186,7 +186,7 @@ static void task(void *arg) {
 
         // wait if both tx/rx want wait
         if ((uxQueueMessagesWaiting(dev._tx.reqs) == 0) && // no queued tx
-            ((dev._tx.pkt != nullptr) || (dev._tx.free_chunks == 0)) && // no current tx or tx buffer full
+            ((dev._tx.pkt == nullptr) || (dev._tx.free_chunks == 0)) && // no current tx or tx buffer full
             (dev._rx.pend_chunks == 0)) { // no rx
             wait = true;
         }
