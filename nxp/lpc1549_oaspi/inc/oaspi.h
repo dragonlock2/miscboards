@@ -7,12 +7,22 @@
 #include <task.h>
 #include "spi.h"
 
+#ifndef CONFIG_ETH_MIN_LATENCY
+// if enabled, optimizes for minimum latency
+    // higher CPU cost due to extra task switching and interrupt overhead
+    // higher RAM cost due to contiguous transfer needed for transmit
+    // assumes uninterrupted >21MHz SPI transfers (ex. DMA)
+#define CONFIG_ETH_MIN_LATENCY 0
+#endif
+
 namespace eth {
 
 struct Packet; // forward declaration
 
 class OASPI {
 public:
+    static constexpr size_t CHUNK_SIZE = 64;
+
     enum class MMS {
         STANDARD   = 0,
         MAC        = 1,
@@ -44,11 +54,11 @@ public:
             };
             std::array<uint8_t, 4> header;
         };
-        std::array<uint8_t, 64> data;
+        std::array<uint8_t, CHUNK_SIZE> data;
     };
 
     struct __attribute__((packed)) rx_chunk {
-        std::array<uint8_t, 64> data;
+        std::array<uint8_t, CHUNK_SIZE> data;
         union {
             struct {
                 uint8_t RCA  : 5;
@@ -103,8 +113,8 @@ protected:
     SemaphoreHandle_t _mdio_lock{};
 };
 
-static_assert(sizeof(OASPI::tx_chunk) == 68);
-static_assert(sizeof(OASPI::rx_chunk) == 68);
+static_assert(sizeof(OASPI::tx_chunk) == (OASPI::CHUNK_SIZE + 4));
+static_assert(sizeof(OASPI::rx_chunk) == (OASPI::CHUNK_SIZE + 4));
 
 #define OASPI_PART(name) \
     class OASPI_##name : public OASPI { \
