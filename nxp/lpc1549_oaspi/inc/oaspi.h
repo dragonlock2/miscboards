@@ -7,14 +7,6 @@
 #include <task.h>
 #include "spi.h"
 
-#ifndef CONFIG_ETH_MIN_LATENCY
-// if enabled, optimizes for minimum latency
-    // higher CPU cost due to extra task switching and interrupt overhead
-    // higher RAM cost due to contiguous transfer needed for transmit
-    // assumes uninterrupted >21MHz SPI transfers (ex. DMA)
-#define CONFIG_ETH_MIN_LATENCY 0
-#endif
-
 namespace eth {
 
 struct Packet; // forward declaration

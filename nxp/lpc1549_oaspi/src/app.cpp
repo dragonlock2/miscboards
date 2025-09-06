@@ -14,7 +14,7 @@ void app_main(void*) {
 #else
     #error "define MACPHY pls"
 #endif
-    eth::Eth eth(oaspi, usr::phyint);
+    static eth::Eth eth(oaspi, usr::phyint); // too big for stack
     USB usb(oaspi, eth);
     std::printf("booted! 0x%02x\r\n", usr::id());
 

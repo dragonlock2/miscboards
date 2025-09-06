@@ -6,6 +6,18 @@
 #include <tuple>
 #include "oaspi.h"
 
+/*
+ * if CONFIG_ETH_MIN_LATENCY defined, optimizes for best case minimum latency
+ *
+ * assumes uninterrupted >21MHz SPI transfers (ex. DMA)
+ * higher CPU cost due to extra task switching and interrupt overhead
+ * higher RAM cost due to contiguous transfer needed for transmit
+ *
+ * best case latency is ~0
+ * worst case TX latency is ~1 chunk over SPI, when TX request during RX
+ * worst case RX latency is ~24 chunks over SPI, when RX during max length TX
+ */
+
 namespace eth {
 
 struct Packet {
@@ -30,9 +42,13 @@ public:
     using tx_callback      = void (*)();
     using rx_callback      = bool (*)(Packet *pkt, void *arg); // return true if taking ownership
 
-    static constexpr size_t POOL_SIZE  = 10; // global pool
+    static constexpr size_t POOL_SIZE  = 8; // global pool
     static constexpr size_t REQ_SIZE   = POOL_SIZE / 2; // can adjust if >1 instance
+#ifdef CONFIG_ETH_MIN_LATENCY
+    static constexpr size_t MAX_CHUNKS = (Packet::MAX_LEN + OASPI::CHUNK_SIZE - 1) / OASPI::CHUNK_SIZE;
+#else
     static constexpr size_t MAX_CHUNKS = 8;
+#endif
 
     Eth(OASPI &oaspi, int_set_callback int_set);
     ~Eth();

@@ -7,7 +7,7 @@
 #define configTOTAL_HEAP_SIZE (128) // enough for printf
 
 #define configAPP_MAIN_PRIORITY   (tskIDLE_PRIORITY + 1)
-#define configAPP_MAIN_STACK_SIZE (5 * configMINIMAL_STACK_SIZE) // enough for all objects
+#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE)
 
 // tasks can't block on bits, must use entire index
 #define configNOTIF_SPI (0)

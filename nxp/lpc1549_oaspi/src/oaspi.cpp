@@ -248,7 +248,11 @@ bool OASPI_ADIN1110::configure() {
     ret = ret && reg_write(MMS::STANDARD, 0x0008, 0x00000040); // RESETC=1
 
     // MAC settings
+#ifdef CONFIG_ETH_MIN_LATENCY
+    ret = ret && reg_write(MMS::STANDARD, 0x0004, 0x00004326); // TXFCSVE=1, TXCTE=1, RXCTE=1, PROTE=1, rest default
+#else
     ret = ret && reg_write(MMS::STANDARD, 0x0004, 0x00004026); // TXFCSVE=1, PROTE=1, rest default
+#endif
     ret = ret && reg_write(MMS::STANDARD, 0x000C, 0x00001FB1); // RXDOEM=0, TXBUEM=0, TXBOEM=0, rest default
     ret = ret && reg_write(MMS::STANDARD, 0x0006, 0x00000804); // CRC_APPEND=0, P1_FWD_UNK2HOST=1, rest default
 
@@ -278,7 +282,11 @@ bool OASPI_NCN26010::configure() {
     ret = ret && reg_write(MMS::STANDARD, 0x0008, 0x00000040); // RESETC=1
 
     // MAC settings
+#ifdef CONFIG_ETH_MIN_LATENCY
+    ret = ret && reg_write(MMS::STANDARD, 0x0004, 0x00004326); // TXFCSVE=1, TXCTE=1, RXCTE=1, PROTE=1, rest default
+#else
     ret = ret && reg_write(MMS::STANDARD, 0x0004, 0x00004026); // TXFCSVE=1, PROTE=1, rest default
+#endif
     ret = ret && reg_write(MMS::STANDARD, 0x000C, 0x00001FB1); // RXDOEM=0, TXBUEM=0, TXBOEM=0, rest default
     ret = ret && reg_write(MMS::STANDARD, 0xFF00, 0x00001000); // enable tx/rx, no isolate, rest default
     ret = ret && reg_write(MMS::MAC,      0x0000, 0x00000003); // ADRF=0, FCSA=0, TXEN=1, RXEN=1, rest default

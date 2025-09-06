@@ -17,5 +17,6 @@ target_link_libraries(${PROJECT_NAME} bootstrap freertos tinyusb)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     # CONFIG_ADIN1110
     CONFIG_NCN26010
+    CONFIG_ETH_MIN_LATENCY
 )
 sdk_finish()

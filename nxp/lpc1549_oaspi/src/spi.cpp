@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <FreeRTOS.h>
 #include <semphr.h>
@@ -87,27 +88,36 @@ SPI::~SPI() {
 }
 
 void SPI::transceive(uint8_t *tx, uint8_t *rx, size_t len) {
+    configASSERT((len % 2) == 0);
+    configASSERT(len <= 2048);
+
+    for (size_t i = 0; i < len; i += 2) { // little-endian :(
+        std::swap(tx[i], tx[i + 1]); // optimizes to __REV16
+    }
     xSemaphoreTake(data.lock, portMAX_DELAY);
     data.waiter = xTaskGetCurrentTaskHandle();
     DMA_CHDESC_T tx_desc = {
-        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_WIDTH_8 |
-                   DMA_XFERCFG_SRCINC_1 | DMA_XFERCFG_DSTINC_0 | DMA_XFERCFG_XFERCOUNT(len),
-        .source  = DMA_ADDR(tx + len - 1),
+        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_WIDTH_16 |
+                   DMA_XFERCFG_SRCINC_1 | DMA_XFERCFG_DSTINC_0 | DMA_XFERCFG_XFERCOUNT(len / 2),
+        .source  = DMA_ADDR(tx + len - 2),
         .dest    = DMA_ADDR(&LPC_SPI0->TXDAT),
         .next    = DMA_ADDR(0),
     };
     DMA_CHDESC_T rx_desc = {
-        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_SETINTA | DMA_XFERCFG_WIDTH_8 |
-                   DMA_XFERCFG_SRCINC_0 | DMA_XFERCFG_DSTINC_1 | DMA_XFERCFG_XFERCOUNT(len),
+        .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_SETINTA | DMA_XFERCFG_WIDTH_16 |
+                   DMA_XFERCFG_SRCINC_0 | DMA_XFERCFG_DSTINC_1 | DMA_XFERCFG_XFERCOUNT(len / 2),
         .source  = DMA_ADDR(&LPC_SPI0->RXDAT),
-        .dest    = DMA_ADDR(rx + len - 1),
+        .dest    = DMA_ADDR(rx + len - 2),
         .next    = DMA_ADDR(0),
     };
-    Chip_SPI_SetControlInfo(LPC_SPI0, 8, SPI_TXCTL_ASSERT_SSEL0 | SPI_TXCTL_EOF);
+    Chip_SPI_SetControlInfo(LPC_SPI0, 16, SPI_TXCTL_ASSERT_SSEL0 | SPI_TXCTL_EOF);
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_TX, &tx_desc);
     Chip_DMA_SetupTranChannel(LPC_DMA, DMAREQ_SPI0_RX, &rx_desc);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
     ulTaskNotifyTakeIndexed(configNOTIF_SPI, true, portMAX_DELAY);
     xSemaphoreGive(data.lock);
+    for (size_t i = 0; i < len; i += 2) {
+        std::swap(rx[i], rx[i + 1]);
+    }
 }
