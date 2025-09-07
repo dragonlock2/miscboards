@@ -24,62 +24,34 @@ static void int_handler(void *arg) {
     portYIELD_FROM_ISR(woke);
 }
 
-static void add_tx_buffer(Eth &dev, OASPI::tx_chunk &chunk) {
+static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk, bool add) {
     // >21MHz SPI cancels out worst case overhead of 65-byte packets, no need for SWO complexity.
-    chunk.DV  = 1;
-    chunk.SV  = dev._tx.start;
-    chunk.SWO = 0;
-    if (dev._tx.len <= chunk.data.size()) {
-        chunk.EV  = 1;
-        chunk.EBO = dev._tx.len - 1;
-        std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], dev._tx.len);
-        dev._tx.len = 0;
-    } else {
-        std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], chunk.data.size());
-        dev._tx.idx += chunk.data.size();
-        dev._tx.len -= chunk.data.size();
-    }
-    if (dev._tx.len == 0) {
-        dev.pkt_free(dev._tx.pkt);
-        dev._tx.pkt = nullptr;
-        volatile auto tx_cb = dev._callbacks.tx_cb;
-        if (tx_cb) {
-            tx_cb();
-        }
-        dev._tx.total++;
-    }
-    dev._tx.start = false;
-    dev._tx.free_chunks--;
-}
-
-static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk) {
-    // pull next packet
-    if (dev._tx.pkt == nullptr) {
-        if (xQueueReceive(dev._tx.reqs, &dev._tx.pkt, 0) == pdTRUE) {
-            dev._tx.start = true;
-            dev._tx.idx   = 0;
-            dev._tx.len   = Packet::HDR_LEN + dev._tx.pkt->_len + 4; // include CRC
-        }
-    }
-
-    // setup chunk
     chunk.header.fill(0);
-    if (dev._tx.pkt != nullptr) {
-#ifdef CONFIG_ETH_MIN_LATENCY
-        if (dev._tx.start) {
-            size_t prefer = (dev._tx.len + chunk.data.size() - 1) / chunk.data.size();
-            if (dev._tx.free_chunks >= prefer) {
-                add_tx_buffer(dev, chunk);
-            }
+    if (add && (dev._tx.pkt != nullptr) && (dev._tx.free_chunks != 0)) {
+        chunk.DV  = 1;
+        chunk.SV  = dev._tx.start;
+        chunk.SWO = 0;
+        if (dev._tx.len <= chunk.data.size()) {
+            chunk.EV  = 1;
+            chunk.EBO = dev._tx.len - 1;
+            std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], dev._tx.len);
+            dev._tx.len = 0;
         } else {
-            // configASSERT(dev._tx.free_chunks >= prefer);
-            add_tx_buffer(dev, chunk);
+            std::memcpy(chunk.data.data(), &dev._tx.pkt->_buf[dev._tx.idx], chunk.data.size());
+            dev._tx.idx += chunk.data.size();
+            dev._tx.len -= chunk.data.size();
         }
-#else
-        if (dev._tx.free_chunks != 0) {
-            add_tx_buffer(dev, chunk);
+        if (dev._tx.len == 0) {
+            dev.pkt_free(dev._tx.pkt);
+            dev._tx.pkt = nullptr;
+            volatile auto tx_cb = dev._callbacks.tx_cb;
+            if (tx_cb) {
+                tx_cb();
+            }
+            dev._tx.total++;
         }
-#endif
+        dev._tx.start = false;
+        dev._tx.free_chunks--;
     }
     chunk.DNC = 1;
     chunk.P   = OASPI::parity(chunk.header);
@@ -219,13 +191,24 @@ static void task(void *arg) {
             wait = false;
         }
 
+        // pull next packet
+        if (dev._tx.pkt == nullptr) {
+            if (xQueueReceive(dev._tx.reqs, &dev._tx.pkt, 0) == pdTRUE) {
+                dev._tx.start = true;
+                dev._tx.idx   = 0;
+                dev._tx.len   = Packet::HDR_LEN + dev._tx.pkt->_len + 4; // include CRC
+            }
+        }
+
         // compute number of chunks
         auto chunk_size = dev._tx.chunks[0].data.size();
         size_t tx_prefer = (dev._tx.pkt == nullptr) ? 0 : ((dev._tx.len + chunk_size - 1) / chunk_size);
 #ifdef CONFIG_ETH_MIN_LATENCY
-        size_t tx_chunks = (dev._tx.free_chunks >= tx_prefer) ? tx_prefer : 0; // only TX if enough chunks for entire packet
+        bool tx_add = dev._tx.free_chunks >= tx_prefer;
+        size_t tx_chunks = tx_add ? tx_prefer : 0; // only TX if enough chunks for entire packet
         size_t rx_chunks = 1; // to minimize TX latency can only read one chunk at a time
 #else
+        bool tx_add = true;
         size_t tx_chunks = std::min(dev._tx.free_chunks, tx_prefer);
         size_t rx_chunks = dev._rx.pend_chunks;
 #endif
@@ -233,7 +216,7 @@ static void task(void *arg) {
 
         // setup tx chunks
         for (size_t i = 0; i < num_chunks; i++) {
-            fill_tx_chunk(dev, dev._tx.chunks[i]);
+            fill_tx_chunk(dev, dev._tx.chunks[i], tx_add);
         }
 
         // perform data transfer
