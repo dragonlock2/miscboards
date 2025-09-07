@@ -16,6 +16,16 @@
  * best case latency is ~0
  * worst case TX latency is ~1 chunk over SPI, when TX request during RX
  * worst case RX latency is ~24 chunks over SPI, when RX during max length TX
+ *
+ * measurements for 1 packet round-trip improvement
+ * - 64-byte: 520us => 503us
+ * - 65-byte: 540us => 519us
+ * - 1518-byte: 7216us => 5711us
+ *
+ * measurements for 2 packet round-trip improvement
+ * - 64-byte: 656us => 636us
+ * - 65-byte: 677us => 653us
+ * - 1518-byte: 8742us => 7317us
  */
 
 namespace eth {
