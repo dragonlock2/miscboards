@@ -7,22 +7,33 @@
 #include "oaspi.h"
 
 /*
- * if CONFIG_ETH_MIN_LATENCY defined, optimizes for best case minimum latency
+ * If CONFIG_ETH_MIN_LATENCY is defined, driver optimizes for best case minimum latency.
+ * - assumes uninterrupted >21MHz SPI transfers (ex. DMA)
+ * - higher CPU cost due to extra task switching and interrupt overhead
+ * - higher RAM cost due to contiguous transfer needed for transmit
  *
- * assumes uninterrupted >21MHz SPI transfers (ex. DMA)
- * higher CPU cost due to extra task switching and interrupt overhead
- * higher RAM cost due to contiguous transfer needed for transmit
+ * Without CONFIG_ETH_MIN_LATENCY defined, can expect the following rough latency numbers.
+ * - best case latency is number of chunks needed for packet
+ * - worst case latency is MAX_CHUNKS plus chunks for packet (TX during RX and vice versa)
  *
- * best case latency is ~0
- * worst case TX latency is ~1 chunk over SPI, when TX request during RX
- * worst case RX latency is ~24 chunks over SPI, when RX during max length TX
+ * With CONFIG_ETH_MIN_LATENCY defined, can expect the following rough latency numbers.
+ * - best case latency is ~0
+ * - worst case TX latency is ~1 chunk over SPI (when TX request during RX)
+ * - worst case RX latency is ~24 chunks over SPI (when RX during max length TX)
  *
- * measurements for 1 packet round-trip improvement
+ * There are many possible ways to determine how many chunks to process at a time which all
+ * impact CPU/RAM cost and latency in various load scenarios. The best choice for you depends.
+ * CONFIG_ETH_MIN_LATENCY sacrifices worst case RX latency for better best and likely average
+ * case latency at higher CPU/RAM cost. Without CONFIG_ETH_MIN_LATENCY, we scale between lower
+ * CPU cost and higher RAM cost based on MAX_CHUNKS. If you truly want zero latency, just use
+ * a PHY and an internal MAC peripheral.
+ *
+ * Measurements for 1 packet round-trip improvement.
  * - 64-byte: 520us => 503us
  * - 65-byte: 540us => 519us
  * - 1518-byte: 7216us => 5711us
  *
- * measurements for 2 packet round-trip improvement
+ * Measurements for 2 packet round-trip improvement.
  * - 64-byte: 656us => 636us
  * - 65-byte: 677us => 653us
  * - 1518-byte: 8742us => 7317us

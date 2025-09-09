@@ -91,6 +91,8 @@ void SPI::transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     configASSERT((len % 2) == 0);
     configASSERT(len <= 2048);
 
+    // TODO use chained DMA to remove byte swap need
+
     for (size_t i = 0; i < len; i += 2) { // little-endian :(
         std::swap(tx[i], tx[i + 1]); // optimizes to __REV16
     }
