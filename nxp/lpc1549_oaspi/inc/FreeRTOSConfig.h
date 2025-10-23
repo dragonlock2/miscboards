@@ -9,6 +9,9 @@
 #define configAPP_MAIN_PRIORITY   (tskIDLE_PRIORITY + 1)
 #define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE)
 
+#define configETH_PRIORITY   (configMAX_PRIORITIES - 2)
+#define configETH_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)
+
 // tasks can't block on bits, must use entire index
 #define configNOTIF_SPI (0)
 #define configNOTIF_ETH (1)

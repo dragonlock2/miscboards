@@ -24,6 +24,12 @@ public:
         VENDOR12   = 12,
     };
 
+    enum class TTSC {
+        A = 1, // values match TSC for TX chunk
+        B = 2,
+        C = 3,
+    };
+
     struct __attribute__((packed)) tx_chunk {
         union {
             // using uint8_t is messier but should be endian agnostic
@@ -96,6 +102,11 @@ public:
     bool mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val);
     std::optional<uint16_t> mdio_c45_read(uint8_t devad, uint16_t reg);
 
+    // timestamp helpers
+    bool ts_enable(bool enable, bool time64); // MUST call until successful
+    bool ts_time64();
+    std::optional<std::tuple<uint32_t, uint32_t>> ts_read(TTSC reg);
+
 protected:
     virtual bool configure() = 0;
 
@@ -103,6 +114,7 @@ protected:
     rst_set_callback _rst;
     StaticSemaphore_t _mdio_lock_buffer{};
     SemaphoreHandle_t _mdio_lock{};
+    bool _ts_time64;
 };
 
 static_assert(sizeof(OASPI::tx_chunk) == (OASPI::CHUNK_SIZE + 4));

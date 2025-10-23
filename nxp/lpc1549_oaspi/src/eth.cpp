@@ -31,6 +31,9 @@ static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk, bool add) {
         chunk.DV  = 1;
         chunk.SV  = dev._tx.start;
         chunk.SWO = 0;
+        if (dev._tx.start) {
+            chunk.TSC = dev._tx.pkt->timestamp_id.value_or(0);
+        }
         if (dev._tx.len <= chunk.data.size()) {
             chunk.EV  = 1;
             chunk.EBO = dev._tx.len - 1;
@@ -61,8 +64,6 @@ static void add_rx_buffer(Eth &dev, std::span<uint8_t> buffer, bool start, bool 
     // set state
     if (start) {
         dev._rx.len = 0;
-    } else if (dev._rx.len == 0) {
-        return; // unexpected non-start chunk
     }
 
     // copy buffer
@@ -72,6 +73,30 @@ static void add_rx_buffer(Eth &dev, std::span<uint8_t> buffer, bool start, bool 
     } else {
         dev._rx.len = 0; // too long, drop
         return;
+    }
+
+    // check timestamp if needed
+    bool time64 = dev._oaspi.ts_time64();
+    if (dev._rx.ts_expect && (dev._rx.len >= (time64 ? 8 : 4))) {
+        std::span<uint8_t, 4> hi(&dev._rx.pkt->_buf[0], 4);
+        std::span<uint8_t, 4> lo(&dev._rx.pkt->_buf[4], 4);
+        if (time64) {
+            if ((OASPI::parity(hi) ^ OASPI::parity(lo)) != dev._rx.ts_parity) {
+                uint32_t secs  = (hi[0] << 24) | (hi[1] << 16) | (hi[2] << 8) | hi[3];
+                uint32_t nsecs = (lo[0] << 24) | (lo[1] << 16) | (lo[2] << 8) | lo[3];
+                dev._rx.pkt->timestamp = { secs, nsecs & 0x3FFFFFFF };
+            }
+            dev._rx.len -= 8;
+            std::memmove(&dev._rx.pkt->_buf[0], &dev._rx.pkt->_buf[8], dev._rx.len);
+        } else {
+            if (OASPI::parity(hi) == dev._rx.ts_parity) {
+                uint32_t raw = (hi[0] << 24) | (hi[1] << 16) | (hi[2] << 8) | hi[3];
+                dev._rx.pkt->timestamp = { (raw >> 30) & 0x03, raw & 0x3FFFFFFF };
+            }
+            dev._rx.len -= 4;
+            std::memmove(&dev._rx.pkt->_buf[0], &dev._rx.pkt->_buf[4], dev._rx.len);
+        }
+        dev._rx.ts_expect = false;
     }
 
     // callback if needed
@@ -147,9 +172,15 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
     size_t end_idx = chunk.EBO + 1;
     std::span<uint8_t> chunk_data(chunk.data);
     if (chunk.DV && (start_idx < chunk.data.size()) && (end_idx <= chunk.data.size())) {
+        auto ts_reset = [&dev, &chunk]() {
+            dev._rx.pkt->timestamp = std::nullopt;
+            dev._rx.ts_expect = chunk.RTSA;
+            dev._rx.ts_parity = chunk.RTSP;
+        };
         if (!start && !end) {
             add_rx_buffer(dev, chunk_data, false, false);
         } else if (start && !end) {
+            ts_reset();
             add_rx_buffer(dev, chunk_data.subspan(start_idx), true, false);
         } else if (!start && end) {
             if (chunk.FD) {
@@ -162,6 +193,7 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
                 if (chunk.FD) {
                     dev._rx.len = 0;
                 } else {
+                    ts_reset();
                     add_rx_buffer(dev, chunk_data.subspan(start_idx, end_idx - start_idx), true, true);
                 }
             } else { // start_idx >= end_idx
@@ -170,6 +202,7 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
                 } else {
                     add_rx_buffer(dev, chunk_data.subspan(0, end_idx), false, true);
                 }
+                ts_reset();
                 add_rx_buffer(dev, chunk_data.subspan(start_idx), true, false);
             }
         }
@@ -259,7 +292,7 @@ Eth::Eth(OASPI &oaspi, int_set_callback int_set) : _oaspi(oaspi), _int_set(int_s
     configASSERT(_callbacks.lock && _tx.reqs && _rx.pkt);
 
     _task.handle = xTaskCreateStatic(Helper::task, "eth_task",
-        _task.stack.size(), this, configMAX_PRIORITIES - 2, _task.stack.data(), &_task.buffer);
+        _task.stack.size(), this, configETH_PRIORITY, _task.stack.data(), &_task.buffer);
     configASSERT(_task.handle);
 
     _int_set(Helper::int_handler, this);
@@ -276,6 +309,8 @@ Packet *Eth::pkt_alloc(bool wait) {
     Packet *pkt = nullptr;
     xQueueReceive(data.pool, &pkt, wait ? portMAX_DELAY : 0);
     if (pkt) {
+        pkt->timestamp_id = std::nullopt;
+        pkt->timestamp = std::nullopt;
         pkt->_len = 0;
     }
     return pkt;

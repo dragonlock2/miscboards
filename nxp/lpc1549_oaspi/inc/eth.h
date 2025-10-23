@@ -49,6 +49,9 @@ struct Packet {
     std::span<uint8_t> raw() { return std::span<uint8_t>(_buf.data(), HDR_LEN + _len + 4); }
     void set_len(size_t len) { _len = len; }
 
+    std::optional<uint32_t> timestamp_id; // for TX, specifies timestamp capture desired
+    std::optional<std::tuple<uint32_t, uint32_t>> timestamp; // for RX, specifies timestamp as (seconds, nanoseconds)
+
 private:
     friend class Eth;
 
@@ -88,6 +91,8 @@ public:
     std::tuple<uint32_t, uint32_t> get_total(); // tx, rx
     bool error();
 
+    std::optional<std::tuple<uint32_t, uint32_t>> timestamp_read(uint32_t id);
+
 private:
     struct Helper;
 
@@ -95,7 +100,7 @@ private:
     int_set_callback _int_set;
     struct {
         StaticTask_t buffer;
-        std::array<StackType_t, configMINIMAL_STACK_SIZE> stack;
+        std::array<StackType_t, configETH_STACK_SIZE> stack;
         TaskHandle_t handle;
         bool error;
     } _task{};
@@ -118,6 +123,7 @@ private:
     } _tx{};
     struct {
         Packet *pkt;
+        bool ts_expect, ts_parity;
         size_t len;
         std::array<OASPI::rx_chunk, MAX_CHUNKS> chunks;
         size_t pend_chunks;

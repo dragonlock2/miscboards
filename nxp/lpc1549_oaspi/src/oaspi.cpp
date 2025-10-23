@@ -241,6 +241,30 @@ std::optional<uint16_t> OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
     return ret;
 }
 
+bool OASPI::ts_enable(bool enable, bool time64) {
+    // config is lost on reset so use custom configure() if need robustness (also set _ts_time64)
+    auto config0 = reg_read(MMS::STANDARD, 0x0004);
+    if (config0.has_value()) {
+        bool ret = reg_write(MMS::STANDARD, 0x0004, (config0.value() & ~0xC0) | (enable << 7) | (time64 << 6));
+        _ts_time64 = time64; // if packet arrives in between, may be lost
+        return ret;
+    }
+    return false;
+}
+
+bool OASPI::ts_time64() {
+    return _ts_time64;
+}
+
+std::optional<std::tuple<uint32_t, uint32_t>> OASPI::ts_read(TTSC reg) {
+    // TODO if any spi errors => return std::nullopt
+    // TODO check STATUS0 for reg valid, else return nullopt
+    // TODO if valid, read out values based on ts_time64()
+    // TODO if valid, clear STATUS0 bit
+    (void) reg;
+    return std::nullopt;
+}
+
 bool OASPI_ADIN1110::configure() {
     bool ret = true;
 
@@ -264,6 +288,7 @@ bool OASPI_ADIN1110::configure() {
     // PHY turn on
     ret = ret && mdio_c45_write(0x1E, 0x8812, 0x0000); // CRSM_SFT_PD=0
 
+    // NOTE to enable timestamps need to set FTSE, FTSS, and TS_EN (TS_CFG is MMS=1)
     return ret;
 }
 
