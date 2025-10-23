@@ -7,7 +7,7 @@
 #define configTOTAL_HEAP_SIZE (128) // enough for printf
 
 #define configAPP_MAIN_PRIORITY   (tskIDLE_PRIORITY + 1)
-#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE)
+#define configAPP_MAIN_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)
 
 #define configETH_PRIORITY   (configMAX_PRIORITIES - 2)
 #define configETH_STACK_SIZE (configMINIMAL_STACK_SIZE * 2)

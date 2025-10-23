@@ -364,4 +364,8 @@ bool Eth::error() {
     return _task.error;
 }
 
+std::optional<std::tuple<uint32_t, uint32_t>> Eth::timestamp_read(uint32_t id) {
+    return _oaspi.ts_read(static_cast<OASPI::TTSC>(id));
+}
+
 };
