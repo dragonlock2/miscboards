@@ -9,6 +9,7 @@
 
 namespace eth {
 
+struct Time; // forward declaration
 struct Packet; // forward declaration
 
 class OASPI {
@@ -79,9 +80,9 @@ public:
         };
     };
 
-    using rst_set_callback = void (*)(bool assert);
+    using rst_set_callback_t = void (*)(bool assert);
 
-    OASPI(SPI &spi, rst_set_callback rst);
+    OASPI(SPI &spi, rst_set_callback_t rst);
     ~OASPI();
 
     OASPI(OASPI&) = delete;
@@ -105,13 +106,13 @@ public:
     // timestamp helpers
     bool ts_enable(bool enable, bool time64); // MUST call until successful
     bool ts_time64();
-    std::optional<std::tuple<uint32_t, uint32_t>> ts_read(TTSC reg);
+    std::optional<Time> ts_read(TTSC reg);
 
 protected:
     virtual bool configure() = 0;
 
     SPI &_spi;
-    rst_set_callback _rst;
+    rst_set_callback_t _rst;
     StaticSemaphore_t _mdio_lock_buffer{};
     SemaphoreHandle_t _mdio_lock{};
     bool _ts_time64;

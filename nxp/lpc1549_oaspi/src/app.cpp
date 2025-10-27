@@ -21,7 +21,7 @@ void app_main(void*) {
     uint32_t tx_prev = 0, rx_prev = 0;
     bool tx_state = false, rx_state = false;
     while (true) {
-        auto [tx, rx] = eth.get_total();
+        auto [tx, rx] = eth.get_packets();
         tx_state = tx_state ? false : (tx != tx_prev);
         rx_state = rx_state ? false : (rx != rx_prev);
         tx_prev = tx;

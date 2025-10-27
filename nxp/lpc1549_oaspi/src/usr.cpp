@@ -14,7 +14,7 @@ static constexpr uint8_t PHYRST_PIN = 11;
 namespace usr {
 
 static struct {
-    int_callback phyint_cb;
+    int_callback_t phyint_cb;
     void *phyint_arg;
 } data;
 
@@ -63,7 +63,7 @@ uint8_t id() {
     return id;
 }
 
-void phyint(int_callback cb, void *arg) {
+void phyint(int_callback_t cb, void *arg) {
     data.phyint_cb  = cb;
     data.phyint_arg = arg;
 }

@@ -45,13 +45,17 @@ static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk, bool add) {
             dev._tx.len -= chunk.data.size();
         }
         if (dev._tx.len == 0) {
+            dev._tx.packets.fetch_add(1);
+            dev._tx.bytes.fetch_add(Packet::HDR_LEN + dev._tx.pkt->_len);
             dev.pkt_free(dev._tx.pkt);
             dev._tx.pkt = nullptr;
-            volatile auto tx_cb = dev._callbacks.tx_cb;
-            if (tx_cb) {
-                tx_cb();
+            xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
+            for (auto &[cb, arg]: dev._callbacks.tx_cb) {
+                if (cb != nullptr) {
+                    cb(arg);
+                }
             }
-            dev._tx.total++;
+            xSemaphoreGive(dev._callbacks.lock);
         }
         dev._tx.start = false;
         dev._tx.free_chunks--;
@@ -106,20 +110,21 @@ static void add_rx_buffer(Eth &dev, std::span<uint8_t> buffer, bool start, bool 
             if (OASPI::fcs_check(*dev._rx.pkt)) {
                 Packet *rx_new = dev.pkt_alloc(false);
                 if (rx_new) {
+                    dev._rx.packets.fetch_add(1);
+                    dev._rx.bytes.fetch_add(Packet::HDR_LEN + dev._rx.pkt->_len);
                     bool taken = false;
                     xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
-                    auto &[cb, arg] = dev._callbacks.rx_cb;
-                    if (cb && cb(dev._rx.pkt, arg)) {
-                        taken = true;
+                    for (auto &[cb, arg]: dev._callbacks.rx_cb) {
+                        if ((cb != nullptr) && cb(dev._rx.pkt, arg)) {
+                            taken = true; // ownership taken, not available to others
+                            break;
+                        }
                     }
                     xSemaphoreGive(dev._callbacks.lock);
                     if (!taken) {
                         dev.pkt_free(dev._rx.pkt);
                     }
                     dev._rx.pkt = rx_new;
-                    dev._rx.total++;
-                } else {
-                    dev._rx.drops++;
                 }
             }
         }
@@ -135,11 +140,13 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
         if (dev._tx.pkt != nullptr) {
             dev.pkt_free(dev._tx.pkt);
             dev._tx.pkt = nullptr;
-            volatile auto tx_cb = dev._callbacks.tx_cb;
-            if (tx_cb) {
-                tx_cb();
+            xSemaphoreTake(dev._callbacks.lock, portMAX_DELAY);
+            for (auto &[cb, arg]: dev._callbacks.tx_cb) {
+                if (cb != nullptr) {
+                    cb(arg);
+                }
             }
-            dev._tx.drops++;
+            xSemaphoreGive(dev._callbacks.lock);
         }
         dev._rx.len = 0;
     };
@@ -274,7 +281,7 @@ static void task(void *arg) {
 }; // Eth::Helper
 
 /* public functions */
-Eth::Eth(OASPI &oaspi, int_set_callback int_set) : _oaspi(oaspi), _int_set(int_set) {
+Eth::Eth(OASPI &oaspi, int_set_callback_t int_set) : _oaspi(oaspi), _int_set(int_set) {
     if (data.pool == nullptr) {
         data.pool = xQueueCreateStatic(data.pool_buf.size(), sizeof(Packet*),
             reinterpret_cast<uint8_t*>(data.pool_buf.data()), &data.pool_data);
@@ -321,15 +328,49 @@ void Eth::pkt_free(Packet *pkt) {
     configASSERT(xQueueSend(data.pool, &pkt, 0) == pdTRUE); // should be immediate
 }
 
-void Eth::set_tx_cb(tx_callback cb) {
+size_t Eth::add_tx_cb(tx_callback_t cb, void *arg) {
     xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
-    _callbacks.tx_cb = cb;
+    bool found = false;
+    size_t id;
+    for (id = 0; id < _callbacks.tx_cb.size(); id++) {
+        if (_callbacks.tx_cb[id] == std::make_tuple(nullptr, nullptr)) {
+            _callbacks.tx_cb[id] = { cb, arg };
+            found = true;
+            break;
+        }
+    }
+    xSemaphoreGive(_callbacks.lock);
+    configASSERT(found);
+    return id;
+}
+
+size_t Eth::add_rx_cb(rx_callback_t cb, void *arg) {
+    xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
+    bool found = false;
+    size_t id;
+    for (id = 0; id < _callbacks.rx_cb.size(); id++) {
+        if (_callbacks.rx_cb[id] == std::make_tuple(nullptr, nullptr)) {
+            _callbacks.rx_cb[id] = { cb, arg };
+            found = true;
+            break;
+        }
+    }
+    xSemaphoreGive(_callbacks.lock);
+    configASSERT(found);
+    return id;
+}
+
+void Eth::remove_tx_cb(size_t id) {
+    configASSERT(id < _callbacks.tx_cb.size());
+    xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
+    _callbacks.tx_cb[id] = { nullptr, nullptr };
     xSemaphoreGive(_callbacks.lock);
 }
 
-void Eth::set_rx_cb(rx_callback cb, void *arg) {
+void Eth::remove_rx_cb(size_t id) {
+    configASSERT(id < _callbacks.rx_cb.size());
     xSemaphoreTake(_callbacks.lock, portMAX_DELAY);
-    _callbacks.rx_cb = {cb, arg};
+    _callbacks.rx_cb[id] = { nullptr, nullptr };
     xSemaphoreGive(_callbacks.lock);
 }
 
@@ -350,21 +391,19 @@ bool Eth::send(Packet *pkt, bool wait) {
     }
 }
 
-std::tuple<uint32_t, uint32_t> Eth::get_drops() {
-    // not important, no locks
-    return {_tx.drops, _rx.drops};
+std::tuple<uint32_t, uint32_t> Eth::get_packets() {
+    return { _tx.packets.exchange(0), _rx.packets.exchange(0) };
 }
 
-std::tuple<uint32_t, uint32_t> Eth::get_total() {
-    // not important, no locks
-    return {_tx.total, _rx.total};
+std::tuple<uint32_t, uint32_t> Eth::get_bytes() {
+    return { _tx.bytes.exchange(0), _rx.bytes.exchange(0) };
 }
 
 bool Eth::error() {
     return _task.error;
 }
 
-std::optional<std::tuple<uint32_t, uint32_t>> Eth::timestamp_read(uint32_t id) {
+std::optional<Time> Eth::timestamp_read(uint32_t id) {
     return _oaspi.ts_read(static_cast<OASPI::TTSC>(id));
 }
 

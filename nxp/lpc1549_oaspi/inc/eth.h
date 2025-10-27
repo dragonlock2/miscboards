@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <span>
 #include <tuple>
@@ -41,6 +42,12 @@
 
 namespace eth {
 
+struct Time {
+    Time() : sec(0), nsec(0) {}
+    Time(uint32_t s, uint32_t ns) : sec(s), nsec(ns) {}
+    uint32_t sec, nsec;
+};
+
 struct Packet {
     static constexpr size_t HDR_LEN = 6 + 6 + 2;
     static constexpr size_t MTU     = 1500;
@@ -50,7 +57,7 @@ struct Packet {
     void set_len(size_t len) { _len = len; }
 
     std::optional<uint32_t> timestamp_id; // for TX, specifies timestamp capture desired
-    std::optional<std::tuple<uint32_t, uint32_t>> timestamp; // for RX, specifies timestamp as (seconds, nanoseconds)
+    std::optional<Time> timestamp; // for RX, specifies timestamp as (seconds, nanoseconds)
 
 private:
     friend class Eth;
@@ -61,10 +68,10 @@ private:
 
 class Eth {
 public:
-    using int_callback     = void (*)(void *arg);
-    using int_set_callback = void (*)(int_callback cb, void *arg);
-    using tx_callback      = void (*)();
-    using rx_callback      = bool (*)(Packet *pkt, void *arg); // return true if taking ownership
+    using int_callback_t     = void (*)(void *arg);
+    using int_set_callback_t = void (*)(int_callback_t cb, void *arg);
+    using tx_callback_t      = void (*)(void *arg);
+    using rx_callback_t      = bool (*)(Packet *pkt, void *arg); // return true if taking ownership
 
     static constexpr size_t POOL_SIZE  = 8; // global pool
     static constexpr size_t REQ_SIZE   = POOL_SIZE / 2; // can adjust if >1 instance
@@ -74,7 +81,7 @@ public:
     static constexpr size_t MAX_CHUNKS = 8;
 #endif
 
-    Eth(OASPI &oaspi, int_set_callback int_set);
+    Eth(OASPI &oaspi, int_set_callback_t int_set);
     ~Eth();
 
     Eth(Eth&) = delete;
@@ -83,21 +90,23 @@ public:
     Packet *pkt_alloc(bool wait=true);
     void pkt_free(Packet *pkt);
 
-    void set_tx_cb(tx_callback cb);
-    void set_rx_cb(rx_callback cb, void *arg);
+    size_t add_tx_cb(tx_callback_t cb, void *arg);
+    size_t add_rx_cb(rx_callback_t cb, void *arg);
+    void remove_tx_cb(size_t id);
+    void remove_rx_cb(size_t id);
     bool send(Packet *pkt, bool wait=true); // always takes ownership
 
-    std::tuple<uint32_t, uint32_t> get_drops(); // tx, rx
-    std::tuple<uint32_t, uint32_t> get_total(); // tx, rx
+    std::tuple<uint32_t, uint32_t> get_packets(); // tx, rx
+    std::tuple<uint32_t, uint32_t> get_bytes(); // tx, rx
     bool error();
 
-    std::optional<std::tuple<uint32_t, uint32_t>> timestamp_read(uint32_t id);
+    std::optional<Time> timestamp_read(uint32_t id);
 
 private:
     struct Helper;
 
     OASPI &_oaspi;
-    int_set_callback _int_set;
+    int_set_callback_t _int_set;
     struct {
         StaticTask_t buffer;
         std::array<StackType_t, configETH_STACK_SIZE> stack;
@@ -107,8 +116,8 @@ private:
     struct {
         StaticSemaphore_t lock_buffer;
         SemaphoreHandle_t lock;
-        tx_callback tx_cb;
-        std::tuple<rx_callback, void*> rx_cb;
+        std::array<std::tuple<tx_callback_t, void*>, 4> tx_cb;
+        std::array<std::tuple<rx_callback_t, void*>, 4> rx_cb;
     } _callbacks{};
     struct {
         std::array<Packet*, REQ_SIZE> reqs_buf;
@@ -119,7 +128,7 @@ private:
         size_t idx, len;
         std::array<OASPI::tx_chunk, MAX_CHUNKS> chunks;
         size_t free_chunks;
-        uint32_t total, drops;
+        std::atomic<uint32_t> packets, bytes;
     } _tx{};
     struct {
         Packet *pkt;
@@ -127,7 +136,7 @@ private:
         size_t len;
         std::array<OASPI::rx_chunk, MAX_CHUNKS> chunks;
         size_t pend_chunks;
-        uint32_t total, drops;
+        std::atomic<uint32_t> packets, bytes;
     } _rx{};
 };
 

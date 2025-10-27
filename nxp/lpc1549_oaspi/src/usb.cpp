@@ -152,8 +152,9 @@ static void usb_eth_tx_renew(void*) {
     tud_network_recv_renew();
 }
 
-static void usb_eth_tx_cb() {
+static void usb_eth_tx_cb(void *arg) {
     // ready to try receiving from host again
+    (void) arg;
     usbd_defer_func(usb_eth_tx_renew, nullptr, false);
 }
 
@@ -185,8 +186,8 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : _oaspi(oaspi), _eth(eth) {
     tusb_init();
     configASSERT(xTaskCreateStatic(usb_task, "usb_task", data.task_stack.size(),
         nullptr, configMAX_PRIORITIES - 1, data.task_stack.data(), &data.task_buffer));
-    eth.set_tx_cb(usb_eth_tx_cb);
-    eth.set_rx_cb(usb_eth_rx_cb, nullptr);
+    eth.add_tx_cb(usb_eth_tx_cb, nullptr);
+    eth.add_rx_cb(usb_eth_rx_cb, nullptr);
 }
 
 USB::~USB() {

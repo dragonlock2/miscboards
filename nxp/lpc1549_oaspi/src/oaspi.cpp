@@ -99,7 +99,7 @@ static std::optional<uint16_t> oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
 }
 
 /* public functions */
-OASPI::OASPI(SPI &spi, rst_set_callback rst) : _spi(spi), _rst(rst) {
+OASPI::OASPI(SPI &spi, rst_set_callback_t rst) : _spi(spi), _rst(rst) {
     _mdio_lock = xSemaphoreCreateMutexStatic(&_mdio_lock_buffer);
     configASSERT(_rst && _mdio_lock);
     // no calling reset() bc it calls virtual function!
@@ -256,7 +256,7 @@ bool OASPI::ts_time64() {
     return _ts_time64;
 }
 
-std::optional<std::tuple<uint32_t, uint32_t>> OASPI::ts_read(TTSC reg) {
+std::optional<Time> OASPI::ts_read(TTSC reg) {
     // check status
     auto regi = static_cast<uint32_t>(reg) - 1;
     auto status0 = reg_read(MMS::STANDARD, 0x0008);
@@ -291,7 +291,7 @@ std::optional<std::tuple<uint32_t, uint32_t>> OASPI::ts_read(TTSC reg) {
     if (!reg_write(MMS::STANDARD, 0x0008, mask)) {
         return std::nullopt; // capture completely lost if fails, app should add timeout
     }
-    return std::make_tuple(secs, nsecs);
+    return Time(secs, nsecs);
 }
 
 bool OASPI_ADIN1110::configure() {
