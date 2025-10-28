@@ -18,14 +18,11 @@ void app_main(void*) {
     USB usb(oaspi, eth);
     std::printf("booted! 0x%02x\r\n", usr::id());
 
-    uint32_t tx_prev = 0, rx_prev = 0;
     bool tx_state = false, rx_state = false;
     while (true) {
         auto [tx, rx] = eth.get_packets();
-        tx_state = tx_state ? false : (tx != tx_prev);
-        rx_state = rx_state ? false : (rx != rx_prev);
-        tx_prev = tx;
-        rx_prev = rx;
+        tx_state = tx_state ? false : (tx > 0);
+        rx_state = rx_state ? false : (rx > 0);
 
         bool r = eth.error();
         bool g = rx_state;
