@@ -31,7 +31,7 @@ public:
         C = 3,
     };
 
-    struct __attribute__((packed)) tx_chunk {
+    struct __attribute__((packed)) tx_chunk_t {
         union {
             // using uint8_t is messier but should be endian agnostic
             // MSVC, GCC, and Clang order bitfields from low to high
@@ -56,7 +56,7 @@ public:
         std::array<uint8_t, CHUNK_SIZE> data;
     };
 
-    struct __attribute__((packed)) rx_chunk {
+    struct __attribute__((packed)) rx_chunk_t {
         std::array<uint8_t, CHUNK_SIZE> data;
         union {
             struct {
@@ -93,7 +93,7 @@ public:
     static bool fcs_check(Packet &pkt);
 
     bool reset();
-    void data_transfer(std::span<tx_chunk> tx, std::span<rx_chunk> rx);
+    void data_transfer(std::span<tx_chunk_t> tx, std::span<rx_chunk_t> rx);
 
     bool reg_write(MMS mms, uint16_t reg, uint32_t val);
     std::optional<uint32_t> reg_read(MMS mms, uint16_t reg);
@@ -118,8 +118,8 @@ protected:
     bool _ts_time64;
 };
 
-static_assert(sizeof(OASPI::tx_chunk) == (OASPI::CHUNK_SIZE + 4));
-static_assert(sizeof(OASPI::rx_chunk) == (OASPI::CHUNK_SIZE + 4));
+static_assert(sizeof(OASPI::tx_chunk_t) == (OASPI::CHUNK_SIZE + 4));
+static_assert(sizeof(OASPI::rx_chunk_t) == (OASPI::CHUNK_SIZE + 4));
 
 #define OASPI_PART(name) \
     class OASPI_##name : public OASPI { \

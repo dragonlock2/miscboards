@@ -126,7 +126,7 @@ private:
         Packet *pkt;
         bool start;
         size_t idx, len;
-        std::array<OASPI::tx_chunk, MAX_CHUNKS> chunks;
+        std::array<OASPI::tx_chunk_t, MAX_CHUNKS> chunks;
         size_t free_chunks;
         std::atomic<uint32_t> packets, bytes;
     } _tx{};
@@ -134,7 +134,7 @@ private:
         Packet *pkt;
         bool ts_expect, ts_parity;
         size_t len;
-        std::array<OASPI::rx_chunk, MAX_CHUNKS> chunks;
+        std::array<OASPI::rx_chunk_t, MAX_CHUNKS> chunks;
         size_t pend_chunks;
         std::atomic<uint32_t> packets, bytes;
     } _rx{};

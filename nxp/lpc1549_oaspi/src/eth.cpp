@@ -24,7 +24,7 @@ static void int_handler(void *arg) {
     portYIELD_FROM_ISR(woke);
 }
 
-static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk &chunk, bool add) {
+static void fill_tx_chunk(Eth &dev, OASPI::tx_chunk_t &chunk, bool add) {
     // >21MHz SPI cancels out worst case overhead of 65-byte packets, no need for SWO complexity.
     chunk.header.fill(0);
     if (add && (dev._tx.pkt != nullptr) && (dev._tx.free_chunks != 0)) {
@@ -132,7 +132,7 @@ static void add_rx_buffer(Eth &dev, std::span<uint8_t> buffer, bool start, bool 
     }
 }
 
-static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk &chunk) {
+static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk_t &chunk) {
     // validate chunk
     auto handle_error = [&dev]() {
         // drop tx/rx packets on error

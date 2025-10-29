@@ -153,9 +153,9 @@ bool OASPI::fcs_check(Packet &pkt) {
     return oaspi_fcs(pkt, true) == 0x2144DF1C;
 }
 
-void OASPI::data_transfer(std::span<tx_chunk> tx, std::span<rx_chunk> rx) {
+void OASPI::data_transfer(std::span<tx_chunk_t> tx, std::span<rx_chunk_t> rx) {
     configASSERT(tx.size() == rx.size());
-    _spi.transceive(reinterpret_cast<uint8_t*>(tx.data()), reinterpret_cast<uint8_t*>(rx.data()), sizeof(tx_chunk) * tx.size());
+    _spi.transceive(reinterpret_cast<uint8_t*>(tx.data()), reinterpret_cast<uint8_t*>(rx.data()), sizeof(tx_chunk_t) * tx.size());
 }
 
 bool OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
