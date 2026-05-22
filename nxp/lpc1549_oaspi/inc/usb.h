@@ -12,6 +12,6 @@ public:
     USB(USB&) = delete;
     USB(USB&&) = delete;
 
-    eth::OASPI &_oaspi;
-    eth::Eth &_eth;
+    eth::OASPI &oaspi_;
+    eth::Eth &eth_;
 };

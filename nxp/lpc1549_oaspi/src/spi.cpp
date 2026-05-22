@@ -12,24 +12,24 @@ static struct {
     StaticSemaphore_t lock_buffer;
     SemaphoreHandle_t lock;
     TaskHandle_t waiter;
-} data;
+} data_;
 
 /* private helpers */
 static void spi_dma_handler() {
     Chip_DMA_ClearActiveIntAChannel(LPC_DMA, DMAREQ_SPI0_RX);
     Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD | SPI_STAT_FORCE_EOT); // end transfer
     BaseType_t woke = pdFALSE;
-    vTaskNotifyGiveIndexedFromISR(data.waiter, configNOTIF_SPI, &woke);
+    vTaskNotifyGiveIndexedFromISR(data_.waiter, configNOTIF_SPI, &woke);
     portYIELD_FROM_ISR(woke);
 }
 
 /* public functions */
 SPI::SPI() {
-    configASSERT(data.dev == nullptr);
-    data.dev = this;
+    configASSERT(data_.dev == nullptr);
+    data_.dev = this;
 
-    data.lock = xSemaphoreCreateMutexStatic(&data.lock_buffer);
-    configASSERT(data.lock);
+    data_.lock = xSemaphoreCreateMutexStatic(&data_.lock_buffer);
+    configASSERT(data_.lock);
 
 #ifdef CONFIG_ADIN1110
     Chip_IOCON_PinMuxSet(LPC_IOCON, 0, 8,  IOCON_MODE_INACT);
@@ -96,8 +96,8 @@ void SPI::transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     for (size_t i = 0; i < len; i += 2) { // little-endian :(
         std::swap(tx[i], tx[i + 1]); // optimizes to __REV16
     }
-    xSemaphoreTake(data.lock, portMAX_DELAY);
-    data.waiter = xTaskGetCurrentTaskHandle();
+    xSemaphoreTake(data_.lock, portMAX_DELAY);
+    data_.waiter = xTaskGetCurrentTaskHandle();
     DMA_CHDESC_T tx_desc = {
         .xfercfg = DMA_XFERCFG_CFGVALID | DMA_XFERCFG_SWTRIG | DMA_XFERCFG_WIDTH_16 |
                    DMA_XFERCFG_SRCINC_1 | DMA_XFERCFG_DSTINC_0 | DMA_XFERCFG_XFERCOUNT(len / 2),
@@ -118,7 +118,7 @@ void SPI::transceive(uint8_t *tx, uint8_t *rx, size_t len) {
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_RX, rx_desc.xfercfg);
     Chip_DMA_SetupChannelTransfer(LPC_DMA, DMAREQ_SPI0_TX, tx_desc.xfercfg); // start transfer
     ulTaskNotifyTakeIndexed(configNOTIF_SPI, true, portMAX_DELAY);
-    xSemaphoreGive(data.lock);
+    xSemaphoreGive(data_.lock);
     for (size_t i = 0; i < len; i += 2) {
         std::swap(rx[i], rx[i + 1]);
     }

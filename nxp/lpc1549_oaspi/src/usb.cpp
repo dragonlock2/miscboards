@@ -121,7 +121,7 @@ static struct {
     eth::Packet *pkt;
     StaticTask_t task_buffer;
     std::array<StackType_t, configMINIMAL_STACK_SIZE> task_stack;
-} data;
+} data_;
 
 /* private helpers */
 static void usb_handler() {
@@ -133,11 +133,11 @@ static void usb_task(void*) {
         tud_task();
 
         // send packet if available and able
-        if (data.pkt == nullptr) {
-            xQueueReceive(data.reqs, &data.pkt, 0);
+        if (data_.pkt == nullptr) {
+            xQueueReceive(data_.reqs, &data_.pkt, 0);
         }
-        if (data.pkt) {
-            auto raw = data.pkt->raw();
+        if (data_.pkt) {
+            auto raw = data_.pkt->raw();
             auto len = raw.size() - 4;
             if (tud_network_can_xmit(len)) {
                 tud_network_xmit(raw.data(), len); // freed in tud_network_xmit_cb()
@@ -159,7 +159,7 @@ static void usb_eth_tx_cb(void *arg) {
 }
 
 static bool usb_eth_rx_cb(eth::Packet *pkt, void*) {
-    if (xQueueSend(data.reqs, &pkt, 0) == pdTRUE) {
+    if (xQueueSend(data_.reqs, &pkt, 0) == pdTRUE) {
         // driver not thread safe must run in tud_task()
         usbd_defer_func(nullptr, nullptr, false);
         return true;
@@ -170,13 +170,13 @@ static bool usb_eth_rx_cb(eth::Packet *pkt, void*) {
 }
 
 /* public functions */
-USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : _oaspi(oaspi), _eth(eth) {
-    configASSERT(data.dev == nullptr);
-    data.dev  = this;
-    data.reqs = xQueueCreateStatic(data.reqs_buf.size(), sizeof(eth::Packet*),
-        reinterpret_cast<uint8_t*>(data.reqs_buf.data()), &data.reqs_data);
-    data.pkt  = nullptr;
-    configASSERT(data.reqs);
+USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : oaspi_(oaspi), eth_(eth) {
+    configASSERT(data_.dev == nullptr);
+    data_.dev  = this;
+    data_.reqs = xQueueCreateStatic(data_.reqs_buf.size(), sizeof(eth::Packet*),
+        reinterpret_cast<uint8_t*>(data_.reqs_buf.data()), &data_.reqs_data);
+    data_.pkt  = nullptr;
+    configASSERT(data_.reqs);
     tud_network_mac_address[5] = usr::id(); // randomize mac
 
     NVIC_SetVector(USB0_IRQn, reinterpret_cast<uint32_t>(usb_handler));
@@ -184,8 +184,8 @@ USB::USB(eth::OASPI &oaspi, eth::Eth &eth) : _oaspi(oaspi), _eth(eth) {
     Chip_USB_Init();
 
     tusb_init();
-    configASSERT(xTaskCreateStatic(usb_task, "usb_task", data.task_stack.size(),
-        nullptr, configMAX_PRIORITIES - 1, data.task_stack.data(), &data.task_buffer));
+    configASSERT(xTaskCreateStatic(usb_task, "usb_task", data_.task_stack.size(),
+        nullptr, configMAX_PRIORITIES - 1, data_.task_stack.data(), &data_.task_buffer));
     eth.add_tx_cb(usb_eth_tx_cb, nullptr);
     eth.add_rx_cb(usb_eth_rx_cb, nullptr);
 }
@@ -261,19 +261,19 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size) {
         return true;
     }
     // if can't send immediately, stall until next TX done which calls usb_eth_tx_cb()
-    eth::Packet *pkt = data.dev->_eth.pkt_alloc(false);
+    eth::Packet *pkt = data_.dev->eth_.pkt_alloc(false);
     if (pkt) {
         std::memcpy(pkt->raw().data(), src, size);
         pkt->set_len(size - eth::Packet::HDR_LEN);
-        return data.dev->_eth.send(pkt, false);
+        return data_.dev->eth_.send(pkt, false);
     }
     return false;
 }
 
 uint16_t tud_network_xmit_cb(uint8_t *dst, void *ref, uint16_t arg) {
     std::memcpy(dst, ref, arg);
-    data.dev->_eth.pkt_free(data.pkt);
-    data.pkt = nullptr;
+    data_.dev->eth_.pkt_free(data_.pkt);
+    data_.pkt = nullptr;
     return arg;
 }
 
@@ -306,7 +306,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             uint8_t  mms = buffer[1];
             uint16_t reg = (buffer[2] << 8) | buffer[3];
             uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-            while (!data.dev->_oaspi.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val)) {
+            while (!data_.dev->oaspi_.reg_write(static_cast<eth::OASPI::MMS>(mms), reg, val)) {
                 vTaskDelay(pdMS_TO_TICKS(5));
             }
             resp[0] = static_cast<uint8_t>(ret::SUCCESS);
@@ -319,7 +319,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
             uint16_t reg = (buffer[2] << 8) | buffer[3];
             uint32_t val;
             while (true) {
-                auto tmp = data.dev->_oaspi.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
+                auto tmp = data_.dev->oaspi_.reg_read(static_cast<eth::OASPI::MMS>(mms), reg);
                 if (tmp.has_value()) {
                     val = tmp.value();
                     break;

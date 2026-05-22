@@ -99,23 +99,23 @@ static std::optional<uint16_t> oaspi_mdio_cmd(OASPI &dev, uint32_t cmd) {
 }
 
 /* public functions */
-OASPI::OASPI(SPI &spi, rst_set_callback_t rst) : _spi(spi), _rst(rst) {
-    _mdio_lock = xSemaphoreCreateMutexStatic(&_mdio_lock_buffer);
-    configASSERT(_rst && _mdio_lock);
+OASPI::OASPI(SPI &spi, rst_set_callback_t rst) : spi_(spi), rst_(rst) {
+    mdio_lock_ = xSemaphoreCreateMutexStatic(&mdio_lock_buffer_);
+    configASSERT(rst_ && mdio_lock_);
     // no calling reset() bc it calls virtual function!
 }
 
 OASPI::~OASPI() {
-    vSemaphoreDelete(_mdio_lock);
+    vSemaphoreDelete(mdio_lock_);
 }
 
 bool OASPI::reset() {
     bool ret = true;
 
     // hardware reset
-    _rst(true);
+    rst_(true);
     vTaskDelay(pdMS_TO_TICKS(2));
-    _rst(false);
+    rst_(false);
     vTaskDelay(pdMS_TO_TICKS(100));
 
     // MACPHY-specific configuration
@@ -155,7 +155,7 @@ bool OASPI::fcs_check(Packet &pkt) {
 
 void OASPI::data_transfer(std::span<tx_chunk_t> tx, std::span<rx_chunk_t> rx) {
     configASSERT(tx.size() == rx.size());
-    _spi.transceive(reinterpret_cast<uint8_t*>(tx.data()), reinterpret_cast<uint8_t*>(rx.data()), sizeof(tx_chunk_t) * tx.size());
+    spi_.transceive(reinterpret_cast<uint8_t*>(tx.data()), reinterpret_cast<uint8_t*>(rx.data()), sizeof(tx_chunk_t) * tx.size());
 }
 
 bool OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
@@ -173,7 +173,7 @@ bool OASPI::reg_write(MMS mms, uint16_t reg, uint32_t val) {
     tx[9]  = ~tx[5];
     tx[10] = ~tx[6];
     tx[11] = ~tx[7];
-    _spi.transceive(tx.data(), rx.data(), tx.size());
+    spi_.transceive(tx.data(), rx.data(), tx.size());
     return oaspi_control_check(rx);
 }
 
@@ -184,7 +184,7 @@ std::optional<uint32_t> OASPI::reg_read(MMS mms, uint16_t reg) {
     tx[2] = reg & 0xFF;
     tx[3] = 0;
     tx[3] |= parity(std::span<uint8_t, 4>(&tx[0], 4));
-    _spi.transceive(tx.data(), rx.data(), 16);
+    spi_.transceive(tx.data(), rx.data(), 16);
     if (oaspi_control_check(rx)) {
         return (rx[8] << 24) | (rx[9] << 16) | (rx[10] << 8) | (rx[11] << 0);
     }
@@ -192,27 +192,27 @@ std::optional<uint32_t> OASPI::reg_read(MMS mms, uint16_t reg) {
 }
 
 bool OASPI::mdio_write(uint8_t reg, uint16_t val) {
-    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(mdio_lock_, portMAX_DELAY);
     uint32_t cmd = 0x14200000;
     cmd |= (reg & 0x1F) << 16;
     cmd |= val;
     bool ret = oaspi_mdio_cmd(*this, cmd).has_value();
-    xSemaphoreGive(_mdio_lock);
+    xSemaphoreGive(mdio_lock_);
     return ret;
 }
 
 std::optional<uint16_t> OASPI::mdio_read(uint8_t reg) {
-    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(mdio_lock_, portMAX_DELAY);
     uint32_t cmd = 0x18200000;
     cmd |= (reg & 0x1F) << 16;
     auto ret = oaspi_mdio_cmd(*this, cmd);
-    xSemaphoreGive(_mdio_lock);
+    xSemaphoreGive(mdio_lock_);
     return ret;
 }
 
 bool OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
     bool ret = false;
-    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(mdio_lock_, portMAX_DELAY);
     uint32_t cmd = 0x00200000;
     cmd |= (devad & 0x1F) << 16;
     cmd |= reg;
@@ -222,13 +222,13 @@ bool OASPI::mdio_c45_write(uint8_t devad, uint16_t reg, uint16_t val) {
         cmd |= val;
         ret = oaspi_mdio_cmd(*this, cmd).has_value();
     }
-    xSemaphoreGive(_mdio_lock);
+    xSemaphoreGive(mdio_lock_);
     return ret;
 }
 
 std::optional<uint16_t> OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
     std::optional<uint16_t> ret;
-    xSemaphoreTake(_mdio_lock, portMAX_DELAY);
+    xSemaphoreTake(mdio_lock_, portMAX_DELAY);
     uint32_t cmd = 0x00200000;
     cmd |= (devad & 0x1F) << 16;
     cmd |= reg;
@@ -237,23 +237,23 @@ std::optional<uint16_t> OASPI::mdio_c45_read(uint8_t devad, uint16_t reg) {
         cmd |= (devad & 0x1F) << 16;
         ret = oaspi_mdio_cmd(*this, cmd);
     }
-    xSemaphoreGive(_mdio_lock);
+    xSemaphoreGive(mdio_lock_);
     return ret;
 }
 
 bool OASPI::ts_enable(bool enable, bool time64) {
-    // config is lost on reset so use custom configure() if need robustness (also set _ts_time64)
+    // config is lost on reset so use custom configure() if need robustness (also set ts_time64_)
     auto config0 = reg_read(MMS::STANDARD, 0x0004);
     if (!config0.has_value()) {
         return false;
     }
     bool ret = reg_write(MMS::STANDARD, 0x0004, (config0.value() & ~0xC0) | (enable << 7) | (time64 << 6));
-    _ts_time64 = time64; // packets arriving between above and this line may be lost
+    ts_time64_ = time64; // packets arriving between above and this line may be lost
     return ret;
 }
 
 bool OASPI::ts_time64() {
-    return _ts_time64;
+    return ts_time64_;
 }
 
 std::optional<Time> OASPI::ts_read(TTSC reg) {
@@ -330,7 +330,7 @@ bool OASPI_NCN26010::configure() {
     tx[2] = 0x04;
     tx[3] |= OASPI::parity(std::span<uint8_t, 4>(&tx[0], 4));
     tx[7] = 0x26; // PROTE=1, CPS=64bytes
-    _spi.transceive(tx.data(), rx.data(), 12);
+    spi_.transceive(tx.data(), rx.data(), 12);
 
     // clear reset
     ret = ret && reg_write(MMS::STANDARD, 0x0008, 0x00000040); // RESETC=1

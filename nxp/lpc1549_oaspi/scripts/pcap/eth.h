@@ -47,17 +47,17 @@ public:
     bool send(Packet *pkt, bool wait=true); // always takes ownership
 
 private:
-    pcap_t *_dev{}, *_tx_dev{};
+    pcap_t *dev_{}, *tx_dev_{};
     struct {
         std::mutex lock;
         tx_callback cb;
-    } _tx{};
+    } tx_{};
     struct {
         std::thread thread;
         std::mutex cb_lock;
         std::tuple<rx_callback, void*> cb;
         bool run;
-    } _rx{};
+    } rx_{};
 };
 
 };

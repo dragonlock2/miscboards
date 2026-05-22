@@ -53,8 +53,8 @@ struct Packet {
     static constexpr size_t MTU     = 1500;
     static constexpr size_t MAX_LEN = HDR_LEN + MTU + 4; // includes FCS
 
-    std::span<uint8_t> raw() { return std::span<uint8_t>(_buf.data(), HDR_LEN + _len + 4); }
-    void set_len(size_t len) { _len = len; }
+    std::span<uint8_t> raw() { return std::span<uint8_t>(buf_.data(), HDR_LEN + len_ + 4); }
+    void set_len(size_t len) { len_ = len; }
 
     std::optional<uint32_t> timestamp_id; // for TX, specifies timestamp capture desired
     std::optional<Time> timestamp; // for RX, specifies timestamp as (seconds, nanoseconds)
@@ -62,8 +62,8 @@ struct Packet {
 private:
     friend class Eth;
 
-    std::array<uint8_t, MAX_LEN> _buf;
-    size_t _len; // excludes header and CRC
+    std::array<uint8_t, MAX_LEN> buf_;
+    size_t len_; // excludes header and CRC
 };
 
 class Eth {
@@ -105,20 +105,20 @@ public:
 private:
     struct Helper;
 
-    OASPI &_oaspi;
-    int_set_callback_t _int_set;
+    OASPI &oaspi_;
+    int_set_callback_t int_set_;
     struct {
         StaticTask_t buffer;
         std::array<StackType_t, configETH_STACK_SIZE> stack;
         TaskHandle_t handle;
         bool error;
-    } _task{};
+    } task_{};
     struct {
         StaticSemaphore_t lock_buffer;
         SemaphoreHandle_t lock;
         std::array<std::tuple<tx_callback_t, void*>, 4> tx_cb;
         std::array<std::tuple<rx_callback_t, void*>, 4> rx_cb;
-    } _callbacks{};
+    } callbacks_{};
     struct {
         std::array<Packet*, REQ_SIZE> reqs_buf;
         StaticQueue_t reqs_data;
@@ -129,7 +129,7 @@ private:
         std::array<OASPI::tx_chunk_t, MAX_CHUNKS> chunks;
         size_t free_chunks;
         std::atomic<uint32_t> packets, bytes;
-    } _tx{};
+    } tx_{};
     struct {
         Packet *pkt;
         bool ts_expect, ts_parity;
@@ -137,7 +137,7 @@ private:
         std::array<OASPI::rx_chunk_t, MAX_CHUNKS> chunks;
         size_t pend_chunks;
         std::atomic<uint32_t> packets, bytes;
-    } _rx{};
+    } rx_{};
 };
 
 };

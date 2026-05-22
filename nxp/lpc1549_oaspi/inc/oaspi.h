@@ -111,11 +111,11 @@ public:
 protected:
     virtual bool configure() = 0;
 
-    SPI &_spi;
-    rst_set_callback_t _rst;
-    StaticSemaphore_t _mdio_lock_buffer{};
-    SemaphoreHandle_t _mdio_lock{};
-    bool _ts_time64;
+    SPI &spi_;
+    rst_set_callback_t rst_;
+    StaticSemaphore_t mdio_lock_buffer_{};
+    SemaphoreHandle_t mdio_lock_{};
+    bool ts_time64_;
 };
 
 static_assert(sizeof(OASPI::tx_chunk_t) == (OASPI::CHUNK_SIZE + 4));

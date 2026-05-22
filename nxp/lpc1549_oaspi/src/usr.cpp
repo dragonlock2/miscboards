@@ -16,12 +16,12 @@ namespace usr {
 static struct {
     int_callback_t phyint_cb;
     void *phyint_arg;
-} data;
+} data_;
 
 static void phyint_handler() {
     Chip_PININT_ClearIntStatus(LPC_GPIO_PIN_INT, PININTCH(0));
-    volatile auto cb  = data.phyint_cb;
-    volatile auto arg = data.phyint_arg;
+    volatile auto cb  = data_.phyint_cb;
+    volatile auto arg = data_.phyint_arg;
     if (cb && arg) {
         cb(arg);
     }
@@ -64,8 +64,8 @@ uint8_t id() {
 }
 
 void phyint(int_callback_t cb, void *arg) {
-    data.phyint_cb  = cb;
-    data.phyint_arg = arg;
+    data_.phyint_cb  = cb;
+    data_.phyint_arg = arg;
 }
 
 void phyrst(bool assert) {

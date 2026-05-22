@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdbool>
 #include <cstdint>
 
 namespace usr {

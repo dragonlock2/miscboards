@@ -72,13 +72,13 @@ Eth::Eth(const char *name, const char *iface) {
     }
 
     // add rx thread
-    _dev = found_dev;
-    _tx_dev = found_tx_dev;
-    _rx.run = true;
-    _rx.thread = std::thread([this]() {
-        while (_rx.run) {
+    dev_ = found_dev;
+    tx_dev_ = found_tx_dev;
+    rx_.run = true;
+    rx_.thread = std::thread([this]() {
+        while (rx_.run) {
             struct pcap_pkthdr hdr;
-            const uint8_t *raw = pcap_next(_dev, &hdr);
+            const uint8_t *raw = pcap_next(dev_, &hdr);
             if ((raw != nullptr) && (hdr.caplen == hdr.len) &&
                 (hdr.len >= Packet::HDR_LEN) && (hdr.len <= (Packet::HDR_LEN + Packet::MTU))) {
                 auto pkt = pkt_alloc();
@@ -86,12 +86,12 @@ Eth::Eth(const char *name, const char *iface) {
                 pkt->set_len(hdr.len - Packet::HDR_LEN);
 
                 bool taken = false;
-                _rx.cb_lock.lock();
-                auto &[cb, arg] = _rx.cb;
+                rx_.cb_lock.lock();
+                auto &[cb, arg] = rx_.cb;
                 if (cb && cb(pkt, arg)) {
                     taken = true;
                 }
-                _rx.cb_lock.unlock();
+                rx_.cb_lock.unlock();
                 if (!taken) {
                     pkt_free(pkt);
                 }
@@ -101,10 +101,10 @@ Eth::Eth(const char *name, const char *iface) {
 }
 
 Eth::~Eth() {
-    _rx.run = false;
-    _rx.thread.join();
-    pcap_close(_dev);
-    pcap_close(_tx_dev);
+    rx_.run = false;
+    rx_.thread.join();
+    pcap_close(dev_);
+    pcap_close(tx_dev_);
 }
 
 Packet *Eth::pkt_alloc(bool wait) {
@@ -117,23 +117,23 @@ void Eth::pkt_free(Packet *pkt) {
 }
 
 void Eth::set_tx_cb(tx_callback cb) {
-    std::scoped_lock lock(_tx.lock);
-    _tx.cb = cb;
+    std::scoped_lock lock(tx_.lock);
+    tx_.cb = cb;
 }
 
 void Eth::set_rx_cb(rx_callback cb, void *arg) {
-    std::scoped_lock lock(_rx.cb_lock);
-    _rx.cb = {cb, arg};
+    std::scoped_lock lock(rx_.cb_lock);
+    rx_.cb = {cb, arg};
 }
 
 bool Eth::send(Packet *pkt, bool wait) {
     assert(wait);
-    std::scoped_lock lock(_tx.lock);
+    std::scoped_lock lock(tx_.lock);
     auto raw = pkt->raw();
-    pcap_sendpacket(_tx_dev, raw.data(), raw.size() - 4); // excludes FCS
+    pcap_sendpacket(tx_dev_, raw.data(), raw.size() - 4); // excludes FCS
     pkt_free(pkt);
-    if (_tx.cb) {
-        _tx.cb();
+    if (tx_.cb) {
+        tx_.cb();
     }
     return true;
 }
