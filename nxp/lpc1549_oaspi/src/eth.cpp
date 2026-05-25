@@ -152,7 +152,7 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk_t &chunk) {
     };
     auto handle_reset = [&dev]() {
         dev.task_.error = true;
-        dev.oaspi_.reset();
+        dev.task_.init_good = false;
         dev.tx_.free_chunks = 1; // assuming at least one chunk free after reset
         dev.rx_.len = 0;
     };
@@ -222,13 +222,18 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk_t &chunk) {
 static void task(void *arg) {
     configASSERT(arg != nullptr);
     Eth &dev = *reinterpret_cast<Eth*>(arg);
+    dev.task_.init_good = false;
     bool wait = false;
-    dev.oaspi_.reset();
     while (true) {
+        // fixed wait time to quickly detect unintended resets
         if (wait) {
-            // fixed wait time to quickly detect unintended resets
             ulTaskNotifyTakeIndexed(configNOTIF_ETH, true, pdMS_TO_TICKS(100));
             wait = false;
+        }
+
+        // init macphy if needed
+        if (!dev.task_.init_good) {
+            dev.task_.init_good = dev.oaspi_.reset();
         }
 
         // pull next packet
@@ -270,7 +275,8 @@ static void task(void *arg) {
         }
 
         // wait if both tx/rx want wait
-        if ((uxQueueMessagesWaiting(dev.tx_.reqs) == 0) && // no queued tx
+        if ((dev.task_.init_good) && // macphy init success
+            (uxQueueMessagesWaiting(dev.tx_.reqs) == 0) && // no queued tx
             ((dev.tx_.pkt == nullptr) || (dev.tx_.free_chunks == 0)) && // no current tx or tx buffer full
             (dev.rx_.pend_chunks == 0)) { // no rx
             wait = true;
