@@ -235,6 +235,10 @@ static void task(void *arg) {
         if (!dev.task_.init_good) {
             dev.task_.init_good = dev.oaspi_.reset();
         }
+        if (!dev.task_.init_good) {
+            dev.task_.error = true;
+            continue;
+        }
 
         // pull next packet
         if (dev.tx_.pkt == nullptr) {
@@ -268,14 +272,27 @@ static void task(void *arg) {
         dev.oaspi_.data_transfer(std::span(dev.tx_.chunks).subspan(0, num_chunks), std::span(dev.rx_.chunks).subspan(0, num_chunks));
 
         // process rx chunks
+        bool error = false;
         for (size_t i = 0; i < num_chunks; i++) {
             if (!process_rx_chunk(dev, dev.rx_.chunks[i])) {
+                error = true;
                 break;
             }
         }
 
+        // sleep if enough errors to prevent tight loop
+        if (error) {
+            dev.task_.errors++;
+            if (dev.task_.errors > 100) {
+                dev.task_.errors = 100;
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+        } else {
+            dev.task_.errors = 0;
+        }
+
         // wait if both tx/rx want wait
-        if ((dev.task_.init_good) && // macphy init success
+        if ((dev.task_.init_good && !dev.task_.error) && // no macphy errors
             (uxQueueMessagesWaiting(dev.tx_.reqs) == 0) && // no queued tx
             ((dev.tx_.pkt == nullptr) || (dev.tx_.free_chunks == 0)) && // no current tx or tx buffer full
             (dev.rx_.pend_chunks == 0)) { // no rx
@@ -388,6 +405,9 @@ bool Eth::send(Packet *pkt, bool wait) {
         pkt->len_ = 60 - Packet::HDR_LEN;
     }
     OASPI::fcs_add(*pkt);
+    if (xTaskGetCurrentTaskHandle() == task_.handle) {
+        wait = false; // prevent lockup
+    }
     if (xQueueSend(tx_.reqs, &pkt, wait ? portMAX_DELAY : 0) == pdTRUE) {
         xTaskNotifyGiveIndexed(task_.handle, configNOTIF_ETH);
         return true;

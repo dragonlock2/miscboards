@@ -112,6 +112,7 @@ private:
         std::array<StackType_t, configETH_STACK_SIZE> stack;
         TaskHandle_t handle;
         bool error, init_good;
+        size_t errors;
     } task_{};
     struct {
         StaticSemaphore_t lock_buffer;
