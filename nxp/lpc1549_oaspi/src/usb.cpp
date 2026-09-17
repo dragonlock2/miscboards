@@ -16,21 +16,6 @@ static constexpr uint8_t EP_NET_IN    = 0x82; // bulk
 static constexpr uint8_t EP_HID_OUT   = 0x03; // interrupt
 static constexpr uint8_t EP_HID_IN    = 0x83; // interrupt
 
-// modified from usbd.h to set bmNetworkCapabilities=0x01 instead of 0x00
-#undef  TUD_CDC_NCM_DESCRIPTOR
-#define TUD_CDC_NCM_DESCRIPTOR(_itfnum, _desc_stridx, _mac_stridx, _ep_notif, _ep_notif_size, _epout, _epin, _epsize, _maxsegmentsize) \
-    8, TUSB_DESC_INTERFACE_ASSOCIATION, _itfnum, 2, TUSB_CLASS_CDC, CDC_COMM_SUBCLASS_NETWORK_CONTROL_MODEL, 0, 0,\
-    9, TUSB_DESC_INTERFACE, _itfnum, 0, 1, TUSB_CLASS_CDC, CDC_COMM_SUBCLASS_NETWORK_CONTROL_MODEL, 0, _desc_stridx,\
-    5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_HEADER, U16_TO_U8S_LE(0x0110),\
-    5, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_UNION, _itfnum, (uint8_t)((_itfnum) + 1),\
-    13, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_ETHERNET_NETWORKING, _mac_stridx, 0, 0, 0, 0, U16_TO_U8S_LE(_maxsegmentsize), U16_TO_U8S_LE(0), 0, \
-    6, TUSB_DESC_CS_INTERFACE, CDC_FUNC_DESC_NCM, U16_TO_U8S_LE(0x0100), 0x01, \
-    7, TUSB_DESC_ENDPOINT, _ep_notif, TUSB_XFER_INTERRUPT, U16_TO_U8S_LE(_ep_notif_size), 50,\
-    9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 0, 0, TUSB_CLASS_CDC_DATA, 0, NCM_DATA_PROTOCOL_NETWORK_TRANSFER_BLOCK, 0,\
-    9, TUSB_DESC_INTERFACE, (uint8_t)((_itfnum)+1), 1, 2, TUSB_CLASS_CDC_DATA, 0, NCM_DATA_PROTOCOL_NETWORK_TRANSFER_BLOCK, 0,\
-    7, TUSB_DESC_ENDPOINT, _epin, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0,\
-    7, TUSB_DESC_ENDPOINT, _epout, TUSB_XFER_BULK, U16_TO_U8S_LE(_epsize), 0
-
 enum class string_id {
     LANGID,
     MANUFACTURER,
@@ -73,7 +58,8 @@ static const uint8_t CONFIG_DESCRIPTOR[] = {
     TUD_CONFIG_DESCRIPTOR(1, static_cast<uint8_t>(iface_id::COUNT), 0,
         TUD_CONFIG_DESC_LEN + TUD_CDC_NCM_DESC_LEN + TUD_HID_INOUT_DESC_LEN, 0, 500),
     TUD_CDC_NCM_DESCRIPTOR(static_cast<uint8_t>(iface_id::CDC), static_cast<uint8_t>(string_id::INTERFACE),
-        static_cast<uint8_t>(string_id::MAC), EP_NET_NOTIF, 64, EP_NET_OUT, EP_NET_IN, CFG_TUD_NET_ENDPOINT_SIZE, CFG_TUD_NET_MTU),
+        static_cast<uint8_t>(string_id::MAC), EP_NET_NOTIF, 64, EP_NET_OUT, EP_NET_IN, 64, CFG_TUD_NET_MTU,
+        9, NCM_NETWORK_CAPS_ETH_FILTER | NCM_NETWORK_CAPS_NTB_INPUT_SIZE),
     TUD_HID_INOUT_DESCRIPTOR(static_cast<uint8_t>(iface_id::HID), 0, HID_ITF_PROTOCOL_NONE, sizeof(HID_DESCRIPTOR),
         EP_HID_OUT, EP_HID_IN, CFG_TUD_HID_EP_BUFSIZE, 1),
 };
