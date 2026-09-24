@@ -166,7 +166,15 @@ static bool process_rx_chunk(Eth &dev, OASPI::rx_chunk_t &chunk) {
         handle_reset(); // assume any unmasked status bit means error
         return false;
     } else if (chunk.HDRB) {
-        handle_error(); // likely random bit error, also set on reset
+        /*
+         * On normal parity error, SYNC=0 and HDRB=1. Since NCN26010 incorrectly
+         * sets HDRB after reset too, it is impossible to distinguish the two. As
+         * such, we must always assume spurious reset when observing this condition.
+         * We implement this by lowering HDRB check priority below SYNC check.
+         *
+         * The ADIN1110 correctly has HDRB=0 after reset.
+         */
+        handle_error(); // likely random bit error
         return false;
     } else {
         dev.task_.error = false;
